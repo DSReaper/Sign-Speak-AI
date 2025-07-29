@@ -71,8 +71,6 @@
     // Sign In Form Validation
     const signInFormEl = document.getElementById('sign-in-form');
     signInFormEl.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
         const email = document.getElementById('sign-in-email').value;
         const password = document.getElementById('sign-in-password').value;
         let isValid = true;
@@ -91,10 +89,6 @@
             isValid = false;
         } else {
             document.getElementById('sign-in-password-error').style.display = 'none';
-        }
-        
-        if (isValid) {
-         // Sign the user into the application (remember to hash the password first to test againsst the DB hashed password)
         }
     });
 

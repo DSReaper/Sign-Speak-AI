@@ -23,17 +23,17 @@
                 <p>Bridging communication with AI</p>
             </div>
 
-            <form id="sign-in-form" class="form active">
+          <form id="sign-in-form" class="form active" method="POST" action="/login">
                 <div class="form-group">
                     <label for="sign-in-email">Email Address</label>
-                    <input type="email" id="sign-in-email" class="form-control" placeholder="Enter your email" required>
+                    <input type="email" id="sign-in-email" name="email" class="form-control" placeholder="Enter your email" required>
                     <div class="error-message" id="sign-in-email-error">Please enter a valid email address</div>
                 </div>
 
                 <div class="form-group">
                     <label for="sign-in-password">Password</label>
                     <div class="input-wrapper">
-                        <input type="password" id="sign-in-password" class="form-control" placeholder="Enter your password" required>
+                       <input type="password" id="sign-in-password" name="password" class="form-control" placeholder="Enter your password" required>
                         <button type="button" class="password-toggle" aria-label="Toggle password visibility">
                             <i class="fas fa-eye"></i>
                         </button>
