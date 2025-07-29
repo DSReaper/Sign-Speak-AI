@@ -6,7 +6,7 @@ exports.handleTranslation = async (req, res) =>
 {
   try 
   {
-    const text = await signToText(req.file.path);
+    const text = await signToText('Backend_stuff\services\signToTextService.js');
     const speechUrl = await textToSpeech(text);
 
     await Translation.create(
