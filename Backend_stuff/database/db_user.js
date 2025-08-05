@@ -1,7 +1,7 @@
-const bcrypt = require('bcrypt');
+const MongoDB = require('mongodb');
 
-// Placeholder for database connection setup
-function initializeDatabaseConnection() {
+function initializeDatabaseConnection() 
+{
     // To do: Implement actual database connection once location and credentials are known
     console.log('Database connection initialization placeholder');
 }
@@ -10,32 +10,34 @@ function initializeDatabaseConnection() {
 const users = new Map();
 
 /**
- * Registers a new user
+ * Registers a new user (needs to swich to validator file)
  * @param {string} email - User email
- * @param {string} password - User password (plain text)
- * @returns {Promise<{success: boolean, message: string}>} Result of registration
+ * @param {string} password - User password 
+ * @returns {Promise<{success: boolean, message: string}>} Result of registration (needs to swich to validator file)
  */
-async function registerUser(email, password) {
+async function registerUser(email, password) 
+{
     if (users.has(email)) {
         return { success: false, message: 'User already registered' };
     }
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await MongoDB.hash(password, 10);
     users.set(email, { email, password: hashedPassword });
     return { success: true, message: 'User registered successfully' };
 }
 
 /**
- * Authenticates a user.
+ * Authenticates a user. (needs to swich to validator file)
  * @param {string} email - User email
- * @param {string} password - User password (plain text)
- * @returns {Promise<{success: boolean, message: string}>} Result of authentication
+ * @param {string} password - User password
+ * @returns {Promise<{success: boolean, message: string}>} Result of authentication (needs to swich to validator file)
  */
-async function authenticateUser(email, password) {
+async function authenticateUser(email, password) 
+{
     if (!users.has(email)) {
         return { success: false, message: 'User not found' };
     }
     const user = users.get(email);
-    const match = await bcrypt.compare(password, user.password);
+    const match = await MongoDB.compare(password, user.password);
     if (match) {
         return { success: true, message: 'Authentication successful' };
     } else {
