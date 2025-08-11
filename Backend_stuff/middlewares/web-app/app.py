@@ -585,7 +585,7 @@ def draw_overlays(frame):
 @app.route('/')
 def index():
     """Main page"""
-    return render_template('index.html', class_names=class_names)
+    return render_template('AI.html', class_names=class_names)
 
 @app.route('/video_feed')
 def video_feed():
