@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SASL Web Application</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .emoji {
+            font-size: 1.2em;
+            margin: 0 15px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .video-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        #videoFeed {
+            max-width: 100%;
+            height: auto;
+            border: 4px solid #4CAF50;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            background: #000;
+            min-height: 360px;
+            object-fit: cover;
+        }
+        
+        .controls-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        button {
+            padding: 15px 25px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .btn-start {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+        
+        .btn-stop {
+            background: linear-gradient(45deg, #f44336, #da190b);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #008CBA, #007BB5);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(45deg, #FF9800, #F57C00);
+            color: white;
+        }
+        
+        .status-panel {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border: 2px solid #2196F3;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .status-panel h3 {
+            color: #1565C0;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .status-item {
+            margin: 12px 0;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.7);
+            transition: all 0.3s ease;
+        }
+        
+        .status-item:hover {
+            transform: translateX(5px);
+            background: rgba(255, 255, 255, 0.9);
+        }
+        
+        .status-prediction {
+            border-left: 5px solid #4CAF50;
+        }
+        
+        .status-confidence {
+            border-left: 5px solid #FF9800;
+        }
+        
+        .status-buffer {
+            border-left: 5px solid #2196F3;
+        }
+        
+        .status-camera {
+            border-left: 5px solid #9C27B0;
+        }
+        
+        .confidence-high { color: #4CAF50; font-weight: bold; }
+        .confidence-medium { color: #FF9800; font-weight: bold; }
+        .confidence-low { color: #f44336; font-weight: bold; }
+        
+        .instructions {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            border: 2px solid #4CAF50;
+            border-radius: 15px;
+            padding: 25px;
+        }
+        
+        .instructions h3 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+        
+        .instructions ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        .instructions li {
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .class-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .class-item {
+            background: linear-gradient(135deg, #f5f5f5, #e0e0e0);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .class-item:hover {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            transform: scale(1.05);
+            border-color: #2e7d32;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2em;
+            color: #666;
+        }
+        
+        .error {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 2px solid #f44336;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #d32f2f;
+            text-align: center;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .class-grid {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            <span class="emoji">🤟</span>
+            SASL Web Application
+            <span class="emoji">🤟</span>
+        </h1>
+        
+        <div class="main-content">
+            <div class="video-section">
+                <img id="videoFeed" src="" alt="SASL Camera Feed" style="display: none;">
+                <div id="noVideo" class="loading">
+                    📹 Click "Start Camera" to begin gesture recognition
+                </div>
+            </div>
+            
+            <div class="controls-section">
+                <div class="controls">
+                    <button class="btn-start" onclick="startCamera()" id="startBtn">Start Camera</button>
+                    <button class="btn-stop" onclick="stopCamera()" id="stopBtn" disabled>Stop Camera</button>
+                    <button class="btn-secondary" onclick="toggleHands()" id="handsBtn">Toggle Hand Detection</button>
+                    <button class="btn-warning" onclick="resetDetector()">Reset Buffer</button>
+                </div>
+                
+                <div class="status-panel">
+                    <h3>📊 Live Status</h3>
+                    <div class="status-item status-prediction">
+                        <strong>🎯 Prediction:</strong> <span id="prediction">Waiting for camera...</span>
+                    </div>
+                    <div class="status-item status-confidence">
+                        <strong>📈 Confidence:</strong> <span id="confidence" class="confidence-low">0.000</span>
+                    </div>
+                    <div class="status-item status-buffer">
+                        <strong>🔄 Buffer:</strong> <span id="buffer">Not started</span>
+                    </div>
+                    <div class="status-item status-camera">
+                        <strong>📹 Camera:</strong> <span id="cameraStatus">Stopped</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 Instructions & Features</h3>
+            <ul>
+                <li><strong>🎥 Camera Control:</strong> Start/stop camera for gesture recognition</li>
+                <li><strong>✋ Hand Detection:</strong> Toggle hand landmarks and bounding boxes</li>
+                <li><strong>🎯 Gesture Recognition:</strong> Make clear SASL gestures facing the camera</li>
+                <li><strong>🔄 Buffer System:</strong> Collects 16 frames before making predictions</li>
+                <li><strong>📊 Confidence Levels:</strong> 
+                    <span class="confidence-high">High (>0.7)</span>, 
+                    <span class="confidence-medium">Medium (0.3-0.7)</span>, 
+                    <span class="confidence-low">Low (<0.3)</span>
+                </li>
+                <li><strong>🤖 Model:</strong> Hand-Focused CNN-LSTM with attention mechanism</li>
+            </ul>
+            
+            <h4>🎭 Supported SASL Gestures ({{ class_names|length }} total):</h4>
+            <div class="class-grid">
+                {% for class_name in class_names %}
+                <div class="class-item">{{ class_name }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isUpdating = false;
+        
+        async function startCamera() {
+            try {
+                const response = await fetch('/start_camera', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('videoFeed').src = '/video_feed?' + new Date().getTime();
+                    document.getElementById('videoFeed').style.display = 'block';
+                    document.getElementById('noVideo').style.display = 'none';
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    console.log('Camera started successfully');
+                } else {
+                    showError('Failed to start camera: ' + data.message);
+                }
+            } catch (error) {
+                showError('Error starting camera: ' + error.message);
+            }
+        }
+        
+        async function stopCamera() {
+            try {
+                const response = await fetch('/stop_camera', { method: 'POST' });
+                const data = await response.json();
+                
+                document.getElementById('videoFeed').src = '';
+                document.getElementById('videoFeed').style.display = 'none';
+                document.getElementById('noVideo').style.display = 'block';
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                console.log('Camera stopped');
+            } catch (error) {
+                showError('Error stopping camera: ' + error.message);
+            }
+        }
+        
+        async function toggleHands() {
+            try {
+                const response = await fetch('/toggle_hands', { method: 'POST' });
+                const data = await response.json();
+                
+                const btn = document.getElementById('handsBtn');
+                btn.textContent = data.show_hands ? 'Hide Hand Detection' : 'Show Hand Detection';
+                btn.className = data.show_hands ? 'btn-stop' : 'btn-secondary';
+                console.log('Hand detection toggled:', data.show_hands);
+            } catch (error) {
+                console.error('Error toggling hands:', error);
+            }
+        }
+        
+        async function resetDetector() {
+            try {
+                const response = await fetch('/reset_detector', { method: 'POST' });
+                const data = await response.json();
+                console.log('Detector reset');
+            } catch (error) {
+                console.error('Error resetting detector:', error);
+            }
+        }
+        
+        async function updateStatus() {
+            if (isUpdating) return;
+            isUpdating = true;
+            
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                
+                document.getElementById('prediction').textContent = data.prediction;
+                
+                const confidenceElement = document.getElementById('confidence');
+                confidenceElement.textContent = data.confidence.toFixed(3);
+                confidenceElement.className = data.confidence > 0.7 ? 'confidence-high' :
+                                             data.confidence > 0.3 ? 'confidence-medium' : 'confidence-low';
+                
+                const bufferText = data.buffer_ready ? 
+                    `Ready (${data.buffer_size}/16)` : 
+                    `Collecting (${data.buffer_size}/16)`;
+                document.getElementById('buffer').textContent = bufferText;
+                
+                document.getElementById('cameraStatus').textContent = data.is_camera_active ? 'Active' : 'Stopped';
+                
+            } catch (error) {
+                console.error('Status update error:', error);
+            } finally {
+                isUpdating = false;
+            }
+        }
+        
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.innerHTML = `<strong>⚠️ Error:</strong> ${message}`;
+            document.querySelector('.container').insertBefore(errorDiv, document.querySelector('.main-content'));
+            
+            setTimeout(() => {
+                if (errorDiv.parentNode) {
+                    errorDiv.parentNode.removeChild(errorDiv);
+                }
+            }, 5000);
+        }
+        
+        // Update status every second
+        setInterval(updateStatus, 1000);
+        updateStatus();
+        
+        // Handle page visibility
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // Page is hidden, reduce update frequency
+                clearInterval(statusInterval);
+            } else {
+                // Page is visible, resume normal updates
+                updateStatus();
+            }
+        });
+    </script>
+</body>
+</html>
