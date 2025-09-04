@@ -11,13 +11,18 @@ connectDB();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files
+app.use(express.static('public'));
+
 // Routes
 const translateRoutes = require('../Backend_stuff/routes/translateRoute.js');
+const authRoutes = require('../Backend_stuff/routes/authRoute.js');
 app.use('/translate', translateRoutes);
+app.use('/auth', authRoutes);
 
-// Basic route for testing
+// Serve index.html at root
 app.get('/', (req, res) => {
-  res.json({ message: 'Sign-Speak-AI API is running!' });
+  res.sendFile(__dirname + '/index.html');
 });
 
 // Health check endpoint

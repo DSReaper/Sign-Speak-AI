@@ -94,7 +94,31 @@
         }
         
         if (isValid) {
-         // Sign the user into the application (remember to hash the password first to test againsst the DB hashed password)
+            // Send signin request
+            fetch('/auth/signin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    // Store token and redirect or handle success
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('userId', data.userId);
+                    alert('Login successful!');
+                    // Redirect to dashboard or home
+                    window.location.href = '/'; // Adjust as needed
+                } else {
+                    alert(data.message || 'Login failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred during login');
+            });
         }
     });
 
@@ -134,7 +158,31 @@
         }
         
         if (isValid) {
-         //Add the sign up functionality with the user added to the DB (NB make use of hashing for the password)
+            // Send signup request
+            fetch('/auth/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    email, 
+                    password, 
+                    userType: userType ? userType.value : 'user' 
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    alert('Signup successful! Please login.');
+                    showSignInForm();
+                } else {
+                    alert(data.message || 'Signup failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred during signup');
+            });
         }
     });
 
