@@ -1,18 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Sign Speak AI - App</title>
-  <link rel="stylesheet" href="/css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language Detection</title>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-   <div class="app-container">
-    
-    <div class="screen-content">
-    
+    <div class="container">
+        
+        <!-- Camera Section -->
+        <div class="camera-section">
+            <div class="camera-container">
+                
+                <!-- Controls inside the camera section (displayed at the top of the camera section) -->
+                <div class="camera-controls">
+                    <div class="detection-mode">
+                        <button class="mode-btn active" id="basicDetect">Basic Detect</button>
+                        <button class="mode-btn" id="advancedDetect">Advanced Detect</button>
+                    </div>
+                    <div class="expand-btn" id="expandBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 
+                                     18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 
+                                     2h3"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Camera Feed -->
+                <video id="cameraFeed" autoplay muted playsinline></video>
+                <canvas id="overlay" style="display: none;"></canvas>
+
+                <!-- Camera Loading -->
+                <div class="camera-loading" id="cameraLoading">
+                    <div class="loading-spinner"></div>
+                    <p>Accessing camera...</p>
+                </div>
+
+                <!-- Camera Error -->
+                <div class="camera-error" id="cameraError" style="display: none;">
+                    <p>Unable to access camera</p>
+                    <button class="retry-btn" id="retryCamera">Try Again</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detection Results -->
+        <div class="results-section">
+            <h2 class="results-title">Detected sign(s):</h2>
+            <div class="detected-phrase" id="detectedPhrase">
+                "Hi how are you doing today?"
+            </div>
+            
+            <!-- Audio Playback -->
+            <div class="audio-controls">
+                <button class="play-btn" id="playBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+                    </svg>
+                    <span>Play audio</span>
+                </button>
+                <button class="star-btn" id="starBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 
+                                         18.18,21.02 12,17.77 5.82,21.02 
+                                         7,14.14 2,9.27 8.91,8.26"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
     </div>
 
+    <!-- Navigation Footer -->
     <%- include('partials/navigation') %>
-    </div>
+
+    <script src="/js/camera-acess.js"></script>
 </body>
 </html>
