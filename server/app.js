@@ -22,17 +22,28 @@ app.get('/', (req, res) => {
 
 //login post route
 app.use(express.urlencoded({ extended: true }));
+// After successful login
 app.post('/login', (req, res) => {
-    const { email, password } = req.body;
-   
-    // mock example
-    if (email === 'test@example.com' && password === 'password123') {
-        // Login successful — render the application page
-        res.render('application', { user: email }); // Pass user data if needed
-    } else {
-        // Login failed
-        res.status(401).send('Invalid credentials');
-    }
+  const { email, password } = req.body;
+
+  if (email === 'test@example.com' && password === 'password123') {
+    res.redirect('/camera'); // instead of directly rendering
+  } else {
+    res.status(401).send('Invalid credentials');
+  }
+});
+
+// Application routes
+app.get('/camera', (req, res) => {
+  res.render('camera'); // main camera screen
+});
+
+app.get('/storage', (req, res) => {
+  res.render('storage');
+});
+
+app.get('/profile', (req, res) => {
+  res.render('profile');
 });
 
 
