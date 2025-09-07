@@ -58,6 +58,18 @@
                         this.toggleExpanded();
                     }
                 });
+
+                document.getElementById('closeModal').addEventListener('click', () => {
+                    const modal = document.getElementById('responseModal');
+                    const textarea = document.getElementById('userResponse');
+                    
+                    // Hide modal
+                    modal.style.display = 'none';
+                    
+                    // Clear textarea contents
+                    textarea.value = '';
+                });
+
             }
 
             async startCamera() {
@@ -190,23 +202,27 @@
                 }, 150);
             }
 
-            playDetectedPhrase() {
-                const playBtn = document.getElementById('playBtn');
-                const playIcon = playBtn.querySelector('svg polygon');
-                const playText = playBtn.querySelector('span');
-                
-                // Simulate audio playing
-                playBtn.classList.add('playing');
-                playText.textContent = 'Playing...';
-                
-                // Change icon to pause
-                playIcon.setAttribute('points', '6,4 6,20 10,20 10,4 14,4 14,20 18,20 18,4');
-                
-                // Simulate playback duration (2 seconds)
-                setTimeout(() => {
-                    this.resetPlayButton(playBtn, playIcon, playText);
-                }, 2000);
-            }
+        playDetectedPhrase() {
+            const playBtn = document.getElementById('playBtn');
+            const playIcon = playBtn.querySelector('svg polygon');
+            const playText = playBtn.querySelector('span');
+            
+            // Simulate audio playing
+            playBtn.classList.add('playing');
+            playText.textContent = 'Playing...';
+            
+            // Change icon to pause
+            playIcon.setAttribute('points', '6,4 6,20 10,20 10,4 14,4 14,20 18,20 18,4');
+            
+            // Simulate playback duration (2 seconds)
+            setTimeout(() => {
+                this.resetPlayButton(playBtn, playIcon, playText);
+
+                // Show modal after playback
+                document.getElementById('responseModal').style.display = 'flex';
+            }, 2000);
+        }
+
 
             resetPlayButton(playBtn, playIcon, playText) {
                 playBtn.classList.remove('playing');
