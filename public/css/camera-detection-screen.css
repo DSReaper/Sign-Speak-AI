@@ -12,17 +12,11 @@ body {
 }
 
 .container {
-    padding: 20px;
-    min-height: 100vh;
+    padding: 1em 0;
+    min-height: 90vh;
 }
 
 /* Header Controls */
-.header-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
 
 .detection-mode {
     display: flex;

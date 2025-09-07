@@ -3,7 +3,10 @@
   justify-content: center;
   align-items: center;
   background-color: #fff;
-  height: 90px;
+
+  /* old: height: 90px; */
+  height: 10vh;   /* <-- makes it 10% of viewport height */
+
   padding: 10px 0 25px 0;
   border-top-left-radius: 25px;
   border-top-right-radius: 25px;
@@ -14,6 +17,7 @@
   border-left: 1px solid #eee;  
   border-right: 1px solid #eee; 
 }
+
 
 
 .nav-item {

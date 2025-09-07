@@ -1,0 +1,31 @@
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-rows: 90% 10%; /* main content 90%, nav 10% */
+  height: 100vh;
+}
+
+.main-content {
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 900px;
+}
+
+.nav-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.nav-wrapper .bottom-nav {
+  width: 100%;
+  max-width: 900px; 
+}
