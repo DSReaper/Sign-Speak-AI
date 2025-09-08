@@ -3,7 +3,11 @@ const cors = require('cors');
 const connectDB = require('../Backend_stuff/database/db.js');
 require('dotenv').config();
 
+
 const app = express();
+
+console.log('__dirname:', __dirname);
+
 
 // Connect to MongoDB
 connectDB();
@@ -26,7 +30,7 @@ app.use('/auth', authRoutes);
 const path = require('path');
 
 app.get('/', (req, res) => {
-  res.sendFile(path.resolve(__dirname, '../index.html'));
+  res.sendFile('index.html', { root: path.resolve(__dirname, '..') });
 });
 
 // Health check endpoint
