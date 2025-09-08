@@ -23,8 +23,10 @@ app.use('/translate', translateRoutes);
 app.use('/auth', authRoutes);
 
 // Serve index.html at root
+const path = require('path');
+
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
+  res.sendFile(path.resolve(__dirname, '../index.html'));
 });
 
 // Health check endpoint
@@ -34,3 +36,9 @@ app.get('/health', (req, res) => {
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(` Server running on port ${PORT}`));
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err.message);
+  // Optionally, close server & exit process here
+});
