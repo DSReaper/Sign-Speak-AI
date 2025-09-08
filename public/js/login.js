@@ -159,7 +159,7 @@
         
         if (isValid) {
             // Send signup request
-            fetch('/auth/signup', {
+            fetch('/authRoute.js/signup', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
