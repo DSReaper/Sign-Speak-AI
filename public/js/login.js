@@ -93,33 +93,7 @@
             document.getElementById('sign-in-password-error').style.display = 'none';
         }
         
-        if (isValid) {
-            // Send signin request
-            fetch('/auth/signin', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ email, password })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.token) {
-                    // Store token and redirect or handle success
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('userId', data.userId);
-                    alert('Login successful!');
-                    // Redirect to dashboard or home
-                    window.location.href = '/'; // Adjust as needed
-                } else {
-                    alert(data.message || 'Login failed');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred during login');
-            });
-        }
+
     });
 
     // Sign Up Form Validation
@@ -159,7 +133,7 @@
         
         if (isValid) {
             // Send signup request
-            fetch('/authRoute.js/signup', {
+            fetch('/auth/signup', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
