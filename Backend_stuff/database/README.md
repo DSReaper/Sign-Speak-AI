@@ -7,8 +7,7 @@
   - `email` (string)
   - `password` (string)
   - `registered` (timestamp)
-  - `role` (string)
-  - `username` (string)
+
 
 - Indexes include:
   - `_id` as unique identifier
@@ -34,8 +33,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   userType: { type: String, default: 'user' },
   registered: { type: Date, default: Date.now },
-  role: { type: String, default: 'user' },
-  username: { type: String, default: '' }
+
 });
 ```
 
@@ -47,8 +45,7 @@ const user = new User({
   password: hashedPassword,
   userType: userType || 'user',
   registered: new Date(),
-  role: 'user',
-  username: '' // or set from signup form if available
+
 });
 ```
 

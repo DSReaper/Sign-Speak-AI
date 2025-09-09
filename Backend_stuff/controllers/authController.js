@@ -32,8 +32,6 @@ exports.signup = async (req, res) => {
       password: hashedPassword,
       userType: userType || 'user',
       registered: new Date(),
-      role: 'user',
-      username: ''
     });
 
     await user.save();
