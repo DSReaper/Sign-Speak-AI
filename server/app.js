@@ -18,7 +18,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files
-app.use(express.static('public'));
+const path = require('path');
+app.use('/Main', express.static(path.join(__dirname, '../Main')));
 
 // Routes
 const translateRoutes = require('../Backend_stuff/routes/translateRoute.js');
@@ -27,10 +28,9 @@ app.use('/translate', translateRoutes);
 app.use('/auth', authRoutes);
 
 // Serve index.html at root
-const path = require('path');
 
 app.get('/', (req, res) => {
-  res.sendFile('index.html', { root: path.resolve(__dirname, '..') });
+  res.sendFile('index.html', { root: path.resolve(__dirname) });
 });
 
 // Health check endpoint

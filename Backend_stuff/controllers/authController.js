@@ -6,7 +6,10 @@ const jwt = require('jsonwebtoken');
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  userType: { type: String, default: 'user' }
+  userType: { type: String, default: 'user' },
+  registered: { type: Date, default: Date.now },
+  role: { type: String, default: 'user' },
+  username: { type: String, default: '' }
 });
 const User = mongoose.model('User', userSchema);
 
@@ -27,7 +30,10 @@ exports.signup = async (req, res) => {
     const user = new User({
       email,
       password: hashedPassword,
-      userType: userType || 'user'
+      userType: userType || 'user',
+      registered: new Date(),
+      role: 'user',
+      username: ''
     });
 
     await user.save();
