@@ -8,8 +8,8 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   userType: { type: String, default: 'user' },
   registered: { type: Date, default: Date.now },
-  role: { type: String, default: 'user' },
-  username: { type: String, default: '' }
+  
+ 
 });
 const User = mongoose.model('User', userSchema);
 
