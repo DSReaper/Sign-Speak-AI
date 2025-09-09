@@ -29,37 +29,12 @@ const flaskProxyOptions = {
     }
 };
 
-// Flask AI service proxy routes
-app.use('/ai/start_camera', createProxyMiddleware({ 
-    ...flaskProxyOptions, 
-    pathRewrite: { '^/ai/start_camera': '/start_camera' }
+app.use('/ai', createProxyMiddleware({
+    ...flaskProxyOptions,
+    pathRewrite: {
+        '^/ai': '', 
+    },
 }));
-
-app.use('/ai/stop_camera', createProxyMiddleware({ 
-    ...flaskProxyOptions, 
-    pathRewrite: { '^/ai/stop_camera': '/stop_camera' }
-}));
-
-app.use('/ai/video_feed', createProxyMiddleware({ 
-    ...flaskProxyOptions, 
-    pathRewrite: { '^/ai/video_feed': '/video_feed' }
-}));
-
-app.use('/ai/status', createProxyMiddleware({ 
-    ...flaskProxyOptions, 
-    pathRewrite: { '^/ai/status': '/status' }
-}));
-
-app.use('/ai/toggle_hands', createProxyMiddleware({ 
-    ...flaskProxyOptions, 
-    pathRewrite: { '^/ai/toggle_hands': '/toggle_hands' }
-}));
-
-app.use('/ai/reset_detector', createProxyMiddleware({ 
-    ...flaskProxyOptions, 
-    pathRewrite: { '^/ai/reset_detector': '/reset_detector' }
-}));
-
 // Health check for Flask service
 app.get('/ai/health', async (req, res) => {
     try {
