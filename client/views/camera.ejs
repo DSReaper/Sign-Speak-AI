@@ -11,24 +11,27 @@
         <!-- Main Content (90%) -->
         <div class="main-content">
             <div class="container">
-                    <!-- Response Modal -->
-                    <div id="responseModal" class="modal">
+                <!-- Response Modal -->
+                <div id="responseModal" class="modal">
                     <div class="modal-content">
                         <h2>Please type your response :)</h2>
                         <textarea id="userResponse" rows="4" placeholder="Type here..."></textarea>
                         <button id="closeModal">Close</button>
                     </div>
-                    </div>
+                </div>
                 
                 <!-- Camera Section -->
-               <div class="camera-section" id="cameraSection">
+                <div class="camera-section" id="cameraSection">
                     <div class="camera-container">
-                        
                         <!-- Controls inside the camera section -->
                         <div class="camera-controls">
                             <div class="detection-mode">
                                 <button class="mode-btn active" id="basicDetect">Basic Detect</button>
                                 <button class="mode-btn" id="advancedDetect">Advanced Detect</button>
+                            </div>
+                            <div class="camera-options">
+                                <button class="option-btn" id="toggleHands">Hand Detection</button>
+                                <button class="option-btn" id="resetBuffer">Reset</button>
                             </div>
                             <div class="expand-btn" id="expandBtn">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -39,20 +42,31 @@
                             </div>
                         </div>
 
-                        <!-- Camera Feed -->
-                        <video id="cameraFeed" autoplay muted playsinline></video>
-                        <canvas id="overlay" style="display: none;"></canvas>
-
+                        <!-- AI Camera Feed from Flask -->
+                        <img id="aiCameraFeed" src="" alt="AI Camera Feed" style="display: none;">
+                        
                         <!-- Camera Loading -->
                         <div class="camera-loading" id="cameraLoading">
                             <div class="loading-spinner"></div>
-                            <p>Accessing camera...</p>
+                            <p>Starting AI camera...</p>
                         </div>
 
                         <!-- Camera Error -->
                         <div class="camera-error" id="cameraError" style="display: none;">
-                            <p>Unable to access camera, please check your browser permissions and try again</p>
+                            <p>Unable to start AI camera. Please check if the AI service is running.</p>
                             <button class="retry-btn" id="retryCamera">Try Again</button>
+                        </div>
+
+                        <!-- AI Status Display -->
+                        <div class="ai-status" id="aiStatus">
+                            <div class="status-item">
+                                <span class="status-label">Buffer:</span>
+                                <span id="bufferStatus">Not started</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Confidence:</span>
+                                <span id="confidenceStatus" class="confidence-low">0.000</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -61,7 +75,7 @@
                 <div class="results-section">
                     <h2 class="results-title">Detected sign(s):</h2>
                     <div class="detected-phrase" id="detectedPhrase">
-                        "Hi how are you doing today?"
+                        Waiting for AI detection...
                     </div>
                     
                     <!-- Audio Playback -->
@@ -80,9 +94,6 @@
                             </svg>
                         </button>
                     </div>
-
-                
-
                 </div>
             </div>
         </div>
@@ -93,6 +104,6 @@
         </div>
     </div>
 
-    <script src="/js/camera-acess.js"></script>
+    <script src="/js/camera-access.js"></script>
 </body>
 </html>
