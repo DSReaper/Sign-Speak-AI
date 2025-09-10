@@ -134,7 +134,7 @@
         const email = document.getElementById('sign-up-email').value;
         const password = document.getElementById('sign-up-password').value;
         const confirmPassword = document.getElementById('sign-up-confirm-password').value;
-        const userType = document.querySelector('input[name="user-type"]:checked');
+        const hearingStatusSelect = document.getElementById('hearingStatus');
         let isValid = true;
         
         // Validate email
@@ -171,7 +171,7 @@
                 body: JSON.stringify({ 
                     email, 
                     password, 
-                    userType: userType ? userType.value : 'user' 
+                    hearingStatus: hearingStatusSelect ? hearingStatusSelect.value : 'Hard of hearing' 
                 })
             })
             .then(response => response.json())

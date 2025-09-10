@@ -6,16 +6,15 @@ const jwt = require('jsonwebtoken');
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  userType: { type: String, default: 'user' },
+  hearingStatus: { type: String, enum: ['Hard of hearing', 'Non-hard of hearing'], required: true },
   registered: { type: Date, default: Date.now },
-  
- 
 });
+
 const User = mongoose.model('User', userSchema);
 
 exports.signup = async (req, res) => {
   try {
-    const { email, password, userType } = req.body;
+    const { email, password, hearingStatus } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ email });
@@ -30,7 +29,7 @@ exports.signup = async (req, res) => {
     const user = new User({
       email,
       password: hashedPassword,
-      userType: userType || 'user',
+      hearingStatus,
       registered: new Date(),
     });
 
