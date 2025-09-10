@@ -54,6 +54,8 @@
                 icon.classList.remove('fa-eye-slash');
                 icon.classList.add('fa-eye');
                 this.setAttribute('aria-label', 'Show password');
+                // Toggle between eye and eye-slash icons
+                // note the info show/hide information after sign in and sign up forms
             }
         });
     });
@@ -62,10 +64,12 @@
     function validateEmail(email) {
         const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return re.test(String(email).toLowerCase());
+        // Regex for basic email validation
     }
 
     function validatePassword(password) {
         return password.length >= 8;
+        //need more edits here do after data testing
     }
 
     // Sign In Form Validation
