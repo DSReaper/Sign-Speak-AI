@@ -2,7 +2,7 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-const uri = process.env.MONGODB_URI || 'mongodb+srv://Zoe:kaas@mainsign.7aqed10.mongodb.net/?retryWrites=true&w=majority';
+const uri = process.env.MONGODB_URI || 'mongodb+srv://Zoe:kaas@mainsign.7aqed10.mongodb.net/';
 
 const connectDB = async () => {
   try {
