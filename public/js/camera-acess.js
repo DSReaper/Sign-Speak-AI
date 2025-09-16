@@ -12,7 +12,7 @@ class AISignLanguageDetection {
         this.isExpanded = false;
         this.isAIActive = false;
         this.currentMode = 'basic';
-        this.flaskUrl = 'http://localhost:8000/ai'; // Node.js proxy to Flask AI server
+        this.flaskUrl = 'http://localhost:8001/ai'; // Node.js proxy to Flask AI server
         this.statusUpdateInterval = null;
         
         this.initializeEventListeners();

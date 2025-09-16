@@ -62,15 +62,19 @@
     function validateEmail(email) {
         const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return re.test(String(email).toLowerCase());
+        // Regex for basic email validation
     }
 
     function validatePassword(password) {
         return password.length >= 8;
+        //need more edits here do after data testing
     }
 
-    // Sign In Form Validation
+// Sign In Form Validation
     const signInFormEl = document.getElementById('sign-in-form');
     signInFormEl.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
         const email = document.getElementById('sign-in-email').value;
         const password = document.getElementById('sign-in-password').value;
         let isValid = true;
@@ -90,6 +94,33 @@
         } else {
             document.getElementById('sign-in-password-error').style.display = 'none';
         }
+        
+        if (isValid) {
+            // Send signin request
+            fetch('/auth/signin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    // Store token and redirect or handle success
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('userId', data.userId);
+                    // Redirect to dashboard or home
+                    window.location.href = '/camera'; // Adjust as needed
+                } else {
+                    alert(data.message || 'Login failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred during login');
+            });
+        }
     });
 
     // Sign Up Form Validation
@@ -100,7 +131,7 @@
         const email = document.getElementById('sign-up-email').value;
         const password = document.getElementById('sign-up-password').value;
         const confirmPassword = document.getElementById('sign-up-confirm-password').value;
-        const userType = document.querySelector('input[name="user-type"]:checked');
+        const hearingStatusSelect = document.getElementById('hearingStatus');
         let isValid = true;
         
         // Validate email
@@ -128,11 +159,35 @@
         }
         
         if (isValid) {
-         //Add the sign up functionality with the user added to the DB (NB make use of hashing for the password)
+            // Send signup request
+            fetch('/auth/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    email, 
+                    password, 
+                    hearingStatus: hearingStatusSelect ? hearingStatusSelect.value : 'Hard of hearing' 
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    alert('Signup successful! Please login.');
+                    showSignInForm();
+                } else {
+                    alert(data.message || 'Signup failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred during signup');
+            });
         }
     });
 
-    // Google auth button click
+   // Google auth button click
     const googleButtons = document.querySelectorAll('.btn-google');
     googleButtons.forEach(button => {
         button.addEventListener('click', function() {

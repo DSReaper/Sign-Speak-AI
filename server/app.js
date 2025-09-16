@@ -1,8 +1,19 @@
 const express = require('express');
 const path = require('path');
+const cors = require('cors');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const connectDB = require('../Backend_stuff/database/db.js');
+require('dotenv').config();
+
 const app = express();
 
+console.log('__dirname:', __dirname);
+
+// Connect to MongoDB
+connectDB();
+
+// Middleware
+app.use(cors()); // Enable CORS for all routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -35,6 +46,7 @@ app.use('/ai', createProxyMiddleware({
         '^/ai': '', 
     },
 }));
+
 // Health check for Flask service
 app.get('/ai/health', async (req, res) => {
     try {
@@ -52,20 +64,15 @@ app.get('/ai/health', async (req, res) => {
     }
 });
 
-// Route to render index.ejs
-app.get('/', (req, res) => {
+// Routes - Import route modules
+const translateRoutes = require('../Backend_stuff/routes/translateRoute.js');
+const authRoutes = require('../Backend_stuff/routes/authRoute.js');
+app.use('/translate', translateRoutes);
+app.use('/auth', authRoutes);
+
+// Main application routes
+app.get('/', (req, res) => { // This is the login page 
     res.render('index');
-});
-
-// Login post route
-app.post('/login', (req, res) => {
-    const { email, password } = req.body;
-
-    if (email === 'test@example.com' && password === 'password123') {
-        res.redirect('/camera');
-    } else {
-        res.status(401).send('Invalid credentials');
-    }
 });
 
 // Application routes
@@ -122,6 +129,16 @@ app.get('/api/flask-status', async (req, res) => {
     }
 });
 
+// Health check endpoint for the main server
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        database: 'Connected',
+        server: 'Express with EJS',
+        aiService: 'Proxied to Flask on port 5000'
+    });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Application error:', err);
@@ -139,12 +156,18 @@ app.use((req, res) => {
 });
 
 // Start the server
-const port = process.env.PORT || 8000;
+const PORT = 8001; // The Express server port
 
-app.listen(port, () => {
-    console.log(`Node.js server running on http://localhost:${port}`);
+app.listen(PORT, () => {
+    console.log(`Express server running on http://localhost:${PORT}`);
     console.log('Flask AI service proxied to http://localhost:5000');
-    console.log('Make sure Flask server is running on port 5000 for AI features');
+    console.log('Database: MongoDB connected');
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+    console.error('Unhandled Rejection:', err.message);
+    // Optionally, close server & exit process here
 });
 
 module.exports = app;
