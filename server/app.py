@@ -1,6 +1,6 @@
 """
-SASL Web Application
-Complete web-based version of the enhanced camera system
+SASL Web Application - Flask AI Backend
+Provides AI gesture recognition endpoints for Node.js frontend
 """
 
 import os
@@ -16,6 +16,7 @@ import threading
 import time
 import base64
 from flask import Flask, render_template, Response, jsonify, request
+from flask_cors import CORS
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -33,11 +34,12 @@ except ImportError:
 
 # Initialize Flask app
 app = Flask(__name__)
+CORS(app)  # Enable CORS for Node.js integration
 
 # Global variables
 camera = None
 detector = None
-current_prediction = "Waiting..."
+current_prediction = "Waiting for camera..."
 current_confidence = 0.0
 show_hands = True
 frame_count = 0
@@ -48,7 +50,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 # ============================================================================
-# MODEL ARCHITECTURES
+# MODEL ARCHITECTURES (Same as before)
 # ============================================================================
 
 class HandFocusedCNN_LSTM(nn.Module):
@@ -119,7 +121,7 @@ def create_cnn_base():
     return nn.Sequential(*layers)
 
 # ============================================================================
-# HAND DETECTION SYSTEM
+# HAND DETECTION SYSTEM (Same as before)
 # ============================================================================
 
 class WebHandDetector:
@@ -344,88 +346,6 @@ def validate_model(model, device, class_names):
         print(f"Model validation failed: {e}")
         return False
 
-def create_model_from_checkpoint(checkpoint, class_names, device):
-    """Create model architecture that matches the checkpoint structure"""
-    
-    # Analyze classifier structure from checkpoint
-    classifier_layers = []
-    layer_idx = 0
-    
-    while f'classifier.{layer_idx}.weight' in checkpoint:
-        weight_shape = checkpoint[f'classifier.{layer_idx}.weight'].shape
-        bias_shape = checkpoint[f'classifier.{layer_idx}.bias'].shape
-        
-        print(f"  Classifier layer {layer_idx}: Linear({weight_shape[1]} -> {weight_shape[0]})")
-        classifier_layers.append((weight_shape[1], weight_shape[0]))
-        layer_idx += 3  # Skip ReLU and Dropout layers
-    
-    # Create model with dynamic classifier
-    class DynamicHandFocusedCNN_LSTM(nn.Module):
-        def __init__(self, cnn, hidden_size=256, num_classes=41, num_layers=2, dropout=0.3):
-            super(DynamicHandFocusedCNN_LSTM, self).__init__()
-            self.cnn = cnn
-            self.lstm = nn.LSTM(
-                input_size=512, 
-                hidden_size=hidden_size,
-                num_layers=num_layers, 
-                batch_first=True,
-                dropout=dropout if num_layers > 1 else 0,
-                bidirectional=True
-            )
-            self.dropout = nn.Dropout(dropout)
-            
-            # Hand attention mechanism
-            self.attention = nn.MultiheadAttention(
-                embed_dim=hidden_size * 2,
-                num_heads=8,
-                dropout=dropout,
-                batch_first=True
-            )
-            
-            # Dynamic classifier based on checkpoint structure
-            classifier_modules = []
-            for i, (in_features, out_features) in enumerate(classifier_layers):
-                classifier_modules.append(nn.Linear(in_features, out_features))
-                if i < len(classifier_layers) - 1:  # Don't add ReLU/Dropout after last layer
-                    classifier_modules.append(nn.ReLU())
-                    classifier_modules.append(nn.Dropout(dropout))
-            
-            self.classifier = nn.Sequential(*classifier_modules)
-            
-            print(f"✓ Created dynamic classifier with {len(classifier_layers)} linear layers")
-
-        def forward(self, x):
-            batch_size, seq_len, C, H, W = x.size()
-            x = x.view(batch_size * seq_len, C, H, W)
-            features = self.cnn(x)
-            features = features.view(batch_size, seq_len, -1)
-            
-            # LSTM processing
-            lstm_out, _ = self.lstm(features)
-            
-            # Hand attention
-            attn_out, _ = self.attention(lstm_out, lstm_out, lstm_out)
-            combined = lstm_out + attn_out
-            
-            # Final prediction through dynamic classifier
-            combined = self.dropout(combined)
-            out = self.classifier(combined[:, -1, :])
-            return out
-    
-    # Create CNN base
-    cnn_base = create_cnn_base()
-    
-    # Create model with dynamic classifier
-    model = DynamicHandFocusedCNN_LSTM(
-        cnn=cnn_base,
-        num_classes=len(class_names),
-        hidden_size=256,
-        num_layers=2,
-        dropout=0.3
-    ).to(device)
-    
-    return model
-
 def load_model_and_classes():
     """Load the SASL model and class names"""
     # Load class names
@@ -495,12 +415,13 @@ def load_model_and_classes():
         return None, None
 
 # Initialize model and detector
+print("Loading SASL AI Model...")
 model, class_names = load_model_and_classes()
 if model is None or class_names is None:
-    print("Failed to load model or class names. Exiting.")
-    sys.exit(1)
-
-detector = WebGestureDetector(model, device, class_names)
+    print("Failed to load model or class names. AI features will be disabled.")
+    detector = None
+else:
+    detector = WebGestureDetector(model, device, class_names)
 
 # ============================================================================
 # VIDEO STREAMING
@@ -517,15 +438,16 @@ def generate_frames():
         
         frame_count += 1
         
-        # Add frame to detector
-        detector.add_frame(frame)
-        
-        # Get prediction every few frames
-        if frame_count % 3 == 0 and detector.is_buffer_ready():
-            pred, conf = detector.predict_gesture()
-            if pred:
-                current_prediction = pred
-                current_confidence = conf
+        # Add frame to detector if available
+        if detector:
+            detector.add_frame(frame)
+            
+            # Get prediction every few frames
+            if frame_count % 3 == 0 and detector.is_buffer_ready():
+                pred, conf = detector.predict_gesture()
+                if pred:
+                    current_prediction = pred
+                    current_confidence = conf
         
         # Draw overlays
         frame = draw_overlays(frame)
@@ -542,7 +464,7 @@ def draw_overlays(frame):
     global show_hands
     
     # Hand detection overlay
-    if show_hands:
+    if show_hands and detector:
         hands_data = detector.get_hand_overlay_info(frame)
         if hands_data:
             frame = detector.hand_detector.draw_hands(frame, hands_data)
@@ -551,12 +473,12 @@ def draw_overlays(frame):
     h, w = frame.shape[:2]
     
     # Buffer status
-    if not detector.is_buffer_ready():
+    if detector and not detector.is_buffer_ready():
         buffer_text = f"Collecting frames: {len(detector.frame_buffer)}/{detector.buffer_size}"
         cv2.putText(frame, buffer_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
     
     # Prediction
-    if current_prediction != "Waiting...":
+    if current_prediction not in ["Waiting...", "Waiting for camera..."]:
         # Confidence color coding
         if current_confidence > 0.7:
             color = (0, 255, 0)  # Green
@@ -569,8 +491,11 @@ def draw_overlays(frame):
         cv2.putText(frame, pred_text, (10, h-100), cv2.FONT_HERSHEY_SIMPLEX, 1.0, color, 2)
     
     # Model info
-    cv2.putText(frame, "Model: Hand-Focused SASL", (10, h-70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-    cv2.putText(frame, "Hand-focused attention active", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+    if detector:
+        cv2.putText(frame, "Model: Hand-Focused SASL", (10, h-70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        cv2.putText(frame, "Hand-focused attention active", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+    else:
+        cv2.putText(frame, "AI Model: Not loaded", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
     
     # Hand detection status
     hand_status = "ON" if show_hands else "OFF"
@@ -579,13 +504,8 @@ def draw_overlays(frame):
     return frame
 
 # ============================================================================
-# WEB ROUTES
+# WEB ROUTES (Updated for Node.js integration)
 # ============================================================================
-
-@app.route('/')
-def index():
-    """Main page"""
-    return render_template('AI.html', class_names=class_names)
 
 @app.route('/video_feed')
 def video_feed():
@@ -611,7 +531,7 @@ def start_camera():
         current_prediction = "Camera started - collecting frames..."
         current_confidence = 0.0
         
-        return jsonify({'status': 'success', 'message': 'Camera started'})
+        return jsonify({'status': 'success', 'message': 'AI camera started'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
 
@@ -628,7 +548,7 @@ def stop_camera():
     current_prediction = "Camera stopped"
     current_confidence = 0.0
     
-    return jsonify({'status': 'success', 'message': 'Camera stopped'})
+    return jsonify({'status': 'success', 'message': 'AI camera stopped'})
 
 @app.route('/toggle_hands', methods=['POST'])
 def toggle_hands():
@@ -641,8 +561,11 @@ def toggle_hands():
 def reset_detector():
     """Reset the gesture detector"""
     global current_prediction, current_confidence, frame_count
-    detector.frame_buffer.clear()
-    detector.prediction_history.clear()
+    
+    if detector:
+        detector.frame_buffer.clear()
+        detector.prediction_history.clear()
+    
     current_prediction = "Buffer reset - collecting frames..." if is_camera_active else "Camera stopped"
     current_confidence = 0.0
     frame_count = 0
@@ -655,23 +578,48 @@ def status():
         'prediction': current_prediction,
         'confidence': current_confidence,
         'show_hands': show_hands,
-        'buffer_ready': detector.is_buffer_ready(),
-        'buffer_size': len(detector.frame_buffer),
-        'is_camera_active': is_camera_active
+        'buffer_ready': detector.is_buffer_ready() if detector else False,
+        'buffer_size': len(detector.frame_buffer) if detector else 0,
+        'is_camera_active': is_camera_active,
+        'model_loaded': detector is not None
     })
+
+@app.route('/health')
+def health():
+    """Health check endpoint"""
+    return jsonify({
+        'status': 'healthy',
+        'ai_model': 'loaded' if detector else 'not_loaded',
+        'camera': 'active' if is_camera_active else 'inactive',
+        'device': str(device)
+    })
+
+# ============================================================================
+# ERROR HANDLERS
+# ============================================================================
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'status': 'error', 'message': 'Endpoint not found'}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
 
 # ============================================================================
 # MAIN APPLICATION
 # ============================================================================
 
 if __name__ == '__main__':
-    print("🤟 SASL Web Application 🤟")
+    print("🤟 SASL Flask AI Backend 🤟")
     print("=" * 50)
     print(f"Device: {device}")
-    print(f"Classes: {len(class_names)}")
+    print(f"Classes: {len(class_names) if class_names else 'Not loaded'}")
     print(f"Hand Detection: {'Available' if HAND_DETECTION_AVAILABLE else 'Disabled'}")
-    print("\nStarting web server...")
-    print("Open your browser and go to: http://localhost:5000")
+    print(f"AI Model: {'Loaded' if detector else 'Failed to load'}")
+    print("\nStarting Flask AI server...")
+    print("Server will run on: http://localhost:5000")
+    print("This server provides AI endpoints for the Node.js frontend")
     print("Press Ctrl+C to stop the server")
     
     try:
