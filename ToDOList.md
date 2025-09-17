@@ -2,9 +2,24 @@
 - [ ] Add Zoe's suggestion of a textbox pop up for the non-hearing impaired pearson to respond to the sign language so they can reply and also have the option to save that message.
 
 ### Sign up / Sign in page
-- [ ] Add google auth functionality 
-- [ ] Add password reset functionality
-- [ ] Add sign in and sign up functionality 
+- [ x ] Add google auth functionality 
+- [ x ] Add password reset functionality
+- [ x ] Add sign in and sign up functionality 
+- [ ] Add a "remember me" checkbox to the sign in form
+- [ ] Add a "forgot password" link to the sign in form
+- [ ] Add a "create account" link to the sign up form
+- [ ] Add a "login with google" button to the sign in form
+- [ ] Add a "login with facebook" button to the sign in form
+- [ x ] Must use the info from the index.html file to store or use the information 
+- [ ] Add a "cancel" button to the sign up form
+- [ ] Add a "cancel" button to the sign in form
+- [ ] Must use Zoe's flow chart on the user table
+- [ ] Add a "create account" button to the sign up form
+- [ ] Add a "login" button to the sign in form
+- [ x ] Must work with the login.js file symutanuosly
+- [ x ] must be for each user
+
+
 
 ## Your name
 - [ x ] -> completed item
