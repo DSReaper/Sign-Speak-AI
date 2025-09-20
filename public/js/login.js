@@ -6,23 +6,40 @@
     const signUpForm = document.getElementById('sign-up-form');
     const switchToSignUp = document.getElementById('switch-to-sign-up');
     const switchToSignIn = document.getElementById('switch-to-sign-in');
+    const formContainer = document.querySelector('.form-container');
 
     function showSignInForm() {
+        // Update tabs
         signInTab.classList.add('active');
         signInTab.setAttribute('aria-selected', 'true');
         signUpTab.classList.remove('active');
         signUpTab.setAttribute('aria-selected', 'false');
-        signInForm.classList.add('active');
+        
+        // Animate forms with directional sliding
         signUpForm.classList.remove('active');
+        signUpForm.classList.add('slide-right');
+        
+        setTimeout(() => {
+            signInForm.classList.remove('slide-left');
+            signInForm.classList.add('active');
+        }, 50);
     }
 
     function showSignUpForm() {
+        // Update tabs
         signUpTab.classList.add('active');
         signUpTab.setAttribute('aria-selected', 'true');
         signInTab.classList.remove('active');
         signInTab.setAttribute('aria-selected', 'false');
-        signUpForm.classList.add('active');
+        
+        // Animate forms with directional sliding
         signInForm.classList.remove('active');
+        signInForm.classList.add('slide-left');
+        
+        setTimeout(() => {
+            signUpForm.classList.remove('slide-right');
+            signUpForm.classList.add('active');
+        }, 50);
     }
 
     signInTab.addEventListener('click', showSignInForm);
