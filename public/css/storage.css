@@ -1,0 +1,197 @@
+#storage-phrases-container {
+display: flex;
+flex-direction: column;
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+width: 100%;
+height: 100%;
+margin-bottom: 10px; 
+}
+
+.storage-search-bar {
+padding: 16px 20px;
+background-color: #f8f9fa;
+border-bottom: 1px solid #e9ecef;
+display: flex;
+align-items: center;
+gap: 12px;
+border-top-left-radius: 10px;
+border-top-right-radius: 10px;
+position: sticky;
+top: 0;
+z-index: 10;
+}
+
+.storage-search-input {
+flex: 1;
+padding: 12px 16px;
+border: none;
+background-color: #e9ecef;
+border-radius: 20px;
+font-size: 16px;
+color: #666;
+}
+
+.storage-search-input::placeholder {
+color: #999;
+}
+
+.storage-sort-btn {
+background: none;
+border: none;
+color: #666;
+font-size: 16px;
+font-weight: 500;
+cursor: pointer;
+padding: 8px 12px;
+}
+
+/* Main Content */
+#storage-main-content {
+padding: 0;
+flex: 1;
+overflow-y: auto;
+}
+.storage-page-title {
+padding: 20px 20px 16px 20px;
+font-size: 20px;
+font-weight: 600;
+color: #333;
+margin: 0;
+background-color: #f5f5f5;
+}
+
+/* Phrase List */
+.storage-phrase-list {
+list-style: none;
+padding: 0;
+margin: 0;
+padding-bottom: 20px;
+}
+.storage-phrase-item {
+border-bottom: 1px solid #f0f0f0;
+background-color: #fff;
+}
+
+.storage-phrase-content {
+display: flex;
+align-items: flex-start;
+padding: 16px 20px;
+gap: 12px;
+min-height: 80px;
+position: relative;
+}
+
+/* Star Button */
+.storage-star-btn {
+background: none;
+border: none;
+cursor: pointer;
+padding: 4px;
+display: flex;
+align-items: center;
+justify-content: center;
+flex-shrink: 0;
+}
+
+.storage-star-icon {
+width: 20px;
+height: 20px;
+color: #666;
+transition: color 0.2s ease;
+}
+
+.storage-star-btn[data-starred="true"] .storage-star-icon {
+color: #fbbf24;
+fill: #fbbf24;
+}
+
+.storage-star-btn:hover .storage-star-icon {
+color: #f59e0b;
+}
+
+.storage-phrase-text {
+flex: 1;
+font-size: 1em;          
+color: #333;
+line-height: 1.4;
+margin: 0;
+padding: 0;
+display: block;
+}
+
+/* Date */
+.storage-phrase-date {
+font-size: 0.8em;        
+color: #999;
+font-weight: 400;
+margin-top: 0.3em;       
+display: block;
+}
+
+/* Play Button */
+.storage-play-btn {
+background: none;
+border: none;
+cursor: pointer;
+padding: 8px;
+display: flex;
+align-items: center;
+justify-content: center;
+flex-shrink: 0;
+margin-left: auto;
+}
+
+.storage-play-icon {
+width: 20px;
+height: 20px;
+color: #4CAF50;
+transition: color 0.2s ease;
+}
+
+.storage-play-btn:hover .storage-play-icon {
+color: #45a049;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+.storage-search-bar {
+padding: 12px 16px;
+}
+
+.storage-phrase-content {
+padding: 14px 16px;
+}
+
+.storage-page-title {
+padding: 16px 16px 12px 16px;
+font-size: 18px;
+}
+
+.storage-phrase-date {
+left: 48px;
+bottom: 8px;
+}
+}
+
+/* Focus states for accessibility */
+.storage-search-input:focus {
+outline: 2px solid #4CAF50;
+outline-offset: 2px;
+}
+
+.storage-star-btn:focus,
+.storage-play-btn:focus {
+outline: 2px solid #4CAF50;
+outline-offset: 2px;
+border-radius: 4px;
+}
+
+/* Active states */
+.storage-phrase-item:active {
+background-color: #f8f9fa;
+}
+
+.storage-star-btn:active .storage-star-icon,
+.storage-play-btn:active .storage-play-icon {
+transform: scale(0.95);
+}

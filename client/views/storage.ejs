@@ -10,8 +10,64 @@
   <div class="app-grid">
     <!-- Main Content (90%) -->
     <div class="main-content">
-      <div class="container">
-        <h2>Stored Phrases Screen</h2>
+      <div id="storage-phrases-container" class="container">
+        <!-- Search Header -->
+        <header class="storage-search-bar">
+          <input type="text" class="storage-search-input" placeholder="Search">
+          <button class="storage-sort-btn">Sort</button>
+        </header>
+
+        <!-- Main Content -->
+        <main id="storage-main-content">
+          <h2 class="storage-page-title">Stored Phrases</h2>
+          <ul class="storage-phrase-list">
+            <% 
+            // Sample data - replace this with your actual data source
+            const phrases = [
+              { text: "Hi, my name is Patric.", date: "1/12/2025" },
+              { text: "I am deaf / hard of hearing.", date: "1/11/2024" },
+              { text: "Can you please write it down?", date: "23/02/2025" },
+              { text: "Where is the restroom?", date: "21/03/2025" },
+              { text: "Nice to meet you!", date: "11/04/2025" },
+                 { text: "Hi, my name is Patric.", date: "1/12/2025" },
+              { text: "I am deaf / hard of hearing.", date: "1/11/2024" },
+              { text: "Can you please write it down?", date: "23/02/2025" },
+              { text: "Where is the restroom?", date: "21/03/2025" },
+                 { text: "Hi, my name is Patric.", date: "1/12/2025" },
+              { text: "I am deaf / hard of hearing.", date: "1/11/2024" },
+              { text: "Can you please write it down?", date: "23/02/2025" },
+              { text: "Where is the restroom?", date: "21/03/2025" },
+            ];
+            %>
+            <% phrases.forEach(function(phrase, index) { %>
+            <li class="storage-phrase-item">
+              <div class="storage-phrase-content">
+                <!-- Star Button -->
+                <button class="storage-star-btn" data-phrase-index="<%= index %>" data-starred="true">
+                  <!-- Filled Star SVG -->
+                  <svg class="storage-star-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                </button>
+
+                <!-- Phrase Text + Date Wrapper -->
+                <div class="storage-phrase-text-wrapper">
+                  <span class="storage-phrase-text">"<%= phrase.text %>"</span>
+                  <div class="storage-phrase-date"><%= phrase.date %></div>
+                </div>
+
+                <!-- Play Button -->
+                <button class="storage-play-btn" data-phrase-index="<%= index %>">
+                  <!-- Play Button SVG -->
+                  <svg class="storage-play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                </button>
+              </div>
+            </li>
+            <% }); %>
+          </ul>
+        </main>
       </div>
     </div>
 
@@ -20,5 +76,32 @@
       <%- include('partials/navigation') %>
     </div>
   </div>
+
+  <!-- Toggle Star Script -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".storage-star-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          const isStarred = button.getAttribute("data-starred") === "true";
+          button.setAttribute("data-starred", !isStarred);
+
+          // Replace SVG based on state
+          if (isStarred) {
+            button.innerHTML = `
+              <!-- Outline Star SVG -->
+              <svg class="storage-star-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>`;
+          } else {
+            button.innerHTML = `
+              <!-- Filled Star SVG -->
+              <svg class="storage-star-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>`;
+          }
+        });
+      });
+    });
+  </script>
 </body>
 </html>
