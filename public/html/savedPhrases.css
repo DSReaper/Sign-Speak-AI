@@ -1,0 +1,118 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* 🔍 Search Bar */
+.search-bar {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+  background: #f9f9f9;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+.search-bar button {
+  margin-left: 8px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+}
+.microphone {
+  width: 20px;
+  height: 20px;
+}
+
+/* 📋 Phrase List */
+main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+h2 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.phrase-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.phrase-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+  gap: 10px;
+}
+
+.star {
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.phrase-text {
+  flex: 1;
+  font-size: 14px;
+  color: #333;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.phrase-text .date {
+  font-size: 12px;
+  color: #777;
+}
+
+.play {
+  flex-shrink: 0;             /* play button stays aligned on right */
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: green;
+  cursor: pointer;
+}
+
+/* ⬇️ Bottom Navigation */
+.bottom-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  border-top: 1px solid #ddd;
+  padding: 10px 0;
+  background: #fff;
+}
+
+.bottom-nav button {
+  background-color: #777;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.main {
+  background: #000;
+  color: #fff;
+  border-radius: 70px;
+  padding: 200px;
+  font-size: 22px;
+  height: 200px;
+  width: 70px;
+}
