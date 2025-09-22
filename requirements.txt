@@ -7,3 +7,5 @@ mediapipe
 numpy
 Pillow
 python-dotenv
+websockets
+uvicorn

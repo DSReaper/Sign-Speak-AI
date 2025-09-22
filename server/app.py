@@ -19,6 +19,9 @@ from flask import Flask, render_template, Response, jsonify, request
 from flask_cors import CORS
 import warnings
 warnings.filterwarnings("ignore")
+import asyncio
+import websockets
+from io import BytesIO
 
 # Suppress MediaPipe verbose logging
 os.environ['GLOG_minloglevel'] = '2'
@@ -44,6 +47,7 @@ current_confidence = 0.0
 show_hands = True
 frame_count = 0
 is_camera_active = False
+detector_lock = threading.Lock()
 
 # Device and paths
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -438,16 +442,19 @@ def generate_frames():
         
         frame_count += 1
         
-        # Add frame to detector if available
+        # Add frame to detector if available (protected)
         if detector:
-            detector.add_frame(frame)
-            
+            with detector_lock:
+                detector.add_frame(frame)
+
             # Get prediction every few frames
-            if frame_count % 3 == 0 and detector.is_buffer_ready():
-                pred, conf = detector.predict_gesture()
-                if pred:
-                    current_prediction = pred
-                    current_confidence = conf
+            if frame_count % 3 == 0:
+                with detector_lock:
+                    if detector.is_buffer_ready():
+                        pred, conf = detector.predict_gesture()
+                        if pred:
+                            current_prediction = pred
+                            current_confidence = conf
         
         # Draw overlays
         frame = draw_overlays(frame)
@@ -463,43 +470,93 @@ def draw_overlays(frame):
     """Draw all overlays on frame"""
     global show_hands
     
-    # Hand detection overlay
+    # Hand detection overlay (use lock when interacting with detector)
     if show_hands and detector:
-        hands_data = detector.get_hand_overlay_info(frame)
-        if hands_data:
-            frame = detector.hand_detector.draw_hands(frame, hands_data)
+        with detector_lock:
+            hands_data = detector.get_hand_overlay_info(frame)
+            if hands_data:
+                # Draw hands with slightly thicker visuals for visibility
+                frame = detector.hand_detector.draw_hands(frame, hands_data)
+                try:
+                    # Also draw bounding boxes more prominently
+                    for hand_data in hands_data:
+                        bbox = hand_data.get('bbox', None)
+                        if bbox and len(bbox) == 4:
+                            cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 3)
+                except Exception:
+                    pass
     
     # Status overlays
     h, w = frame.shape[:2]
     
     # Buffer status
-    if detector and not detector.is_buffer_ready():
-        buffer_text = f"Collecting frames: {len(detector.frame_buffer)}/{detector.buffer_size}"
-        cv2.putText(frame, buffer_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+    try:
+        if detector:
+            buffer_text = f"Frames: {len(detector.frame_buffer)}/{detector.buffer_size}"
+        else:
+            buffer_text = "Detector: not loaded"
+        # Draw a background for readability
+        (tx, ty), _ = cv2.getTextSize(buffer_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+        cv2.rectangle(frame, (10, 10), (10 + tx + 12, 10 + ty + 12), (0, 0, 0), -1)
+        cv2.putText(frame, buffer_text, (16, 10 + ty + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+    except Exception:
+        pass
     
     # Prediction
-    if current_prediction not in ["Waiting...", "Waiting for camera..."]:
-        # Confidence color coding
-        if current_confidence > 0.7:
-            color = (0, 255, 0)  # Green
-        elif current_confidence > 0.3:
-            color = (0, 165, 255)  # Orange
+    try:
+        pred_text = None
+        if current_prediction and current_prediction not in ["Waiting...", "Waiting for camera..."]:
+            # Confidence color coding
+            if current_confidence > 0.7:
+                color = (0, 220, 0)  # Green
+            elif current_confidence > 0.3:
+                color = (0, 165, 255)  # Orange
+            else:
+                color = (0, 0, 255)  # Red
+            pred_text = f"{current_prediction} ({current_confidence:.3f})"
         else:
-            color = (0, 0, 255)  # Red
-        
-        pred_text = f"Gesture: {current_prediction} ({current_confidence:.3f})"
-        cv2.putText(frame, pred_text, (10, h-100), cv2.FONT_HERSHEY_SIMPLEX, 1.0, color, 2)
+            pred_text = "Waiting for prediction..."
+
+        # Draw prediction box centered near bottom
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.9
+        thickness = 2
+        (pw, ph), _ = cv2.getTextSize(pred_text, font, font_scale, thickness)
+        box_w = pw + 24
+        box_h = ph + 18
+        box_x = max(10, (w - box_w) // 2)
+        box_y = h - box_h - 10
+        # Semi-opaque background
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (box_x, box_y), (box_x + box_w, box_y + box_h), (0, 0, 0), -1)
+        alpha = 0.6
+        cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
+        # Text
+        text_x = box_x + 12
+        text_y = box_y + box_h - 8
+        cv2.putText(frame, pred_text, (text_x, text_y), font, font_scale, color, thickness, cv2.LINE_AA)
+    except Exception:
+        pass
     
     # Model info
     if detector:
-        cv2.putText(frame, "Model: Hand-Focused SASL", (10, h-70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-        cv2.putText(frame, "Hand-focused attention active", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+        try:
+            cv2.putText(frame, "Model: Hand-Focused SASL", (10, h-70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            cv2.putText(frame, "Hand-focused attention active", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 1)
+        except Exception:
+            pass
     else:
-        cv2.putText(frame, "AI Model: Not loaded", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        cv2.putText(frame, "AI Model: Not loaded", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
     
     # Hand detection status
-    hand_status = "ON" if show_hands else "OFF"
-    cv2.putText(frame, f"Hands: {hand_status}", (w-120, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    try:
+        hand_status = "ON" if show_hands else "OFF"
+        status_text = f"Hands: {hand_status}"
+        (sx, sy), _ = cv2.getTextSize(status_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+        cv2.rectangle(frame, (w - sx - 22, 10), (w - 10, 10 + sy + 12), (0, 0, 0), -1)
+        cv2.putText(frame, status_text, (w - sx - 16, 10 + sy + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    except Exception:
+        pass
     
     return frame
 
@@ -594,6 +651,228 @@ def health():
         'device': str(device)
     })
 
+
+# ============================================================================
+# WEBSOCKET SERVER FOR LOW-LATENCY FRAME PROCESSING
+# Clients send binary JPEG frames, server responds with processed JPEG bytes
+# ============================================================================
+
+async def process_frame_bytes(frame_bytes):
+    """Async helper that decodes incoming JPEG bytes, runs detection/overlay and
+    returns encoded JPEG bytes.
+
+    Contract / expectations:
+    - Input: `frame_bytes` should be a bytes object containing a JPEG-encoded image
+      produced by the client (canvas.toBlob('image/jpeg')).
+    - Output: bytes of a JPEG image with overlays drawn (or None on failure).
+
+    Notes on implementation:
+    - This function is async because the WebSocket handler awaits it, but the
+      heavy computer-vision work (cv2 / torch) is CPU-bound. In practice callers
+      should run a sync wrapper via a threadpool (see `process_frame_bytes_sync`).
+    - The function decodes the JPEG into an OpenCV BGR image, updates the
+      server-side detector buffer, optionally triggers a prediction and updates
+      the shared `current_prediction`/`current_confidence` values, draws overlays
+      (hands/prediction/status) and re-encodes to JPEG to return to the client.
+
+    Thread-safety:
+    - The detector is a shared object; callers should hold `detector_lock` when
+      mutating or reading detector internals. Here we rely on the higher-level
+      sync wrapper to take the lock (process_frame_bytes_sync does so).
+    """
+    try:
+        # Decode bytes to OpenCV image
+        nparr = np.frombuffer(frame_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        if img is None:
+            return None
+
+        # Add frame to detector buffer and attempt a prediction if the buffer is ready.
+        # NOTE: We intentionally don't acquire detector_lock here because callers
+        # that perform blocking work should run the synchronous wrapper which
+        # already uses the lock. Keep this async function lightweight.
+        if detector:
+            detector.add_frame(img)
+
+            # Run prediction every few calls if buffer ready
+            pred = None
+            conf = 0.0
+            if detector.is_buffer_ready():
+                pred, conf = detector.predict_gesture()
+                if pred:
+                    global current_prediction, current_confidence
+                    current_prediction = pred
+                    current_confidence = conf
+
+        # Draw overlays (hands, status, prediction) onto the image
+        out = draw_overlays(img)
+
+        # Encode back to JPEG (return bytes suitable for websocket binary send)
+        ret, buf = cv2.imencode('.jpg', out, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        if not ret:
+            return None
+        return buf.tobytes()
+    except Exception as e:
+        print(f"Error in process_frame_bytes: {e}")
+        return None
+
+
+async def ws_handler(websocket):
+    """WebSocket handler for low-latency frame processing.
+
+    Behavior and message flow:
+    - Expects binary messages containing JPEG bytes from the client.
+    - For binary messages: decodes -> process (detector/prediction/overlays) -> encodes -> send back binary JPEG bytes.
+    - For text messages: replies with a simple acknowledgement ('OK').
+
+    Implementation notes:
+    - cv2 and torch are blocking; we offload the heavy work to a threadpool via
+    `asyncio.get_event_loop().run_in_executor(...)` which calls the sync wrapper
+    `process_frame_bytes_sync`. That wrapper performs locking around the shared
+    detector object and runs the blocking code safely.
+    - This handler is defensive: it logs sizes/previews instead of dumping raw
+    binary payloads, catches exceptions, and attempts best-effort notifications
+    back to the client when errors occur.
+    """
+    # Verbose logging for debugging connection issues
+    try:
+        # websockets library newer versions provide the path on the websocket object
+        ws_path = getattr(websocket, 'path', None)
+        print(f"WS client connected: {websocket.remote_address} path={ws_path}")
+
+        async for message in websocket:
+            try:
+                # Log message type and length (avoid dumping huge binary data)
+
+                if isinstance(message, bytes):
+                    # Received binary frame — process without verbose per-frame preview to
+                    # avoid noisy logging during normal operation. Keep higher-level
+                    # connection and error logs only.
+                    processed = await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: process_frame_bytes_sync(message)
+                    )
+
+                    if processed:
+                        try:
+                            # Send processed JPEG bytes back as binary message
+                            await websocket.send(processed)
+                        except Exception as send_err:
+                            print(f"WS send error: {send_err}")
+                else:
+                    # Text messages (log content up to 200 chars)
+                    text_preview = str(message)[:200]
+                    print(f"WS: received text message: {text_preview}")
+                    await websocket.send('OK')
+            except websockets.exceptions.ConnectionClosed:
+                print(f"WS loop connection closed while handling message from {websocket.remote_address}")
+                break
+            except Exception as inner_e:
+                print(f"WS handler inner exception: {inner_e}")
+                import traceback as _tb
+                _tb.print_exc()
+                # Try to send an error notice to client (best-effort)
+                try:
+                    await websocket.send('ERROR')
+                except Exception:
+                    pass
+    except websockets.exceptions.ConnectionClosed as cc:
+        print(f"WS connection closed prematurely: {cc}")
+    except Exception as e:
+        print(f"WS error (outer): {e}")
+        import traceback as _tb
+        _tb.print_exc()
+    finally:
+        try:
+            ws_path = getattr(websocket, 'path', None)
+            print(f"WS client disconnected: {websocket.remote_address} path={ws_path}")
+        except Exception:
+            print("WS client disconnected (remote address unavailable)")
+
+
+# Helper sync wrapper because cv2 and torch code is blocking and easier to run in threadpool
+def process_frame_bytes_sync(frame_bytes):
+    """Synchronous wrapper for processing incoming JPEG bytes.
+
+    Why this exists:
+    - OpenCV and PyTorch are blocking and CPU-bound. To keep the asyncio
+      WebSocket event loop responsive we run this function in a threadpool.
+
+    Responsibilities and thread-safety:
+    - Decode the JPEG bytes into an OpenCV BGR image.
+    - Acquire `detector_lock` when interacting with the shared detector to
+      avoid concurrent mutations from multiple threadpool workers.
+    - Run prediction logic, update shared prediction state, draw overlays, and
+      encode the resulting image back to JPEG bytes for sending to the client.
+
+    Returns:
+    - JPEG bytes on success, or None on failure.
+    """
+    try:
+        # Decode bytes and log basic diagnostics
+        nparr = np.frombuffer(frame_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img is None:
+            # Decoding failed for this frame. Keep a single log entry rather than
+            # per-frame verbose diagnostics to reduce log noise.
+            print("process_frame_bytes_sync: cv2.imdecode failed for incoming frame")
+        else:
+            h, w = img.shape[:2]
+            # Optional: compute brightness metric for debugging. Removed the
+            # per-frame print to avoid flooding logs; re-enable if needed.
+            try:
+                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                mean_brightness = float(np.mean(gray))
+            except Exception:
+                mean_brightness = -1.0
+        if img is None:
+            return None
+
+        # Interact with the detector under a lock to ensure thread-safety
+        if detector and img is not None:
+            try:
+                with detector_lock:
+                    detector.add_frame(img)
+                    if detector.is_buffer_ready():
+                        pred, conf = detector.predict_gesture()
+                        if pred:
+                            global current_prediction, current_confidence
+                            current_prediction = pred
+                            current_confidence = conf
+            except Exception as det_e:
+                print(f"Detector processing error: {det_e}")
+                import traceback as _tb
+                _tb.print_exc()
+
+        # Draw overlays even if detector had issues
+        out = draw_overlays(img if img is not None else np.zeros((480, 640, 3), dtype=np.uint8))
+        ret, buf = cv2.imencode('.jpg', out, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        if not ret:
+            print("process_frame_bytes_sync: cv2.imencode failed")
+            return None
+        return buf.tobytes()
+    except Exception as e:
+        print(f"process_frame_bytes_sync error: {e}")
+        import traceback as _tb
+        _tb.print_exc()
+        return None
+
+
+async def start_ws_server(host='0.0.0.0', port=5001):
+        """Start the WebSocket server used for low-latency AI frame processing.
+
+        Notes:
+        - The `websockets.serve` call runs an asyncio-based WebSocket server.
+        - We set `max_size` to 4MB to allow reasonably sized JPEG frames from the
+            client without rejecting them; adjust if clients send larger images.
+        - This coroutine blocks by awaiting an unresolved Future so the server
+            keeps running until the process is terminated.
+        """
+        print(f"Starting WebSocket AI server on ws://{host}:{port}/ai/ws")
+        async with websockets.serve(ws_handler, host, port, max_size=4*1024*1024):
+                await asyncio.Future()  # run forever
+
+
 # ============================================================================
 # ERROR HANDLERS
 # ============================================================================
@@ -623,6 +902,16 @@ if __name__ == '__main__':
     print("Press Ctrl+C to stop the server")
     
     try:
+        # Start WebSocket server in background thread
+        def ws_thread():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(start_ws_server(host='0.0.0.0', port=5001))
+
+        t = threading.Thread(target=ws_thread, daemon=True)
+        t.start()
+
+        # Start Flask app (HTTP endpoints)
         app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
     except KeyboardInterrupt:
         print("\nShutting down...")
