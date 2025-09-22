@@ -30,8 +30,8 @@
                                 <button class="mode-btn" id="advancedDetect">Advanced Detect</button>
                             </div>
                             <div class="camera-options">
-                                <button class="option-btn" id="toggleHands">Hand Detection</button>
-                                <button class="option-btn" id="resetBuffer">Reset</button>
+                                <button class="option-btn" id="toggleHands" style="visibility: hidden;"></button>
+                                <button class="option-btn" id="resetBuffer" style="visibility: hidden;"></button></button>
                             </div>
                             <div class="expand-btn" id="expandBtn">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -48,12 +48,12 @@
                         <!-- Camera Loading -->
                         <div class="camera-loading" id="cameraLoading">
                             <div class="loading-spinner"></div>
-                            <p>Starting AI camera...</p>
+                            <p>Starting camera...</p>
                         </div>
 
                         <!-- Camera Error -->
                         <div class="camera-error" id="cameraError" style="display: none;">
-                            <p>Unable to start AI camera. Please check if the AI service is running.</p>
+                            <p>Unable to start camera. The Flask service is unavailable.</p>
                             <button class="retry-btn" id="retryCamera">Try Again</button>
                         </div>
 

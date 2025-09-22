@@ -1,0 +1,9 @@
+Flask
+flask-cors
+torch
+torchvision
+opencv-python
+mediapipe
+numpy
+Pillow
+python-dotenv
