@@ -20,6 +20,13 @@ class AISignLanguageDetection {
             balanced: { fps: 8, sendWidth: 320, jpegQuality: 0.6 },
             speed: { fps: 10, sendWidth: 224, jpegQuality: 0.5 }
         };
+        // Reusable send-canvas to avoid allocating a temporary canvas every frame
+        this._sendCanvas = null;
+        this._sendCtx = null;
+        // Backpressure / timing helpers
+        this._lastSent = 0;
+        this._bufferedThreshold = 1e6; // 1 MB queued => drop frames
+        this._pendingTimeout = null; // used to clear _pending if server stalls
     // WebSocket URL to Flask/AI server (served from Node.js proxy or directly)
     this.wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.hostname + ':5001/ai/ws';
     this.flaskUrl = 'http://localhost:8001/ai'; // legacy HTTP endpoints still used for status controls
@@ -176,7 +183,12 @@ class AISignLanguageDetection {
         // element. We capture frames from that hidden element and send them to the
         // AI WebSocket server for low-latency processing.
         try {
-            this.captureStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+            // Choose capture constraints based on performance preference. We still
+            // request a reasonably-sized camera feed (so browser decoding is good)
+            // but we will downscale before sending. Lowering the capture
+            // resolution can reduce CPU on some devices.
+            const capConstraints = (this.performanceMode === 'quality') ? { width: 1280, height: 720 } : { width: 640, height: 480 };
+            this.captureStream = await navigator.mediaDevices.getUserMedia({ video: Object.assign({ facingMode: 'user' }, capConstraints), audio: false });
         } catch (err) {
             throw new Error('Unable to access camera: ' + err.message);
         }
@@ -207,6 +219,13 @@ class AISignLanguageDetection {
             this._hiddenVideo.onloadedmetadata = () => {
                 this._canvas.width = this._hiddenVideo.videoWidth || 640;
                 this._canvas.height = this._hiddenVideo.videoHeight || 480;
+                // Create a reusable send canvas sized to the maximum expected
+                // send width; we will resize into this canvas to avoid
+                // allocating many temporary elements per frame.
+                if (!this._sendCanvas) {
+                    this._sendCanvas = document.createElement('canvas');
+                    this._sendCtx = this._sendCanvas.getContext('2d');
+                }
                 // Start playback explicitly and wait for 'playing' to ensure frames are available
                 const playPromise = this._hiddenVideo.play();
                 if (playPromise && typeof playPromise.then === 'function') {
@@ -474,31 +493,52 @@ class AISignLanguageDetection {
             const sendWidth = perfSet.sendWidth;
             const sendHeight = Math.round((this._canvas.height / this._canvas.width) * sendWidth);
 
-            // Use a temporary canvas to perform resizing. This keeps the main
-            // canvas at camera resolution while sending a smaller JPEG over the
-            // network to reduce bandwidth and processing time on the server.
-            const off = document.createElement('canvas');
-            off.width = sendWidth;
-            off.height = sendHeight;
-            off.getContext('2d').drawImage(this._canvas, 0, 0, sendWidth, sendHeight);
+            // Reuse the send canvas to avoid per-frame allocation
+            if (this._sendCanvas.width !== sendWidth || this._sendCanvas.height !== sendHeight) {
+                this._sendCanvas.width = sendWidth;
+                this._sendCanvas.height = sendHeight;
+            }
+            this._sendCtx.drawImage(this._canvas, 0, 0, sendWidth, sendHeight);
 
-            // Encode as JPEG with configured quality. toBlob is async and
-            // returns a Blob which we send directly over the WebSocket. We set
-            // `_pending` true before send and clear it when the server responds
-            // (in ws.onmessage) so we don't overlap frames.
+            // Encode as JPEG with configured quality. Avoid sending if the WS
+            // backend is backed up (bufferedAmount high). This helps prevent
+            // increasing latency by piling up queued bytes in the browser.
             const jpegQuality = perfSet.jpegQuality || 0.6;
-            off.toBlob((blob) => {
-                if (!blob) return;
-                this._pending = true;
-                try {
-                    this.ws.send(blob);
-                } catch (err) {
-                    console.warn('Failed to send blob over WS', err);
-                    // If send fails immediately, clear pending so future frames
-                    // can attempt to send again.
-                    this._pending = false;
-                }
-            }, 'image/jpeg', jpegQuality);
+            // If the socket's send buffer is large, skip this frame
+            if (this.ws.bufferedAmount && this.ws.bufferedAmount > this._bufferedThreshold) {
+                // drop frame to avoid growing send queue
+                return;
+            }
+
+            // Mark pending and add a timeout to clear it in case the server
+            // stalls and never replies (prevents permanent stuck state).
+            this._pending = true;
+            if (this._pendingTimeout) clearTimeout(this._pendingTimeout);
+            this._pendingTimeout = setTimeout(() => {
+                console.warn('Pending frame timeout reached - clearing pending flag');
+                this._pending = false;
+            }, 3000); // 3s fallback
+
+            try {
+                this._sendCanvas.toBlob((blob) => {
+                    if (!blob) {
+                        this._pending = false;
+                        return;
+                    }
+                    try {
+                        this.ws.send(blob);
+                        this._lastSent = Date.now();
+                    } catch (err) {
+                        console.warn('Failed to send blob over WS', err);
+                        this._pending = false;
+                        if (this._pendingTimeout) { clearTimeout(this._pendingTimeout); this._pendingTimeout = null; }
+                    }
+                }, 'image/jpeg', jpegQuality);
+            } catch (err) {
+                console.warn('toBlob/send error', err);
+                this._pending = false;
+                if (this._pendingTimeout) { clearTimeout(this._pendingTimeout); this._pendingTimeout = null; }
+            }
         }, intervalMs);
     }
 

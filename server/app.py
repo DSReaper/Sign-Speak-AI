@@ -22,6 +22,7 @@ warnings.filterwarnings("ignore")
 import asyncio
 import websockets
 from io import BytesIO
+from queue import Queue, Empty
 
 # Suppress MediaPipe verbose logging
 os.environ['GLOG_minloglevel'] = '2'
@@ -758,29 +759,82 @@ async def ws_handler(websocket):
     back to the client when errors occur.
     """
     # Verbose logging for debugging connection issues
+    # We'll create a per-connection background worker with a bounded queue (size 1)
+    # that always keeps the latest frame and drops older ones. The worker runs
+    # `process_frame_bytes_sync` in its own thread and sends the processed bytes
+    # back to the websocket using the connection's asyncio loop. This prevents
+    # blocking the asyncio event loop on CPU-bound CV/model work and avoids
+    # unbounded memory growth when clients send frames faster than processing.
+    class FrameProcessorWorker:
+        def __init__(self, ws, loop, queue_maxsize=1):
+            self.ws = ws
+            self.loop = loop
+            self.queue = Queue(maxsize=queue_maxsize)
+            self._stop_event = threading.Event()
+            self.thread = threading.Thread(target=self._run, daemon=True)
+            self.thread.start()
+
+        def push_frame(self, frame_bytes):
+            # Non-blocking: drop older frame when queue full to keep latest only
+            try:
+                if self.queue.full():
+                    try:
+                        self.queue.get_nowait()
+                    except Empty:
+                        pass
+                self.queue.put_nowait(frame_bytes)
+            except Exception as e:
+                # If anything goes wrong, just drop the frame
+                print(f"FrameProcessorWorker: push_frame drop due to {e}")
+
+        def stop(self):
+            self._stop_event.set()
+            # Put a sentinel to unblock the thread if waiting
+            try:
+                self.queue.put_nowait(None)
+            except Exception:
+                pass
+            self.thread.join(timeout=1.0)
+
+        def _run(self):
+            while not self._stop_event.is_set():
+                try:
+                    item = self.queue.get(timeout=0.5)
+                except Empty:
+                    continue
+                if item is None:
+                    break
+                try:
+                    # Run CPU-bound processing synchronously in this thread
+                    processed = process_frame_bytes_sync(item)
+                    if processed:
+                        # schedule send on websocket loop
+                        try:
+                            fut = asyncio.run_coroutine_threadsafe(self.ws.send(processed), self.loop)
+                            # wait briefly for send to complete or fail
+                            try:
+                                fut.result(timeout=3.0)
+                            except Exception as send_exc:
+                                print(f"FrameProcessorWorker: send failed: {send_exc}")
+                        except Exception as sch_exc:
+                            print(f"FrameProcessorWorker: schedule send failed: {sch_exc}")
+                except Exception as e:
+                    print(f"FrameProcessorWorker: processing error: {e}")
+
     try:
         # websockets library newer versions provide the path on the websocket object
         ws_path = getattr(websocket, 'path', None)
         print(f"WS client connected: {websocket.remote_address} path={ws_path}")
 
+        # Create a per-connection worker and tie it to this websocket's loop
+        loop = asyncio.get_event_loop()
+        worker = FrameProcessorWorker(websocket, loop, queue_maxsize=1)
+
         async for message in websocket:
             try:
-                # Log message type and length (avoid dumping huge binary data)
-
                 if isinstance(message, bytes):
-                    # Received binary frame — process without verbose per-frame preview to
-                    # avoid noisy logging during normal operation. Keep higher-level
-                    # connection and error logs only.
-                    processed = await asyncio.get_event_loop().run_in_executor(
-                        None, lambda: process_frame_bytes_sync(message)
-                    )
-
-                    if processed:
-                        try:
-                            # Send processed JPEG bytes back as binary message
-                            await websocket.send(processed)
-                        except Exception as send_err:
-                            print(f"WS send error: {send_err}")
+                    # Enqueue the frame for background processing; return quickly
+                    worker.push_frame(message)
                 else:
                     # Text messages (log content up to 200 chars)
                     text_preview = str(message)[:200]
@@ -806,6 +860,11 @@ async def ws_handler(websocket):
         _tb.print_exc()
     finally:
         try:
+            # Stop worker and drain resources
+            try:
+                worker.stop()
+            except Exception:
+                pass
             ws_path = getattr(websocket, 'path', None)
             print(f"WS client disconnected: {websocket.remote_address} path={ws_path}")
         except Exception:
