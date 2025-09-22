@@ -50,6 +50,7 @@ transform: scale(1.05);
 /* Camera Section */
 .camera-section {
 background: rgba(255, 255, 255, 0.95);
+position: relative; /* ensure absolutely-positioned children align to this container */
 border-radius: 20px;
 padding: 20px;
 margin: 0 0 10px 0; 
@@ -99,6 +100,30 @@ padding: 20px;
 
 .camera-section.expanded .camera-container {
 height: calc(100% - 40px);
+}
+
+/* In expanded/fullscreen mode show the whole frame instead of cropping/zooming */
+.camera-section.expanded {
+	overflow: hidden; /* ensure scaled image doesn't create scrollbars */
+}
+
+.camera-section.expanded #aiCameraFeed {
+	/* Conservative shrink: slightly reduce visible size and add centering to create breathing room */
+	width: auto !important;
+	/* Reduce height so feed doesn't fill the entire area when expanded */
+	height: calc(100% - 140px) !important;
+	/* Keep a tighter max-width so there's horizontal space too */
+	max-width: calc(100% - 160px) !important;
+	object-fit: contain !important;
+	object-position: center center !important;
+	display: block;
+	transform: none;
+	transition: transform 260ms ease, opacity 180ms ease;
+}
+
+.camera-section.expanded .camera-container {
+	padding: 64px !important; /* increase breathing room further */
+	box-sizing: border-box;
 }
 
 /* Adjust controls position in expanded mode */
@@ -424,17 +449,62 @@ font-size: 1rem;
 /* AI Status Display */
 .ai-status {
 position: absolute;
-top: 60px;
-right: 15px;
+top: 12px; /* place near the top of the camera section */
+left: 50%; /* center horizontally */
+transform: translateX(-50%);
 display: flex;
 flex-direction: column;
 gap: 5px;
-background: rgba(0, 0, 0, 0.7);
+background: rgba(0, 0, 0, 0.75);
 border-radius: 8px;
-padding: 10px;
+padding: 8px 12px;
 font-size: 12px;
 color: white;
+z-index: 30; /* overlay above controls */
+pointer-events: none; /* avoid blocking camera controls; inner elements can enable pointer-events if needed */
 }
+
+/* Connection indicator row inside the ai-status box */
+.ai-status .status-connection {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	justify-content: center;
+	pointer-events: auto; /* allow interactions if needed */
+}
+
+
+.status-dot {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	display: inline-block;
+	position: relative;
+	box-shadow: 0 0 8px rgba(0,0,0,0.45);
+}
+
+/* Neon colors and outer glow */
+.status-dot.connected {
+	background: #39ff14; /* neon green */
+	box-shadow: 0 0 8px #39ff14, 0 0 18px rgba(57,255,20,0.25);
+}
+.status-dot.connecting {
+	background: #ffb84d; /* neon orange */
+	box-shadow: 0 0 8px #ffb84d, 0 0 18px rgba(255,184,77,0.25);
+	animation: neon-pulse 1.2s infinite ease-in-out;
+}
+.status-dot.disconnected {
+	background: #ff004f; /* neon red */
+	box-shadow: 0 0 8px #ff004f, 0 0 18px rgba(255,0,79,0.25);
+}
+
+@keyframes neon-pulse {
+	0% { transform: scale(1); opacity: 1; }
+	50% { transform: scale(1.18); opacity: 0.9; }
+	100% { transform: scale(1); opacity: 1; }
+}
+
+ #connectionStatusText { font-weight: 600; font-size: 12px; color: #fff; }
 
 .status-item {
 display: flex;
@@ -482,5 +552,18 @@ width: 100%;
 height: 100%;
 object-fit: cover;
 border-radius: 10px;
+}
+
+/* Remove browser focus outline / green border when image is clicked or focused */
+#aiCameraFeed:focus,
+#aiCameraFeed:active,
+#aiCameraFeed:focus-visible {
+	outline: none !important;
+	box-shadow: none !important;
+}
+
+/* If the image is programmatically focusable via tabindex, ensure it doesn't draw focus rings */
+#aiCameraFeed[tabindex] {
+	outline: none !important;
 }
 

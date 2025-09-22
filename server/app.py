@@ -45,6 +45,11 @@ detector = None
 current_prediction = "Waiting for camera..."
 current_confidence = 0.0
 show_hands = True
+# When False, the server will not draw status/model/prediction text overlays
+# on the returned image frames. Hand landmark/box overlays remain controlled
+# separately by `show_hands` so the visual hand guidance is preserved.
+show_server_overlays = False
+
 frame_count = 0
 is_camera_active = False
 detector_lock = threading.Lock()
@@ -469,6 +474,7 @@ def generate_frames():
 def draw_overlays(frame):
     """Draw all overlays on frame"""
     global show_hands
+    global show_server_overlays
     
     # Hand detection overlay (use lock when interacting with detector)
     if show_hands and detector:
@@ -486,77 +492,84 @@ def draw_overlays(frame):
                 except Exception:
                     pass
     
-    # Status overlays
-    h, w = frame.shape[:2]
-    
-    # Buffer status
-    try:
-        if detector:
-            buffer_text = f"Frames: {len(detector.frame_buffer)}/{detector.buffer_size}"
-        else:
-            buffer_text = "Detector: not loaded"
-        # Draw a background for readability
-        (tx, ty), _ = cv2.getTextSize(buffer_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
-        cv2.rectangle(frame, (10, 10), (10 + tx + 12, 10 + ty + 12), (0, 0, 0), -1)
-        cv2.putText(frame, buffer_text, (16, 10 + ty + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-    except Exception:
-        pass
-    
-    # Prediction
-    try:
-        pred_text = None
-        if current_prediction and current_prediction not in ["Waiting...", "Waiting for camera..."]:
-            # Confidence color coding
-            if current_confidence > 0.7:
-                color = (0, 220, 0)  # Green
-            elif current_confidence > 0.3:
-                color = (0, 165, 255)  # Orange
-            else:
-                color = (0, 0, 255)  # Red
-            pred_text = f"{current_prediction} ({current_confidence:.3f})"
-        else:
-            pred_text = "Waiting for prediction..."
+    # Status/model/prediction overlays are optional. If the server flag
+    # `show_server_overlays` is False we skip drawing those textual overlays so
+    # the image contains only the visual hand guidance (if enabled).
+    if show_server_overlays:
+        # Status overlays
+        h, w = frame.shape[:2]
 
-        # Draw prediction box centered near bottom
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.9
-        thickness = 2
-        (pw, ph), _ = cv2.getTextSize(pred_text, font, font_scale, thickness)
-        box_w = pw + 24
-        box_h = ph + 18
-        box_x = max(10, (w - box_w) // 2)
-        box_y = h - box_h - 10
-        # Semi-opaque background
-        overlay = frame.copy()
-        cv2.rectangle(overlay, (box_x, box_y), (box_x + box_w, box_y + box_h), (0, 0, 0), -1)
-        alpha = 0.6
-        cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
-        # Text
-        text_x = box_x + 12
-        text_y = box_y + box_h - 8
-        cv2.putText(frame, pred_text, (text_x, text_y), font, font_scale, color, thickness, cv2.LINE_AA)
-    except Exception:
-        pass
-    
-    # Model info
-    if detector:
+        # Buffer status
         try:
-            cv2.putText(frame, "Model: Hand-Focused SASL", (10, h-70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-            cv2.putText(frame, "Hand-focused attention active", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 1)
+            if detector:
+                buffer_text = f"Frames: {len(detector.frame_buffer)}/{detector.buffer_size}"
+            else:
+                buffer_text = "Detector: not loaded"
+            # Draw a background for readability
+            (tx, ty), _ = cv2.getTextSize(buffer_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+            cv2.rectangle(frame, (10, 10), (10 + tx + 12, 10 + ty + 12), (0, 0, 0), -1)
+            cv2.putText(frame, buffer_text, (16, 10 + ty + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
         except Exception:
             pass
-    else:
-        cv2.putText(frame, "AI Model: Not loaded", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-    
-    # Hand detection status
-    try:
-        hand_status = "ON" if show_hands else "OFF"
-        status_text = f"Hands: {hand_status}"
-        (sx, sy), _ = cv2.getTextSize(status_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
-        cv2.rectangle(frame, (w - sx - 22, 10), (w - 10, 10 + sy + 12), (0, 0, 0), -1)
-        cv2.putText(frame, status_text, (w - sx - 16, 10 + sy + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-    except Exception:
-        pass
+
+        # Prediction
+        try:
+            pred_text = None
+            if current_prediction and current_prediction not in ["Waiting...", "Waiting for camera..."]:
+                # Confidence color coding
+                if current_confidence > 0.7:
+                    color = (0, 220, 0)  # Green
+                elif current_confidence > 0.3:
+                    color = (0, 165, 255)  # Orange
+                else:
+                    color = (0, 0, 255)  # Red
+                pred_text = f"{current_prediction} ({current_confidence:.3f})"
+            else:
+                pred_text = "Waiting for prediction..."
+
+            # Draw prediction box centered near bottom
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.9
+            thickness = 2
+            (pw, ph), _ = cv2.getTextSize(pred_text, font, font_scale, thickness)
+            box_w = pw + 24
+            box_h = ph + 18
+            box_x = max(10, (w - box_w) // 2)
+            box_y = h - box_h - 10
+            # Semi-opaque background
+            overlay = frame.copy()
+            cv2.rectangle(overlay, (box_x, box_y), (box_x + box_w, box_y + box_h), (0, 0, 0), -1)
+            alpha = 0.6
+            cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
+            # Text
+            text_x = box_x + 12
+            text_y = box_y + box_h - 8
+            cv2.putText(frame, pred_text, (text_x, text_y), font, font_scale, color, thickness, cv2.LINE_AA)
+        except Exception:
+            pass
+
+        # Model info
+        if detector:
+            try:
+                cv2.putText(frame, "Model: Hand-Focused SASL", (10, h-70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                cv2.putText(frame, "Hand-focused attention active", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 1)
+            except Exception:
+                pass
+        else:
+            try:
+                cv2.putText(frame, "AI Model: Not loaded", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+            except Exception:
+                pass
+
+        # Hand detection status
+        try:
+            hand_status = "ON" if show_hands else "OFF"
+            status_text = f"Hands: {hand_status}"
+            (sx, sy), _ = cv2.getTextSize(status_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+            cv2.rectangle(frame, (w - sx - 22, 10), (w - 10, 10 + sy + 12), (0, 0, 0), -1)
+            cv2.putText(frame, status_text, (w - sx - 16, 10 + sy + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        except Exception:
+            pass
     
     return frame
 
@@ -635,11 +648,20 @@ def status():
         'prediction': current_prediction,
         'confidence': current_confidence,
         'show_hands': show_hands,
+        'show_server_overlays': show_server_overlays,
         'buffer_ready': detector.is_buffer_ready() if detector else False,
         'buffer_size': len(detector.frame_buffer) if detector else 0,
         'is_camera_active': is_camera_active,
         'model_loaded': detector is not None
     })
+
+
+@app.route('/toggle_overlays', methods=['POST'])
+def toggle_overlays():
+    """Toggle whether the server draws status/prediction/model overlays onto frames."""
+    global show_server_overlays
+    show_server_overlays = not show_server_overlays
+    return jsonify({'status': 'success', 'show_server_overlays': show_server_overlays})
 
 @app.route('/health')
 def health():

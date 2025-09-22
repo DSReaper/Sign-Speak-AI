@@ -5,8 +5,9 @@ class AISignLanguageDetection {
         this.cameraLoading = document.getElementById('cameraLoading');
         this.cameraError = document.getElementById('cameraError');
         this.detectedPhrase = document.getElementById('detectedPhrase');
-        this.bufferStatus = document.getElementById('bufferStatus');
-        this.confidenceStatus = document.getElementById('confidenceStatus');
+    // buffer and confidence UI removed — keep optional references guarded
+    this.bufferStatus = document.getElementById('bufferStatus');
+    this.confidenceStatus = document.getElementById('confidenceStatus');
         this.aiStatus = document.getElementById('aiStatus');
         
         this.isExpanded = false;
@@ -248,6 +249,28 @@ class AISignLanguageDetection {
         }
         this.ws = new WebSocket(this.wsUrl);
 
+        // Helper to update the small colored dot and connection text inside the ai-status element
+        // state: 'connected' | 'connecting' | 'disconnected'
+        // text: optional display text
+        this.setConnectionState = (state, text) => {
+            try {
+                const dot = document.getElementById('connectionStatusDot');
+                const txt = document.getElementById('connectionStatusText');
+                if (dot) {
+                    dot.classList.remove('connected', 'connecting', 'disconnected');
+                    if (state === 'connected') dot.classList.add('connected');
+                    else if (state === 'connecting') dot.classList.add('connecting');
+                    else dot.classList.add('disconnected');
+                }
+                if (txt) txt.textContent = text || (state === 'connected' ? 'Connected' : state === 'connecting' ? 'Connecting...' : 'Disconnected');
+                if (this.aiStatus) this.aiStatus.style.display = 'flex';
+            } catch (err) { /* ignore UI update errors */ }
+        };
+
+    // initial state while the WS connection is being established
+    // Keep dot state only; we do not render any textual overlays above the feed
+    this.setConnectionState('connecting');
+
         // Basic backpressure: only send a new frame when we don't have a pending request
         this._pending = false;
 
@@ -258,15 +281,13 @@ class AISignLanguageDetection {
             // Reset reconnect attempts and update short status. We don't hide the
             // camera UI here because the camera is local and should remain visible
             // even if the AI server was temporarily unreachable.
-            console.log('WebSocket connected to AI server');
+            console.log('WebSocket connected to AI detection service');
             this._reconnectAttempts = 0;
-            try {
-                this.hideError();
-                if (this.aiStatus) {
-                    this.aiStatus.style.display = 'flex';
-                    this.aiStatus.textContent = 'Connected to AI server';
-                }
-            } catch (e) { /* ignore UI update errors */ }
+                try {
+                    this.hideError();
+                    // update connection dot only
+                    this.setConnectionState('connected');
+                } catch (e) { /* ignore UI update errors */ }
 
             // Start sending frames at the configured FPS/resolution.
             this._startCaptureInterval();
@@ -294,10 +315,8 @@ class AISignLanguageDetection {
                 const backoff = Math.min(30, Math.pow(2, this._reconnectAttempts));
                 console.log(`WebSocket closed unexpectedly — reconnecting in ${backoff}s (attempt ${this._reconnectAttempts + 1})`);
                 try {
-                    if (this.aiStatus) {
-                        this.aiStatus.style.display = 'flex';
-                        this.aiStatus.textContent = `Disconnected — reconnecting in ${backoff}s`;
-                    }
+                    // show connecting state with countdown
+                    this.setConnectionState('connecting', `Disconnected — reconnecting in ${backoff}s`);
                 } catch (e) { /* ignored */ }
 
                 setTimeout(() => {
@@ -309,6 +328,8 @@ class AISignLanguageDetection {
                 // If reconnecting is disabled (user stopped the camera), show
                 // a full error message to the user so they can take action.
                 if (!this.isAIActive) {
+                    // mark disconnected
+                    this.setConnectionState('disconnected', 'Disconnected');
                     this.showError('AI WebSocket connection closed by server. Ensure the Flask AI server is running and accepting ws connections on port 5001.');
                 }
             }
@@ -334,10 +355,11 @@ class AISignLanguageDetection {
             const blob = data instanceof Blob ? data : new Blob([data], { type: 'image/jpeg' });
             console.log('WS: received frame blob, size=', blob.size);
 
-            // Briefly flash a border to visually indicate incoming frames.
-            const prevBorder = this.aiCameraFeed.style.border;
-            this.aiCameraFeed.style.border = '4px solid #4caf50';
-            setTimeout(() => { this.aiCameraFeed.style.border = prevBorder; }, 120);
+            // Previously we flashed a green border here on each incoming frame;
+            // that caused a visible green outline. Remove inline border updates
+            // to avoid the green border flash and let CSS handle styling.
+            // If a frame-arrival indicator is desired, add/remove a CSS class
+            // instead of setting inline styles.
 
             if (!this._fallbackCanvas) {
                 this._fallbackCanvas = document.createElement('canvas');
@@ -383,15 +405,30 @@ class AISignLanguageDetection {
             if (this._shouldReconnect) {
                 console.warn('Transient WebSocket error — will attempt reconnect');
                 try {
-                    if (this.aiStatus) {
-                        this.aiStatus.style.display = 'flex';
-                        this.aiStatus.textContent = 'AI server connection error — reconnecting...';
-                    }
+                    this.setConnectionState('connecting', 'AI server connection error — reconnecting...');
                 } catch (uiErr) { /* ignore */ }
             } else {
                 // If reconnect is disabled (user stopped the camera), show a full error UI
                 this.showError('WebSocket error connecting to AI server. See console for details.');
             }
+        };
+
+        // Helper to update the small colored dot and connection text inside the ai-status element
+        // state: 'connected' | 'connecting' | 'disconnected'
+        // text: optional display text
+        this.setConnectionState = (state, text) => {
+            try {
+                const dot = document.getElementById('connectionStatusDot');
+                const txt = document.getElementById('connectionStatusText');
+                if (dot) {
+                    dot.classList.remove('connected', 'connecting', 'disconnected');
+                    if (state === 'connected') dot.classList.add('connected');
+                    else if (state === 'connecting') dot.classList.add('connecting');
+                    else dot.classList.add('disconnected');
+                }
+                if (txt) txt.textContent = text || (state === 'connected' ? 'Connected' : state === 'connecting' ? 'Connecting...' : 'Disconnected');
+                if (this.aiStatus) this.aiStatus.style.display = 'flex';
+            } catch (err) { /* ignore UI update errors */ }
         };
 
         // Note: onclose handled above to manage reconnect
@@ -496,20 +533,7 @@ class AISignLanguageDetection {
         } else {
             this.detectedPhrase.textContent = 'Waiting for AI detection...';
         }
-        
-        // Update confidence
-        const confidence = data.confidence || 0;
-        this.confidenceStatus.textContent = confidence.toFixed(3);
-        
-        // Update confidence color class
-        this.confidenceStatus.className = confidence > 0.7 ? 'confidence-high' :
-                                         confidence > 0.3 ? 'confidence-medium' : 'confidence-low';
-        
-        // Update buffer status
-        const bufferText = data.buffer_ready ? 
-            `Ready (${data.buffer_size}/16)` : 
-            `Collecting (${data.buffer_size}/16)`;
-        this.bufferStatus.textContent = bufferText;
+        // Buffer and confidence UI were removed; do not attempt to update DOM
     }
 
     async toggleHandDetection() {
