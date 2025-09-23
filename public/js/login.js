@@ -107,11 +107,14 @@
             .then(response => response.json())
             .then(data => {
                 if (data.token) {
-                    // Store token and redirect or handle success
+                    // Store token in localStorage and set cookie
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('userId', data.userId);
-                    // Redirect to dashboard or home
-                    window.location.href = '/camera'; // Adjust as needed
+                    // Set token in cookie for server-side authentication
+                    document.cookie = `token=${data.token}; path=/; max-age=3600`;
+                    console.log('Cookie set:', document.cookie);
+                    // Redirect to camera page
+                    window.location.href = '/camera';
                 } else {
                     alert(data.message || 'Login failed');
                 }

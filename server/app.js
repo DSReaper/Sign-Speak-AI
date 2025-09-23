@@ -1,8 +1,10 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const connectDB = require('../Backend_stuff/database/db.js');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
@@ -16,6 +18,33 @@ connectDB();
 app.use(cors()); // Enable CORS for all routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// Authentication middleware
+const authenticateToken = (req, res, next) => {
+    let token = req.headers['authorization'] && req.headers['authorization'].split(' ')[1];
+    if (!token) {
+        token = req.cookies && req.cookies.token;
+    }
+
+    console.log('Token found:', !!token);
+    console.log('Headers:', req.headers);
+    console.log('Cookies:', req.cookies);
+
+    if (!token) {
+        console.log('No token, redirecting to /');
+        return res.redirect('/');
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET || 'secret', (err, user) => {
+        if (err) {
+            console.log('Token verification failed:', err.message);
+            return res.redirect('/');
+        }
+        req.user = user;
+        next();
+    });
+};
 
 // Set EJS as the view engine
 app.set('view engine', 'ejs');
@@ -76,7 +105,7 @@ app.get('/', (req, res) => { // This is the login page
 });
 
 // Application routes
-app.get('/camera', async (req, res) => {
+app.get('/camera', authenticateToken, async (req, res) => {
     // Check if Flask AI service is running
     try {
         const healthCheck = await fetch('http://localhost:5000/status');

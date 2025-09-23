@@ -1,9 +1,10 @@
-# TODO List for Testing Auth HTTP Requests
+# TODO List for Preventing Camera Page Access Without Sign-In
 
-- [x] Start the Express server using `npm run dev`
-- [ ] Test POST /auth/signup with valid dummy data (email: test@example.com, password: password123, hearingStatus: Hard of hearing)
-- [x] Test POST /auth/signin with valid dummy data (email: test@example.com, password: password123)
-- [ ] Test POST /auth/signup with duplicate email to check error handling
-- [ ] Test POST /auth/signin with invalid password to check error handling
-- [ ] Test POST /auth/signin with non-existent email to check error handling
-- [ ] Stop the server after testing
+- [x] Add JWT authentication middleware to server/app.js
+- [x] Apply authentication middleware to /camera route
+- [x] Add cookie-parser middleware to server/app.js
+- [x] Update client-side login.js to set token in cookie
+- [x] Add debugging logs to server and client
+- [ ] Test accessing /camera without signing in (should redirect to login)
+- [ ] Test signing in and accessing /camera (should allow access)
+- [ ] Test accessing other protected routes if needed
