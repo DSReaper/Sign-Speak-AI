@@ -471,7 +471,7 @@ class AISignLanguageDetection {
     _drawHands(results) {
         if (!this.overlayCanvas || !this.overlayCtx) return;
 
-    // Match overlay canvas size to visible aiCameraFeed
+    // Match overlay canvas size and position to the visible aiCameraFeed
         const imgEl = this.aiCameraFeed;
         const rect = imgEl.getBoundingClientRect();
 
@@ -483,20 +483,41 @@ class AISignLanguageDetection {
         const videoW = (this._hiddenVideo && this._hiddenVideo.videoWidth) ? this._hiddenVideo.videoWidth : (this.aiCameraFeed.videoWidth || displayedWidth);
         const videoH = (this._hiddenVideo && this._hiddenVideo.videoHeight) ? this._hiddenVideo.videoHeight : (this.aiCameraFeed.videoHeight || displayedHeight);
 
-    // Compute scale and offsets for object-fit: cover
+    // Compute scale and offsets. Choose scaling method depending on CSS object-fit.
         const scaleX = displayedWidth / videoW;
         const scaleY = displayedHeight / videoH;
-        // For object-fit: cover use the larger scale to fill and crop
-        const scale = Math.max(scaleX, scaleY);
+        // Detect object-fit applied to the video element (fallback to 'cover')
+        let objectFit = 'cover';
+        try {
+            const st = window.getComputedStyle(imgEl);
+            objectFit = (st && (st.objectFit || st.getPropertyValue('object-fit'))) || 'cover';
+        } catch (e) {
+            objectFit = 'cover';
+        }
+        // For object-fit: contain use the smaller scale (fit inside). For cover use the larger scale (fill and crop).
+        const scale = (objectFit === 'contain') ? Math.min(scaleX, scaleY) : Math.max(scaleX, scaleY);
 
         const scaledVideoWidth = videoW * scale;
         const scaledVideoHeight = videoH * scale;
-    // Offsets due to cropping
+    // Offsets due to cropping or letterboxing
         const offsetX = (scaledVideoWidth - displayedWidth) / 2;
         const offsetY = (scaledVideoHeight - displayedHeight) / 2;
 
         let width = displayedWidth;
         let height = displayedHeight;
+
+        // Position the overlay canvas so its origin matches the video's top-left inside the container
+        try {
+            const containerRect = this.overlayCanvas.parentElement.getBoundingClientRect();
+            const offsetLeft = rect.left - containerRect.left;
+            const offsetTop = rect.top - containerRect.top;
+            this.overlayCanvas.style.left = `${Math.round(offsetLeft)}px`;
+            this.overlayCanvas.style.top = `${Math.round(offsetTop)}px`;
+        } catch (e) {
+            // If anything goes wrong, keep the canvas at (0,0)
+            this.overlayCanvas.style.left = '0px';
+            this.overlayCanvas.style.top = '0px';
+        }
 
         // Detect if the displayed video is mirrored
         let isMirrored = false;
@@ -638,16 +659,7 @@ class AISignLanguageDetection {
             }
         }
 
-        // Draw debug info (fps and hand count)
-        try {
-            const handsCount = results.multiHandLandmarks ? results.multiHandLandmarks.length : 0;
-            const fps = this._localHandsLastFps || 0;
-            this.overlayCtx.font = '14px Arial';
-            this.overlayCtx.fillStyle = 'rgba(0,0,0,0.6)';
-            this.overlayCtx.fillRect(6, 6, 120, 26);
-            this.overlayCtx.fillStyle = '#fff';
-            this.overlayCtx.fillText(`hands: ${handsCount}  fps: ${fps}`, 12, 24);
-        } catch (e) {  }
+        // Debug overlay removed for production (hands/fps text suppressed)
     }
 
     _startCaptureInterval() {
