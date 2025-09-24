@@ -106,6 +106,10 @@ app.get('/profile', (req, res) => {
     res.render('profile');
 });
 
+app.get('/settings', (req, res) => {
+  res.render('settings');
+});
+
 // API endpoint to check Flask service status
 app.get('/api/flask-status', async (req, res) => {
     try {
