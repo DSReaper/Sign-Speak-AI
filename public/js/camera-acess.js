@@ -75,7 +75,7 @@ class AISignLanguageDetection {
             if (this.overlayCanvas) {
                 this.overlayCanvas.style.display = this._localHandsEnabled ? 'block' : 'none';
             }
-            // Also inform server (preserve existing behaviour)
+            // Also inform server (preserve existing behavior)
             this.toggleHandDetection();
         });
         
@@ -90,6 +90,12 @@ class AISignLanguageDetection {
         
         // Audio playback
         document.getElementById('playBtn').addEventListener('click', () => {
+            // Delegate to shared PlayAudioModule if available
+            if (window.PlayAudioModule && typeof window.PlayAudioModule.playFromElement === 'function') {
+                const btn = document.getElementById('playBtn');
+                window.PlayAudioModule.playFromElement(btn);
+                return;
+            }
             this.playDetectedPhrase();
         });
         
@@ -213,10 +219,6 @@ class AISignLanguageDetection {
     async _startLocalCameraAndWebSocket() {
         // Acquire user camera and prepare local video/canvas
         try {
-            // Choose capture constraints based on performance preference. We still
-            // request a reasonably-sized camera feed (so browser decoding is good)
-            // but we will downscale before sending. Lowering the capture
-            // resolution can reduce CPU on some devices.
             const capConstraints = (this.performanceMode === 'quality') ? { width: 1280, height: 720 } : { width: 640, height: 480 };
             this.captureStream = await navigator.mediaDevices.getUserMedia({ video: Object.assign({ facingMode: 'user' }, capConstraints), audio: false });
         } catch (err) {
@@ -241,7 +243,7 @@ class AISignLanguageDetection {
                 // keep a hidden video for encoding/sending if needed
                 this._hiddenVideo.srcObject = this.captureStream;
             } else {
-                // fallback: keep original behaviour
+                // fallback: keep original behavior
                 this._hiddenVideo.srcObject = this.captureStream;
             }
         } catch (err) {
@@ -312,7 +314,7 @@ class AISignLanguageDetection {
                 }
                 if (txt) txt.textContent = text || (state === 'connected' ? 'Connected' : state === 'connecting' ? 'Connecting...' : 'Disconnected');
                 if (this.aiStatus) this.aiStatus.style.display = 'flex';
-            } catch (err) { /* ignore UI update errors */ }
+            } catch (err) {  }
         };
 
         // initial WS state
@@ -365,8 +367,6 @@ class AISignLanguageDetection {
             const blob = data instanceof Blob ? data : new Blob([data], { type: 'image/jpeg' });
             console.log('WS: received frame blob, size=', blob.size);
 
-            // avoid inline visual flashes; use CSS classes if needed
-
             if (!this._fallbackCanvas) {
                 this._fallbackCanvas = document.createElement('canvas');
                 this._fallbackCanvasCtx = this._fallbackCanvas.getContext('2d');
@@ -393,7 +393,7 @@ class AISignLanguageDetection {
                 } catch (err) {
                     console.warn('Fallback canvas draw error', err);
                 }
-                try { URL.revokeObjectURL(url); } catch (err) { /* ignore */ }
+                try { URL.revokeObjectURL(url); } catch (err) {  }
                 this._pending = false;
             };
             img.onerror = (err) => {
@@ -413,7 +413,6 @@ class AISignLanguageDetection {
             }
         };
 
-        // Note: onclose handled above
     }
 
     // Initialize MediaPipe Hands and start overlay
@@ -483,7 +482,7 @@ class AISignLanguageDetection {
         const videoW = (this._hiddenVideo && this._hiddenVideo.videoWidth) ? this._hiddenVideo.videoWidth : (this.aiCameraFeed.videoWidth || displayedWidth);
         const videoH = (this._hiddenVideo && this._hiddenVideo.videoHeight) ? this._hiddenVideo.videoHeight : (this.aiCameraFeed.videoHeight || displayedHeight);
 
-    // Compute scale and offsets. Choose scaling method depending on CSS object-fit.
+    // Compute scale and offsets. 
         const scaleX = displayedWidth / videoW;
         const scaleY = displayedHeight / videoH;
         // Detect object-fit applied to the video element (fallback to 'cover')
@@ -494,7 +493,7 @@ class AISignLanguageDetection {
         } catch (e) {
             objectFit = 'cover';
         }
-        // For object-fit: contain use the smaller scale (fit inside). For cover use the larger scale (fill and crop).
+        // For object-fit: contain use the smaller scale (fit inside). 
         const scale = (objectFit === 'contain') ? Math.min(scaleX, scaleY) : Math.max(scaleX, scaleY);
 
         const scaledVideoWidth = videoW * scale;
@@ -565,7 +564,7 @@ class AISignLanguageDetection {
                         x = Math.max(0, Math.min(width, x));
                         y = Math.max(0, Math.min(height, y));
                         if (isMirrored) x = width - x;
-                        // Preserve z/visibility if present
+                     
                         const out = { x, y };
                         if (typeof lm.z !== 'undefined') out.z = lm.z;
                         if (typeof lm.visibility !== 'undefined') out.visibility = lm.visibility;
@@ -574,7 +573,7 @@ class AISignLanguageDetection {
 
                     this.overlayCtx.strokeStyle = 'rgba(0,255,0,0.9)';
                     this.overlayCtx.lineWidth = 2;
-                    // Draw the connections
+                    // Draw the connections (Lines between red dots)
                     for (const c of connections) {
                         const a = pixelLandmarks[c[0]];
                         const b = pixelLandmarks[c[1]];
@@ -584,7 +583,7 @@ class AISignLanguageDetection {
                         this.overlayCtx.lineTo(b.x, b.y);
                         this.overlayCtx.stroke();
                     }
-                    // Draw landmarks as filled circles
+                    // Draw landmarks (Dots on hands overly)
                     this.overlayCtx.fillStyle = '#FF0000';
                     for (const p of pixelLandmarks) {
                         this.overlayCtx.beginPath();
@@ -612,7 +611,7 @@ class AISignLanguageDetection {
                     const yVideoPx = lm.y * videoH * scale;
                     let x = xVideoPx - offsetX;
                     let y = yVideoPx - offsetY;
-                    // Clamp to visible area
+                   
                     x = Math.max(0, Math.min(width, x));
                     y = Math.max(0, Math.min(height, y));
                     if (isMirrored) {
@@ -642,7 +641,7 @@ class AISignLanguageDetection {
                     if (y > maxY) maxY = y;
                 }
                 if (minX !== Infinity) {
-                    // Add small padding
+                    // Add padding
                     const pad = Math.max(6, Math.min(24, Math.round((maxX - minX) * 0.08)));
                     minX = Math.max(0, minX - pad);
                     minY = Math.max(0, minY - pad);
@@ -655,11 +654,8 @@ class AISignLanguageDetection {
                     this.overlayCtx.strokeRect(minX + 0.5, minY + 0.5, (maxX - minX), (maxY - minY));
                 }
             } catch (e) {
-                // ignore bounding box errors
             }
         }
-
-        // Debug overlay removed for production (hands/fps text suppressed)
     }
 
     _startCaptureInterval() {
@@ -782,7 +778,6 @@ class AISignLanguageDetection {
         } else {
             this.detectedPhrase.textContent = 'Waiting for AI detection...';
         }
-        // Buffer and confidence UI were removed; do not attempt to update DOM
     }
 
     async toggleHandDetection() {
@@ -819,7 +814,7 @@ class AISignLanguageDetection {
         this.aiStatus.style.display = show ? 'none' : 'flex';
     }
 
-    showError(message = 'Unable to start AI camera. Please check if the AI service is running.') {
+    showError(message = 'Unable to start camera.') {
         this.cameraError.style.display = 'flex';
         const p = this.cameraError.querySelector('p');
         if (p) p.textContent = message;
@@ -894,31 +889,26 @@ class AISignLanguageDetection {
         }, 150);
     }
 
+    // Delegate play/reset behaviour to PlayAudioModule when available.
     playDetectedPhrase() {
+        // Backwards-compatible fallback if module missing
         const playBtn = document.getElementById('playBtn');
-        const playIcon = playBtn.querySelector('svg polygon');
-        const playText = playBtn.querySelector('span');
-        
-        // Simulate audio playing
-        playBtn.classList.add('playing');
-        playText.textContent = 'Playing...';
-        
-        // Change icon to pause
-        playIcon.setAttribute('points', '6,4 6,20 10,20 10,4 14,4 14,20 18,20 18,4');
-        
-        // Simulate playback duration (2 seconds)
+        if (window.PlayAudioModule && typeof window.PlayAudioModule.playFromElement === 'function') {
+            window.PlayAudioModule.playFromElement(playBtn);
+            return;
+        }
+        // Fallback inline behavior (kept simple)
+        const playText = playBtn ? playBtn.querySelector('span') : null;
+        if (playBtn) playBtn.classList.add('playing');
+        if (playText) playText.textContent = 'Playing...';
         setTimeout(() => {
-            this.resetPlayButton(playBtn, playIcon, playText);
-            
-            // Show modal after playback
-            document.getElementById('responseModal').style.display = 'flex';
+            if (playBtn) {
+                if (playText) playText.textContent = 'Play audio';
+                if (playBtn.classList) playBtn.classList.remove('playing');
+            }
+            const modal = document.getElementById('responseModal');
+            if (modal) modal.style.display = 'flex';
         }, 2000);
-    }
-
-    resetPlayButton(playBtn, playIcon, playText) {
-        playBtn.classList.remove('playing');
-        playText.textContent = 'Play audio';
-        playIcon.setAttribute('points', '5,3 19,12 5,21');
     }
 
     toggleStar() {
@@ -980,4 +970,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Page visible - AI detection active');
         }
     });
+    // Initialize shared PlayAudioModule if present
+    if (window.PlayAudioModule && typeof window.PlayAudioModule.init === 'function') {
+        window.PlayAudioModule.init({ modalSelector: '#responseModal', textareaSelector: '#userResponse', closeBtnSelector: '#closeModal' });
+    }
 });

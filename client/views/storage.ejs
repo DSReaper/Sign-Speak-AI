@@ -11,10 +11,25 @@
     <!-- Main Content (90%) -->
     <div class="main-content">
       <div id="storage-phrases-container" class="container">
+        <!-- Response Modal (shared with camera page) -->
+        <div id="responseModal" class="modal">
+          <div class="modal-content">
+            <h2>Please type your response :)</h2>
+            <textarea id="userResponse" rows="4" placeholder="Type here..."></textarea>
+            <button id="closeModal">Close</button>
+          </div>
+        </div>
+
         <!-- Search Header -->
         <header class="storage-search-bar">
-          <input type="text" class="storage-search-input" placeholder="Search">
-          <button class="storage-sort-btn">Sort</button>
+          <input id="storageSearchInput" type="text" class="storage-search-input" placeholder="Search">
+          <select id="storageSortSelect" class="storage-sort-select" aria-label="Sort stored phrases">
+            <option value="">Sort </option>
+            <option value="date-new-old">Date (new → old)</option>
+            <option value="date-old-new">Date (old → new)</option>
+            <option value="length-short-long">Phrase length (short → long)</option>
+            <option value="length-long-short">Phrase length (long → short)</option>
+          </select>
         </header>
 
         <!-- Main Content -->
@@ -103,5 +118,7 @@
       });
     });
   </script>
+  <script src="/js/play-audio.js"></script>
+  <script src="/js/storage.js"></script>
 </body>
 </html>
