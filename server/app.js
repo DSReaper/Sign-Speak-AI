@@ -127,6 +127,11 @@ app.get('/camera', authenticateToken, async (req, res) => {
     }
 });
 
+app.get('/reset-password', (req, res) => {
+    const token = req.query.token;
+    res.render('reset-password', { token });
+});
+
 app.get('/storage', (req, res) => {
     res.render('storage');
 });

@@ -203,8 +203,24 @@
     forgotPassword.addEventListener('click', function(e) {
         e.preventDefault();
 
-        //Add email functionality for the reset password
-        
+        const email = prompt('Enter your email address for password reset:');
+        if (email) {
+            fetch('/auth/forgot-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred');
+            });
+        }
     });
 
     // Tool tips functionality
