@@ -1,11 +1,31 @@
+// Fallback hand connection list
+const HAND_CONNECTIONS_FALLBACK = [
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [5,9],[9,10],[10,11],[11,12],
+    [9,13],[13,14],[14,15],[15,16],
+    [13,17],[17,18],[18,19],[19,20],
+    [0,17]
+];
+
 class AISignLanguageDetection {
     constructor() {
+        // visible feed element
         this.aiCameraFeed = document.getElementById('aiCameraFeed');
         this.cameraSection = document.getElementById('cameraSection');
         this.cameraLoading = document.getElementById('cameraLoading');
         this.cameraError = document.getElementById('cameraError');
         this.detectedPhrase = document.getElementById('detectedPhrase');
-    // buffer and confidence UI removed — keep optional references guarded
+        // overlay canvas for landmarks
+        this.overlayCanvas = document.getElementById('overlayCanvas');
+        this.overlayCtx = this.overlayCanvas ? this.overlayCanvas.getContext('2d') : null;
+        // Enable local overlay by default
+        this._localHandsEnabled = true;
+        if (this.overlayCanvas) {
+            this.overlayCanvas.style.display = 'block';
+            this.overlayCanvas.style.zIndex = '5';
+        }
+        // optional UI elements (may be absent)
     this.bufferStatus = document.getElementById('bufferStatus');
     this.confidenceStatus = document.getElementById('confidenceStatus');
         this.aiStatus = document.getElementById('aiStatus');
@@ -13,23 +33,23 @@ class AISignLanguageDetection {
         this.isExpanded = false;
         this.isAIActive = false;
         this.currentMode = 'basic';
-        // Performance tuning (can be toggled)
+        // performance presets
         this.performanceMode = 'balanced'; // 'quality' | 'balanced' | 'speed'
         this._perfSettings = {
             quality: { fps: 6, sendWidth: 640, jpegQuality: 0.8 },
             balanced: { fps: 8, sendWidth: 320, jpegQuality: 0.6 },
             speed: { fps: 10, sendWidth: 224, jpegQuality: 0.5 }
         };
-        // Reusable send-canvas to avoid allocating a temporary canvas every frame
+        // reusable send canvas
         this._sendCanvas = null;
         this._sendCtx = null;
-        // Backpressure / timing helpers
+        // backpressure helpers
         this._lastSent = 0;
         this._bufferedThreshold = 1e6; // 1 MB queued => drop frames
         this._pendingTimeout = null; // used to clear _pending if server stalls
-    // WebSocket URL to Flask/AI server (served from Node.js proxy or directly)
-    this.wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.hostname + ':5001/ai/ws';
-    this.flaskUrl = 'http://localhost:8001/ai'; // legacy HTTP endpoints still used for status controls
+        // WebSocket and HTTP endpoints
+        this.wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.hostname + ':5001/ai/ws';
+        this.flaskUrl = 'http://localhost:8001/ai';
         this.statusUpdateInterval = null;
         this._shouldReconnect = true;
         this._reconnectAttempts = 0;
@@ -39,7 +59,7 @@ class AISignLanguageDetection {
     }
 
     initializeEventListeners() {
-        // Mode switching
+        // mode switching
         document.getElementById('basicDetect').addEventListener('click', () => {
             this.switchMode('basic');
         });
@@ -48,8 +68,14 @@ class AISignLanguageDetection {
             this.switchMode('advanced');
         });
         
-        // AI Controls
+        // AI controls
         document.getElementById('toggleHands').addEventListener('click', () => {
+            // toggle local overlay and inform server
+            this._localHandsEnabled = !this._localHandsEnabled;
+            if (this.overlayCanvas) {
+                this.overlayCanvas.style.display = this._localHandsEnabled ? 'block' : 'none';
+            }
+            // Also inform server (preserve existing behaviour)
             this.toggleHandDetection();
         });
         
@@ -77,12 +103,12 @@ class AISignLanguageDetection {
             this.startAICamera();
         });
         
-        // Handle window resize
+        // window resize
         window.addEventListener('resize', () => {
             this.handleResize();
         });
         
-        // Handle escape key for fullscreen
+        // escape key to contract fullscreen
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isExpanded) {
                 this.toggleExpanded();
@@ -98,7 +124,7 @@ class AISignLanguageDetection {
             textarea.value = '';
         });
 
-        // Performance mode selector
+        // performance selector
         const perfSel = document.getElementById('perfModeSelect');
         if (perfSel) {
             perfSel.addEventListener('change', (e) => {
@@ -130,15 +156,14 @@ class AISignLanguageDetection {
         try {
             this.showLoading(true);
             this.hideError();
-            
+
             console.log('Starting AI camera...');
-            // Start camera capture from user's browser
             this._shouldReconnect = true;
             await this._startLocalCameraAndWebSocket();
             this.showLoading(false);
             this.isAIActive = true;
             this.startStatusUpdates();
-            
+
         } catch (error) {
             console.error('AI Camera start error:', error);
             this.showError(`AI service error: ${error.message}`);
@@ -166,8 +191,17 @@ class AISignLanguageDetection {
             this._shouldReconnect = false;
 
             this.isAIActive = false;
-            this.aiCameraFeed.src = '';
-            this.aiCameraFeed.style.display = 'none';
+            // If the visible feed is a video element, stop and clear its srcObject
+            try {
+                if (this.aiCameraFeed && this.aiCameraFeed.tagName && this.aiCameraFeed.tagName.toLowerCase() === 'video') {
+                    try { this.aiCameraFeed.pause(); } catch (e) { /* ignore */ }
+                    try { this.aiCameraFeed.srcObject = null; } catch (e) { /* ignore */ }
+                } else if (this.aiCameraFeed) {
+                    // legacy img element
+                    try { this.aiCameraFeed.src = ''; } catch (e) { /* ignore */ }
+                }
+            } catch (err) { /* ignore */ }
+            if (this.aiCameraFeed) this.aiCameraFeed.style.display = 'none';
             this.stopStatusUpdates();
 
             console.log('AI camera stopped (local)');
@@ -177,11 +211,7 @@ class AISignLanguageDetection {
     }
 
     async _startLocalCameraAndWebSocket() {
-        // Acquire user camera
-        // This requests camera access from the browser. The stream returned is stored
-        // in `this.captureStream` and later used as the source for a hidden <video>
-        // element. We capture frames from that hidden element and send them to the
-        // AI WebSocket server for low-latency processing.
+        // Acquire user camera and prepare local video/canvas
         try {
             // Choose capture constraints based on performance preference. We still
             // request a reasonably-sized camera feed (so browser decoding is good)
@@ -193,12 +223,7 @@ class AISignLanguageDetection {
             throw new Error('Unable to access camera: ' + err.message);
         }
 
-    // Create hidden video element to draw frames
-    // The hidden video (`this._hiddenVideo`) plays the live MediaStream. We draw
-    // frames from that video onto an offscreen canvas (`this._canvas`) and then
-    // downscale/encode those frames before sending them over the WebSocket.
-    // Keeping the video hidden prevents visual duplication while preserving
-    // full access to decoded video frames.
+        // Create hidden video and offscreen canvas for encoding
         if (!this._hiddenVideo) {
             this._hiddenVideo = document.createElement('video');
             this._hiddenVideo.autoplay = true;
@@ -208,13 +233,26 @@ class AISignLanguageDetection {
             this._ctx = this._canvas.getContext('2d');
         }
 
-        this._hiddenVideo.srcObject = this.captureStream;
+        // Bind MediaStream to visible video
+        try {
+            // If aiCameraFeed is a <video>, set its srcObject so it displays the camera directly
+            if (this.aiCameraFeed && this.aiCameraFeed.tagName && this.aiCameraFeed.tagName.toLowerCase() === 'video') {
+                this.aiCameraFeed.srcObject = this.captureStream;
+                // keep a hidden video for encoding/sending if needed
+                this._hiddenVideo.srcObject = this.captureStream;
+            } else {
+                // fallback: keep original behaviour
+                this._hiddenVideo.srcObject = this.captureStream;
+            }
+        } catch (err) {
+            this._hiddenVideo.srcObject = this.captureStream;
+        }
 
-    // Wait for video to be ready
-    // We await the video playback to have actual frames available (onplaying).
-    // There's a 3s timeout to avoid locking the UI if playback stalls on some
-    // browsers. If the timeout triggers we continue anyway but frames may be
-    // empty or black until playback actually starts.
+        // Initialize local MediaPipe Hands for overlay
+        this._localHandsEnabled = true;
+        this._initLocalHands();
+
+        // Wait for hidden video to be playing (3s timeout)
         await new Promise((resolve, reject) => {
             this._hiddenVideo.onloadedmetadata = () => {
                 this._canvas.width = this._hiddenVideo.videoWidth || 640;
@@ -255,22 +293,13 @@ class AISignLanguageDetection {
             }, 3000);
         });
 
-        // Open WebSocket to AI server for low-latency frame processing
-        // WebSocket lifecycle:
-        //  - onopen: mark connection ready and start the capture interval
-        //  - onmessage: receive processed JPEG bytes from server and display them
-        //  - onerror/onclose: attempt reconnects using exponential backoff when
-        //    `this._shouldReconnect` is true. When reconnecting we preserve the
-        //    local camera capture so the user still sees the last frames.
-        // If there's an existing ws, close it first
+        // Open WebSocket for frame processing
         if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
             try { this.ws.close(); } catch (e) { console.warn('Error closing previous ws', e); }
         }
         this.ws = new WebSocket(this.wsUrl);
 
-        // Helper to update the small colored dot and connection text inside the ai-status element
-        // state: 'connected' | 'connecting' | 'disconnected'
-        // text: optional display text
+        // Helper to update connection UI
         this.setConnectionState = (state, text) => {
             try {
                 const dot = document.getElementById('connectionStatusDot');
@@ -286,68 +315,35 @@ class AISignLanguageDetection {
             } catch (err) { /* ignore UI update errors */ }
         };
 
-    // initial state while the WS connection is being established
-    // Keep dot state only; we do not render any textual overlays above the feed
-    this.setConnectionState('connecting');
+        // initial WS state
+        this.setConnectionState('connecting');
 
-        // Basic backpressure: only send a new frame when we don't have a pending request
+        // backpressure: only send when not pending
         this._pending = false;
 
         this.ws.binaryType = 'arraybuffer';
 
         this.ws.onopen = () => {
-            // WebSocket is ready for binary frame transfer.
-            // Reset reconnect attempts and update short status. We don't hide the
-            // camera UI here because the camera is local and should remain visible
-            // even if the AI server was temporarily unreachable.
             console.log('WebSocket connected to AI detection service');
             this._reconnectAttempts = 0;
-                try {
-                    this.hideError();
-                    // update connection dot only
-                    this.setConnectionState('connected');
-                } catch (e) { /* ignore UI update errors */ }
-
-            // Start sending frames at the configured FPS/resolution.
+            try { this.hideError(); this.setConnectionState('connected'); } catch (e) { }
             this._startCaptureInterval();
         };
 
-        // When the socket closes, attempt reconnection unless user stopped
-    this.ws.onclose = (evt) => {
-            // Log close code and reason when available for debugging
-            try {
-                console.warn('WebSocket closed', {
-                    code: evt.code,
-                    reason: evt.reason,
-                    wasClean: evt.wasClean
-                });
-            } catch (err) {
-                console.warn('WebSocket closed (no evt details available)');
-            }
+        // onclose: reconnect logic handled here
+        this.ws.onclose = (evt) => {
+            try { console.warn('WebSocket closed', { code: evt.code, reason: evt.reason, wasClean: evt.wasClean }); } catch (err) { console.warn('WebSocket closed'); }
             this._pending = false;
-
-            // When the socket closes, don't immediately hide the camera. If
-            // `_shouldReconnect` is true we keep the local video running and try
-            // to re-establish the WebSocket after an exponential backoff. This
-            // avoids blinking the UI while the server restarts.
             if (this._shouldReconnect) {
                 const backoff = Math.min(30, Math.pow(2, this._reconnectAttempts));
-                console.log(`WebSocket closed unexpectedly — reconnecting in ${backoff}s (attempt ${this._reconnectAttempts + 1})`);
-                try {
-                    // show connecting state with countdown
-                    this.setConnectionState('connecting', `Disconnected — reconnecting in ${backoff}s`);
-                } catch (e) { /* ignored */ }
-
+                console.log(`WebSocket closed — reconnecting in ${backoff}s (attempt ${this._reconnectAttempts + 1})`);
+                try { this.setConnectionState('connecting', `Disconnected — reconnecting in ${backoff}s`); } catch (e) { }
                 setTimeout(() => {
                     this._reconnectAttempts += 1;
-                    // Re-create the WS connection but reuse the same local camera
                     this._startLocalCameraAndWebSocket().catch(err => console.warn('Reconnect failed', err));
                 }, backoff * 1000);
             } else {
-                // If reconnecting is disabled (user stopped the camera), show
-                // a full error message to the user so they can take action.
                 if (!this.isAIActive) {
-                    // mark disconnected
                     this.setConnectionState('disconnected', 'Disconnected');
                     this.showError('AI WebSocket connection closed by server. Ensure the Flask AI server is running and accepting ws connections on port 5001.');
                 }
@@ -355,9 +351,7 @@ class AISignLanguageDetection {
         };
 
         this.ws.onmessage = (evt) => {
-            // Server will send back a processed JPEG image (binary). We expect
-            // binary frames (Blob or ArrayBuffer). Text messages are ignored or
-            // logged.
+            // server sends JPEG frames (Blob or ArrayBuffer)
             const data = evt.data;
 
             if (!(data instanceof ArrayBuffer) && !(data instanceof Blob)) {
@@ -367,18 +361,11 @@ class AISignLanguageDetection {
                 return;
             }
 
-            // Convert received bytes into a blob URL and set it as the <img>
-            // `src`. Setting `aiCameraFeed.src` to a blob URL is quick and lets
-            // the browser decode and display the JPEG. We also draw the image to
-            // a hidden fallback canvas for pixel inspection/debugging.
+            // convert bytes into a Blob and draw to fallback canvas for diagnostics
             const blob = data instanceof Blob ? data : new Blob([data], { type: 'image/jpeg' });
             console.log('WS: received frame blob, size=', blob.size);
 
-            // Previously we flashed a green border here on each incoming frame;
-            // that caused a visible green outline. Remove inline border updates
-            // to avoid the green border flash and let CSS handle styling.
-            // If a frame-arrival indicator is desired, add/remove a CSS class
-            // instead of setting inline styles.
+            // avoid inline visual flashes; use CSS classes if needed
 
             if (!this._fallbackCanvas) {
                 this._fallbackCanvas = document.createElement('canvas');
@@ -387,16 +374,16 @@ class AISignLanguageDetection {
                 document.body.appendChild(this._fallbackCanvas);
             }
 
-            // Use object URL because it's fast and avoids copying large binary
-            // arrays into base64 strings. We revoke the URL after the image is
-            // loaded to free memory.
+            // create object URL and draw to fallback canvas
             const url = URL.createObjectURL(blob);
-            this.aiCameraFeed.src = url;
-            this.aiCameraFeed.style.display = 'block';
+            if (!this._fallbackCanvas) {
+                this._fallbackCanvas = document.createElement('canvas');
+                this._fallbackCanvasCtx = this._fallbackCanvas.getContext('2d');
+                this._fallbackCanvas.style.display = 'none';
+                document.body.appendChild(this._fallbackCanvas);
+            }
 
-            // Optionally decode and draw to fallback canvas (useful for
-            // diagnostics or pixel-level checks). This does not replace the
-            // visible <img> which the user sees.
+            // decode image for fallback canvas
             const img = new Image();
             img.onload = () => {
                 try {
@@ -406,51 +393,261 @@ class AISignLanguageDetection {
                 } catch (err) {
                     console.warn('Fallback canvas draw error', err);
                 }
-            };
-            img.onerror = (err) => { console.warn('Image decode error on fallback', err); };
-            img.src = url;
-
-            // When the <img> has finished decoding and painting, revoke the URL
-            // and clear the pending flag so the next frame can be sent.
-            this.aiCameraFeed.onload = () => {
                 try { URL.revokeObjectURL(url); } catch (err) { /* ignore */ }
                 this._pending = false;
             };
+            img.onerror = (err) => {
+                console.warn('Image decode error on fallback', err);
+                this._pending = false;
+            };
+            img.src = url;
         };
 
         this.ws.onerror = (e) => {
             console.error('WebSocket error', e, 'readyState=', this.ws ? this.ws.readyState : 'no-ws');
-            // For transient errors while auto-reconnect is enabled, avoid hiding the camera
             if (this._shouldReconnect) {
                 console.warn('Transient WebSocket error — will attempt reconnect');
-                try {
-                    this.setConnectionState('connecting', 'AI server connection error — reconnecting...');
-                } catch (uiErr) { /* ignore */ }
+                try { this.setConnectionState('connecting', 'AI server connection error — reconnecting...'); } catch (uiErr) { }
             } else {
-                // If reconnect is disabled (user stopped the camera), show a full error UI
                 this.showError('WebSocket error connecting to AI server. See console for details.');
             }
         };
 
-        // Helper to update the small colored dot and connection text inside the ai-status element
-        // state: 'connected' | 'connecting' | 'disconnected'
-        // text: optional display text
-        this.setConnectionState = (state, text) => {
+        // Note: onclose handled above
+    }
+
+    // Initialize MediaPipe Hands and start overlay
+    _initLocalHands() {
+        if (typeof window.Hands === 'undefined') {
+            console.warn('MediaPipe Hands not available - skipping local overlay');
+            return;
+        }
+
+        if (this._hands) return;
+
+        console.log('Initializing local MediaPipe Hands...');
+        this._hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+        this._hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 0,
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.5
+        });
+
+        this._localHandsFrames = 0;
+        this._localHandsLastTime = performance.now();
+        this._localHandsLastFps = 0;
+
+        this._hands.onResults((results) => {
+            this._drawHands(results);
+            this._localHandsFrames += 1;
+            const now = performance.now();
+            if (now - this._localHandsLastTime >= 500) {
+                this._localHandsLastFps = Math.round((this._localHandsFrames * 1000) / (now - this._localHandsLastTime));
+                this._localHandsFrames = 0;
+                this._localHandsLastTime = now;
+            }
+            if (Math.random() < 0.01) console.log('Local hands onResults - hands=', results.multiHandLandmarks ? results.multiHandLandmarks.length : 0, 'fps=', this._localHandsLastFps);
+        });
+
+        this._localHandsSkip = 0;
+        const processFrame = async () => {
             try {
-                const dot = document.getElementById('connectionStatusDot');
-                const txt = document.getElementById('connectionStatusText');
-                if (dot) {
-                    dot.classList.remove('connected', 'connecting', 'disconnected');
-                    if (state === 'connected') dot.classList.add('connected');
-                    else if (state === 'connecting') dot.classList.add('connecting');
-                    else dot.classList.add('disconnected');
+                if (this._hiddenVideo && this._hiddenVideo.readyState >= 2 && this._localHandsEnabled) {
+                    this._localHandsSkip = (this._localHandsSkip + 1) & 1;
+                    if (this._localHandsSkip === 0) {
+                        await this._hands.send({ image: this._hiddenVideo });
+                    }
+                } else if (this.overlayCanvas && !this._localHandsEnabled) {
+                    this.overlayCtx && this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
                 }
-                if (txt) txt.textContent = text || (state === 'connected' ? 'Connected' : state === 'connecting' ? 'Connecting...' : 'Disconnected');
-                if (this.aiStatus) this.aiStatus.style.display = 'flex';
-            } catch (err) { /* ignore UI update errors */ }
+            } catch (err) { }
+            this._localHandsRaf = requestAnimationFrame(processFrame);
         };
 
-        // Note: onclose handled above to manage reconnect
+        this._localHandsRaf = requestAnimationFrame(processFrame);
+    }
+
+    _drawHands(results) {
+        if (!this.overlayCanvas || !this.overlayCtx) return;
+
+    // Match overlay canvas size to visible aiCameraFeed
+        const imgEl = this.aiCameraFeed;
+        const rect = imgEl.getBoundingClientRect();
+
+    // fallback to hidden video if not visible
+        const displayedWidth = rect.width || (this._hiddenVideo ? this._hiddenVideo.videoWidth : 640);
+        const displayedHeight = rect.height || (this._hiddenVideo ? this._hiddenVideo.videoHeight : 480);
+
+    // Use video's intrinsic pixel size to map landmarks
+        const videoW = (this._hiddenVideo && this._hiddenVideo.videoWidth) ? this._hiddenVideo.videoWidth : (this.aiCameraFeed.videoWidth || displayedWidth);
+        const videoH = (this._hiddenVideo && this._hiddenVideo.videoHeight) ? this._hiddenVideo.videoHeight : (this.aiCameraFeed.videoHeight || displayedHeight);
+
+    // Compute scale and offsets for object-fit: cover
+        const scaleX = displayedWidth / videoW;
+        const scaleY = displayedHeight / videoH;
+        // For object-fit: cover use the larger scale to fill and crop
+        const scale = Math.max(scaleX, scaleY);
+
+        const scaledVideoWidth = videoW * scale;
+        const scaledVideoHeight = videoH * scale;
+    // Offsets due to cropping
+        const offsetX = (scaledVideoWidth - displayedWidth) / 2;
+        const offsetY = (scaledVideoHeight - displayedHeight) / 2;
+
+        let width = displayedWidth;
+        let height = displayedHeight;
+
+        // Detect if the displayed video is mirrored
+        let isMirrored = false;
+        try {
+            const st = window.getComputedStyle(imgEl);
+            const t = st && st.transform ? st.transform : '';
+            if (t && t !== 'none') {
+                // matrix(-1, 0, 0, 1, 0, 0) indicates horizontal flip
+                if (t.indexOf('-1') !== -1) isMirrored = true;
+            }
+        } catch (e) {
+            isMirrored = false;
+        }
+
+        // Resize overlay canvas if needed
+        const dpr = window.devicePixelRatio || 1;
+        if (this.overlayCanvas.width !== Math.round(width * dpr) || this.overlayCanvas.height !== Math.round(height * dpr)) {
+            this.overlayCanvas.width = Math.round(width * dpr);
+            this.overlayCanvas.height = Math.round(height * dpr);
+            this.overlayCanvas.style.width = `${width}px`;
+            this.overlayCanvas.style.height = `${height}px`;
+            this.overlayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+    // clear canvas
+        this.overlayCtx.clearRect(0, 0, width, height);
+
+        if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) return;
+
+    // Draw each hand's landmarks
+        for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+            const landmarks = results.multiHandLandmarks[i];
+            // Use drawing utilities if available
+            if (window.drawConnectors && window.drawLandmarks) {
+          
+                const connections = (typeof window.HAND_CONNECTIONS !== 'undefined') ? window.HAND_CONNECTIONS : HAND_CONNECTIONS_FALLBACK;
+                try {
+  
+                    const pixelLandmarks = landmarks.map((lm) => {
+                        const xVideoPx = lm.x * videoW * scale; // scaled video pixels
+                        const yVideoPx = lm.y * videoH * scale;
+                        let x = xVideoPx - offsetX;
+                        let y = yVideoPx - offsetY;
+                        // Clamp to visible area
+                        x = Math.max(0, Math.min(width, x));
+                        y = Math.max(0, Math.min(height, y));
+                        if (isMirrored) x = width - x;
+                        // Preserve z/visibility if present
+                        const out = { x, y };
+                        if (typeof lm.z !== 'undefined') out.z = lm.z;
+                        if (typeof lm.visibility !== 'undefined') out.visibility = lm.visibility;
+                        return out;
+                    });
+
+                    this.overlayCtx.strokeStyle = 'rgba(0,255,0,0.9)';
+                    this.overlayCtx.lineWidth = 2;
+                    // Draw the connections
+                    for (const c of connections) {
+                        const a = pixelLandmarks[c[0]];
+                        const b = pixelLandmarks[c[1]];
+                        if (!a || !b) continue;
+                        this.overlayCtx.beginPath();
+                        this.overlayCtx.moveTo(a.x, a.y);
+                        this.overlayCtx.lineTo(b.x, b.y);
+                        this.overlayCtx.stroke();
+                    }
+                    // Draw landmarks as filled circles
+                    this.overlayCtx.fillStyle = '#FF0000';
+                    for (const p of pixelLandmarks) {
+                        this.overlayCtx.beginPath();
+                        this.overlayCtx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                        this.overlayCtx.fill();
+                    }
+                } catch (err) {
+                    // fallback to simple dots if drawing util fails
+                    this.overlayCtx.fillStyle = 'red';
+                    for (const lm of landmarks) {
+                        const x = lm.x * width;
+                        const y = lm.y * height;
+                        this.overlayCtx.beginPath();
+                        this.overlayCtx.arc(x, y, 3, 0, Math.PI * 2);
+                        this.overlayCtx.fill();
+                    }
+                }
+            } else {
+                // Fallback simple drawing
+                this.overlayCtx.fillStyle = 'red';
+                for (const lm of landmarks) {
+                    // Map normalized landmark (0..1) to CSS pixel coordinates taking
+                    // into account intrinsic video size, scale, and cropping offset.
+                    const xVideoPx = lm.x * videoW * scale; // scaled video pixels
+                    const yVideoPx = lm.y * videoH * scale;
+                    let x = xVideoPx - offsetX;
+                    let y = yVideoPx - offsetY;
+                    // Clamp to visible area
+                    x = Math.max(0, Math.min(width, x));
+                    y = Math.max(0, Math.min(height, y));
+                    if (isMirrored) {
+                        x = width - x;
+                    }
+                    this.overlayCtx.beginPath();
+                    this.overlayCtx.arc(x, y, 3, 0, Math.PI * 2);
+                    this.overlayCtx.fill();
+                }
+            }
+            
+            // Compute bounding box for this hand
+            try {
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                for (const lm of landmarks) {
+                    // use the same mapping as in fallback drawing for accurate box
+                    const xVideoPx = lm.x * videoW * scale;
+                    const yVideoPx = lm.y * videoH * scale;
+                    let x = xVideoPx - offsetX;
+                    let y = yVideoPx - offsetY;
+                    x = Math.max(0, Math.min(width, x));
+                    y = Math.max(0, Math.min(height, y));
+                    if (isMirrored) x = width - x;
+                    if (x < minX) minX = x;
+                    if (y < minY) minY = y;
+                    if (x > maxX) maxX = x;
+                    if (y > maxY) maxY = y;
+                }
+                if (minX !== Infinity) {
+                    // Add small padding
+                    const pad = Math.max(6, Math.min(24, Math.round((maxX - minX) * 0.08)));
+                    minX = Math.max(0, minX - pad);
+                    minY = Math.max(0, minY - pad);
+                    maxX = Math.min(width, maxX + pad);
+                    maxY = Math.min(height, maxY + pad);
+
+                    // Draw box
+                    this.overlayCtx.strokeStyle = 'rgba(0,255,0,0.9)';
+                    this.overlayCtx.lineWidth = 2;
+                    this.overlayCtx.strokeRect(minX + 0.5, minY + 0.5, (maxX - minX), (maxY - minY));
+                }
+            } catch (e) {
+                // ignore bounding box errors
+            }
+        }
+
+        // Draw debug info (fps and hand count)
+        try {
+            const handsCount = results.multiHandLandmarks ? results.multiHandLandmarks.length : 0;
+            const fps = this._localHandsLastFps || 0;
+            this.overlayCtx.font = '14px Arial';
+            this.overlayCtx.fillStyle = 'rgba(0,0,0,0.6)';
+            this.overlayCtx.fillRect(6, 6, 120, 26);
+            this.overlayCtx.fillStyle = '#fff';
+            this.overlayCtx.fillText(`hands: ${handsCount}  fps: ${fps}`, 12, 24);
+        } catch (e) {  }
     }
 
     _startCaptureInterval() {
@@ -606,15 +803,16 @@ class AISignLanguageDetection {
 
     showLoading(show) {
         this.cameraLoading.style.display = show ? 'flex' : 'none';
-        this.aiCameraFeed.style.display = show ? 'none' : 'block';
+        if (this.aiCameraFeed) this.aiCameraFeed.style.display = show ? 'none' : 'block';
         this.aiStatus.style.display = show ? 'none' : 'flex';
     }
 
     showError(message = 'Unable to start AI camera. Please check if the AI service is running.') {
         this.cameraError.style.display = 'flex';
-        this.cameraError.querySelector('p').textContent = message;
+        const p = this.cameraError.querySelector('p');
+        if (p) p.textContent = message;
         this.cameraLoading.style.display = 'none';
-        this.aiCameraFeed.style.display = 'none';
+        if (this.aiCameraFeed) this.aiCameraFeed.style.display = 'none';
         this.aiStatus.style.display = 'none';
     }
 
@@ -734,6 +932,19 @@ class AISignLanguageDetection {
     async destroy() {
         this.stopStatusUpdates();
         await this.stopAICamera();
+        // Stop MediaPipe processing and animation frame
+        try {
+            if (this._localHandsRaf) {
+                cancelAnimationFrame(this._localHandsRaf);
+                this._localHandsRaf = null;
+            }
+            if (this._hands && typeof this._hands.close === 'function') {
+                this._hands.close();
+                this._hands = null;
+            }
+        } catch (err) {
+            console.warn('Error cleaning up local hands:', err);
+        }
         console.log('AI Sign Language Detection destroyed');
     }
 }
