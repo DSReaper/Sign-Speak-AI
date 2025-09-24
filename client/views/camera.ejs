@@ -23,7 +23,6 @@
                 <!-- Camera Section -->
                 <div class="camera-section" id="cameraSection">
                     <div class="camera-container" style="position: relative;">
-                        <!-- Controls inside the camera section -->
                         <div class="camera-controls">
                             <div class="detection-mode">
                                 <button class="mode-btn active" id="basicDetect">Basic Detect</button>
@@ -51,12 +50,11 @@
                         <!-- Camera Loading -->
                         <div class="camera-loading" id="cameraLoading">
                             <div class="loading-spinner"></div>
-                            <!-- loading text removed to keep camera view text-free -->
                         </div>
 
                         <!-- Camera Error -->
                         <div class="camera-error" id="cameraError" style="display: none;">
-                            <!-- error text removed to keep camera view text-free -->
+                            <p>No camera detected please check your camera permissions</p>
                             <button class="retry-btn" id="retryCamera">Try Again</button>
                         </div>
 
@@ -74,7 +72,7 @@
                 <div class="results-section">
                     <h2 class="results-title">Detected sign(s):</h2>
                     <div class="detected-phrase" id="detectedPhrase">
-                        Waiting for AI detection...
+                        Loading AI detection model...
                     </div>
                     
                     <!-- Audio Playback -->

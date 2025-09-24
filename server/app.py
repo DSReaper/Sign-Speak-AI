@@ -43,7 +43,7 @@ CORS(app)  # Enable CORS for Node.js integration
 # Global variables
 camera = None
 detector = None
-current_prediction = "Waiting for camera..."
+current_prediction = "Loading the AI detection model..."
 current_confidence = 0.0
 show_hands = True
 # When False, the server will not draw status/model/prediction text overlays
@@ -516,7 +516,7 @@ def draw_overlays(frame):
         # Prediction
         try:
             pred_text = None
-            if current_prediction and current_prediction not in ["Waiting...", "Waiting for camera..."]:
+            if current_prediction and current_prediction not in ["Waiting...", "Loading the AI detection model..."]:
                 # Confidence color coding
                 if current_confidence > 0.7:
                     color = (0, 220, 0)  # Green

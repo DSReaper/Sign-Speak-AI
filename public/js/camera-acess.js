@@ -166,7 +166,7 @@ class AISignLanguageDetection {
 
         } catch (error) {
             console.error('AI Camera start error:', error);
-            this.showError(`AI service error: ${error.message}`);
+            this.showError(`Error: ${error.message}`);
         }
     }
 

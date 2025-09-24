@@ -72,7 +72,7 @@ app.use('/auth', authRoutes);
 
 // Main application routes
 app.get('/', (req, res) => { // This is the login page 
-    res.render('index');
+    res.render('index', { currentPath: '/' });
 });
 
 // Application routes
@@ -83,7 +83,8 @@ app.get('/camera', async (req, res) => {
         if (healthCheck.ok) {
             res.render('camera', { 
                 aiServiceStatus: 'available',
-                flaskUrl: 'http://localhost:5000'
+                flaskUrl: 'http://localhost:5000',
+                currentPath: '/camera'
             });
         } else {
             throw new Error('Flask service not responding');
@@ -93,17 +94,18 @@ app.get('/camera', async (req, res) => {
         res.render('camera', { 
             aiServiceStatus: 'unavailable',
             flaskUrl: 'http://localhost:5000',
-            errorMessage: 'AI service is not available. Please start the Flask server on port 5000.'
+            errorMessage: 'AI service is not available. Please start the Flask server on port 5000.',
+            currentPath: '/camera'
         });
     }
 });
 
 app.get('/storage', (req, res) => {
-    res.render('storage');
+    res.render('storage', { currentPath: '/storage' });
 });
 
 app.get('/profile', (req, res) => {
-    res.render('profile');
+    res.render('profile', { currentPath: '/profile' });
 });
 
 // API endpoint to check Flask service status
@@ -151,7 +153,8 @@ app.use((err, req, res, next) => {
 // 404 handler
 app.use((req, res) => {
     res.status(404).render('404', { 
-        message: 'Page not found' 
+        message: 'Page not found',
+        currentPath: req.path
     });
 });
 
