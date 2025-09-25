@@ -1,26 +1,56 @@
 *{
-margin: 0;
-padding: 0;
-box-sizing: border-box;
-font-family: "Segoe UI", sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Segoe UI", sans-serif;
 }
 
-body {
-  background: #fff;
-  color: #111;
-}
+body { background: #fff; color: #111; }
+
+
+body.no-scroll { overflow: hidden; }
 
 
 .settings-container {
-  max-width: 420px;
-  margin: auto; 
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
+ 
+  background:#fff;
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+
+ 
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100dvh;
+  width: min(420px, 92vw);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 1002;
+
+
+  transform: translateX(100%);
+  transition: transform .28s ease;
+  border-top-left-radius: 16px;
+  border-bottom-left-radius: 16px;
+}
+.settings-container.is-open { transform: translateX(0); }
+
+
+.drawer-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.35);
+  backdrop-filter: blur(1px);
+  z-index: 1001;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+.drawer-backdrop.show{
+  opacity: 1;
+  pointer-events: auto;
 }
 
 
@@ -31,64 +61,25 @@ body {
   border-bottom: 1px solid #e5e5e5;
   padding-bottom: 12px;
 }
+.settings-header h2 { font-size: 18px; font-weight: 600; margin-left: 10px; }
+.back-btn { font-size: 20px; color: #111; text-decoration: none; }
 
-.settings-header h2 {
-  font-size: 18px;
-  font-weight: 600;
-  margin-left: 10px;
-}
-
-.back-btn {
-  font-size: 20px;
-  color: #111;
-  text-decoration: none;
-}
-
-
-.settings-list {
-  list-style: none;
-  flex: 1;
-}
-
+.settings-list { list-style: none; flex: 1; }
 .settings-list li {
-  display: flex;
-  align-items: center;
-  padding: 14px 0;
-  font-size: 15px;
-  cursor: pointer;
+  display: flex; align-items: center;
+  padding: 14px 0; font-size: 15px; cursor: pointer;
   border-bottom: 1px solid #f0f0f0;
 }
+.settings-list li i { margin-right: 12px; color: #222; }
 
-.settings-list li i {
-  margin-right: 12px;
-  color: #222;
-}
-
-
-.settings-list .danger {
-  color: #d9534f;
-}
-
-.settings-list .danger i {
-  color: #d9534f;
-}
-
+.settings-list .danger { color: #d9534f; }
+.settings-list .danger i { color: #d9534f; }
 
 .logout-section {
-  margin-top: 20px;
-  padding-top: 10px;
-  border-top: 1px solid #e5e5e5;
+  margin-top: 20px; padding-top: 10px; border-top: 1px solid #e5e5e5;
 }
-
 .logout-btn {
-  display: flex;
-  align-items: center;
-  color: #d9534f;
-  font-weight: 500;
-  text-decoration: none;
-  font-size: 15px;
+  display: flex; align-items: center;
+  color: #d9534f; font-weight: 500; text-decoration: none; font-size: 15px;
 }
-
-.logout-btn i {
-  margin-right: 10px;
-}
+.logout-btn i { margin-right: 10px; }

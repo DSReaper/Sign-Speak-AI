@@ -102,10 +102,6 @@ app.get('/storage', (req, res) => {
     res.render('storage');
 });
 
-app.get('/profile', (req, res) => {
-    res.render('profile');
-});
-
 app.get('/settings', (req, res) => {
   res.render('settings');
 });
