@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Speak - AI | Settings</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/settings.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+  <div class="app-grid">
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="container">
+        <h1>Settings</h1>
+
+        <ul class="settings-list">
+          <li><i class="fa fa-cog"></i> Application settings</li>
+          <li><i class="fa fa-lock"></i> Privacy Policy</li>
+          <li><i class="fa fa-file-alt"></i> Terms and Conditions</li>
+
+          <li class="danger"><i class="fa fa-key"></i> Change password</li>
+          <li class="danger"><i class="fa fa-envelope"></i> Change email</li>
+        </ul>
+
+        <div class="logout-section">
+          <a href="#" class="logout-btn"><i class="fa fa-sign-out-alt"></i> Logout</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Footer -->
+    <div class="nav-wrapper">
+      <%- include('partials/navigation') %>
+    </div>
+  </div>
+</body>
+</html>
