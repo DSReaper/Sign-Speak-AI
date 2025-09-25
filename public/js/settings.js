@@ -98,3 +98,16 @@ document.getElementById('change-email-form').addEventListener('submit', async (e
     alert('An error occurred. Please try again.');
   }
 });
+
+// Logout button event listener
+const logoutBtn = document.getElementById('logoutBtn');
+logoutBtn.addEventListener('click', async function (e) {
+  e.preventDefault();
+  try {
+    await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
+  } catch (err) {
+    // handle error
+  } finally {
+    window.location.href = '/';
+  }
+});

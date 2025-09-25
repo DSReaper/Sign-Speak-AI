@@ -1,8 +1,1 @@
-- [x] Add changePassword function to authController.js
-- [x] Add changeEmail function to authController.js
-- [x] Add /change-password and /change-email routes to authRoute.js with authentication
-- [x] Protect /settings route with authenticateToken in app.js
-- [x] Add modals for change password and change email in settings.ejs
-- [x] Create public/js/settings.js for handling clicks and form submissions
-- [x] Update public/css/settings.css for modal styles if needed
-- [ ] Test the functionality
+- [x] Add authenticateToken middleware to /storage route in server/app.js to require sign-in

@@ -132,7 +132,7 @@ app.get('/reset-password', (req, res) => {
     res.render('reset-password', { token });
 });
 
-app.get('/storage', (req, res) => {
+app.get('/storage', authenticateToken, (req, res) => {
     res.render('storage');
 });
 
