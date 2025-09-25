@@ -4,65 +4,36 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign Speak - AI | Settings</title>
+  <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/settings.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
+  <div class="app-grid">
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="container">
+        <h1>Settings</h1>
 
- 
-  <div class="drawer-backdrop" id="settingsBackdrop"></div>
+        <ul class="settings-list">
+          <li><i class="fa fa-cog"></i> Application settings</li>
+          <li><i class="fa fa-lock"></i> Privacy Policy</li>
+          <li><i class="fa fa-file-alt"></i> Terms and Conditions</li>
 
+          <li class="danger"><i class="fa fa-key"></i> Change password</li>
+          <li class="danger"><i class="fa fa-envelope"></i> Change email</li>
+        </ul>
 
-  <div class="settings-container" id="settingsPanel" aria-hidden="true">
-    <div class="settings-header">
-      
-      <a href="#" class="back-btn" id="toggleSettings">
-        <i class="fa fa-angle-left"></i>
-      </a>
-      <h2>Settings</h2>
+        <div class="logout-section">
+          <a href="#" class="logout-btn"><i class="fa fa-sign-out-alt"></i> Logout</a>
+        </div>
+      </div>
     </div>
 
-    <ul class="settings-list">
-      <li><i class="fa fa-cog"></i> Application settings</li>
-      <li><i class="fa fa-lock"></i> Privacy Policy</li>
-      <li><i class="fa fa-file-alt"></i> Terms and Conditions</li>
-
-      <li class="danger"><i class="fa fa-key"></i> Change password</li>
-      <li class="danger"><i class="fa fa-envelope"></i> Change email</li>
-    </ul>
-
-    <div class="logout-section">
-      <a href="#" class="logout-btn"><i class="fa fa-sign-out-alt"></i> Logout</a>
+    <!-- Navigation Footer -->
+    <div class="nav-wrapper">
+      <%- include('partials/navigation') %>
     </div>
   </div>
-
- 
-  <script>
-    (function () {
-      const panel    = document.getElementById('settingsPanel');
-      const backdrop = document.getElementById('settingsBackdrop');
-      const toggleEl = document.getElementById('toggleSettings');
-
-      function toggle() {
-        const isOpen = panel.classList.toggle('is-open');
-        backdrop.classList.toggle('show', isOpen);
-        document.body.classList.toggle('no-scroll', isOpen);
-        panel.setAttribute('aria-hidden', String(!isOpen));
-      }
-
-      window.toggleSettings = toggle;
-
-      
-      toggleEl.addEventListener('click', function (e) { e.preventDefault(); toggle(); });
-
-      
-      backdrop.addEventListener('click', toggle);
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && panel.classList.contains('is-open')) toggle();
-      });
-
-  
-    })();
-  </script>
 </body>
 </html>
