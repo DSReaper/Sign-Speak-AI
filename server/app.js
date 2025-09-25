@@ -136,7 +136,7 @@ app.get('/storage', (req, res) => {
     res.render('storage');
 });
 
-app.get('/settings', (req, res) => {
+app.get('/settings', authenticateToken, (req, res) => {
   res.render('settings');
 });
 

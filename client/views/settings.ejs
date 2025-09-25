@@ -20,8 +20,8 @@
           <li><i class="fa fa-lock"></i> Privacy Policy</li>
           <li><i class="fa fa-file-alt"></i> Terms and Conditions</li>
 
-          <li class="danger"><i class="fa fa-key"></i> Change password</li>
-          <li class="danger"><i class="fa fa-envelope"></i> Change email</li>
+          <li class="danger" id="change-password-btn"><i class="fa fa-key"></i> Change password</li>
+          <li class="danger" id="change-email-btn"><i class="fa fa-envelope"></i> Change email</li>
         </ul>
 
         <div class="logout-section">
@@ -35,5 +35,32 @@
       <%- include('partials/navigation') %>
     </div>
   </div>
+
+  <!-- Modals -->
+  <div id="change-password-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Change Password</h2>
+      <form id="change-password-form">
+        <input type="password" id="current-password" placeholder="Current Password" required>
+        <input type="password" id="new-password" placeholder="New Password" required>
+        <input type="password" id="confirm-password" placeholder="Confirm New Password" required>
+        <button type="submit">Change Password</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="change-email-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Change Email</h2>
+      <form id="change-email-form">
+        <input type="email" id="new-email" placeholder="New Email" required>
+        <button type="submit">Change Email</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/settings.js"></script>
 </body>
 </html>
