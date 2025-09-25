@@ -27,9 +27,10 @@ os.environ['MEDIAPIPE_DISABLE_GPU'] = '1'
 
 try:
     import mediapipe as mp
+    import timm
     HAND_DETECTION_AVAILABLE = True
 except ImportError:
-    print("MediaPipe not available. Hand detection disabled.")
+    print("MediaPipe or timm not available. Hand detection disabled.")
     HAND_DETECTION_AVAILABLE = False
 
 # Initialize Flask app
@@ -50,14 +51,137 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 # ============================================================================
-# MODEL ARCHITECTURES (Same as before)
+# MODEL ARCHITECTURES
 # ============================================================================
 
+class CNNLSTMModel(nn.Module):
+    """CNN+LSTM model for video classification using PyTorch"""
+    
+    def __init__(self, num_classes, sequence_length=30, input_size=(224, 224)):
+        super(CNNLSTMModel, self).__init__()
+        
+        self.sequence_length = sequence_length
+        self.input_size = input_size
+        self.num_classes = num_classes
+        
+        # Pre-trained CNN backbone (EfficientNet)
+        if not HAND_DETECTION_AVAILABLE:
+            raise ImportError("timm is required for CNNLSTMModel")
+        self.backbone = timm.create_model('efficientnet_b0', pretrained=True, num_classes=0)
+        
+        # Freeze backbone for transfer learning
+        for param in self.backbone.parameters():
+            param.requires_grad = False
+        
+        # Get feature dimension from backbone
+        feature_dim = self.backbone.num_features
+        
+        # Temporal processing layers
+        self.temporal_conv = nn.Conv1d(feature_dim, 512, kernel_size=3, padding=1)
+        self.temporal_bn = nn.BatchNorm1d(512)
+        self.dropout1 = nn.Dropout(0.3)
+        
+        # LSTM layers
+        self.lstm1 = nn.LSTM(512, 256, bidirectional=True, batch_first=True, dropout=0.3)
+        self.lstm2 = nn.LSTM(512, 128, bidirectional=True, batch_first=True, dropout=0.3)
+        
+        # Classification layers
+        self.classifier = nn.Sequential(
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(128, num_classes)
+        )
+    
+    def forward(self, x):
+        batch_size, seq_len, c, h, w = x.size()
+        
+        # Process each frame through CNN
+        x = x.view(-1, c, h, w)  # (batch*seq, c, h, w)
+        features = self.backbone(x)  # (batch*seq, feature_dim)
+        
+        # Reshape back to sequence
+        features = features.view(batch_size, seq_len, -1)  # (batch, seq, feature_dim)
+        
+        # Temporal convolution
+        x = features.transpose(1, 2)  # (batch, feature_dim, seq)
+        x = torch.relu(self.temporal_bn(self.temporal_conv(x)))
+        x = self.dropout1(x)
+        x = x.transpose(1, 2)  # (batch, seq, 512)
+        
+        # LSTM layers
+        x, _ = self.lstm1(x)  # (batch, seq, 512)
+        x, _ = self.lstm2(x)  # (batch, seq, 256)
+        
+        # Global average pooling over sequence
+        x = torch.mean(x, dim=1)  # (batch, 256)
+        
+        # Classification
+        x = self.classifier(x)
+        
+        return x
+
+class PoseLSTMModel(nn.Module):
+    """LSTM model for pose sequence classification using PyTorch"""
+    
+    def __init__(self, num_classes, sequence_length=30, pose_dim=225):
+        super(PoseLSTMModel, self).__init__()
+        
+        self.sequence_length = sequence_length
+        self.pose_dim = pose_dim
+        self.num_classes = num_classes
+        
+        # Input processing
+        self.input_bn = nn.BatchNorm1d(pose_dim)
+        self.input_dropout = nn.Dropout(0.2)
+        
+        # LSTM layers
+        self.lstm1 = nn.LSTM(pose_dim, 256, bidirectional=True, batch_first=True, dropout=0.4)
+        self.lstm2 = nn.LSTM(512, 128, bidirectional=True, batch_first=True, dropout=0.3)
+        self.lstm3 = nn.LSTM(256, 64, bidirectional=True, batch_first=True, dropout=0.3)
+        
+        # Classification layers
+        self.classifier = nn.Sequential(
+            nn.Linear(128, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(128, num_classes)
+        )
+    
+    def forward(self, x):
+        batch_size, seq_len, pose_dim = x.size()
+        
+        # Normalize input
+        x = x.view(-1, pose_dim)  # (batch*seq, pose_dim)
+        x = self.input_bn(x)
+        x = self.input_dropout(x)
+        x = x.view(batch_size, seq_len, pose_dim)  # (batch, seq, pose_dim)
+        
+        # LSTM layers
+        x, _ = self.lstm1(x)  # (batch, seq, 512)
+        x, _ = self.lstm2(x)  # (batch, seq, 256)
+        x, _ = self.lstm3(x)  # (batch, seq, 128)
+        
+        # Global average pooling over sequence
+        x = torch.mean(x, dim=1)  # (batch, 128)
+        
+        # Classification
+        x = self.classifier(x)
+        
+        return x
+
 class HandFocusedCNN_LSTM(nn.Module):
-    """Hand-focused CNN-LSTM model for SASL gesture recognition"""
+    """Legacy model class for backward compatibility"""
     
     def __init__(self, cnn, hidden_size=256, num_classes=41, num_layers=2, dropout=0.3):
         super(HandFocusedCNN_LSTM, self).__init__()
+        print("Warning: Using legacy HandFocusedCNN_LSTM. Consider using CNNLSTMModel for better performance.")
         self.cnn = cnn
         self.lstm = nn.LSTM(
             input_size=512, 
@@ -125,20 +249,33 @@ def create_cnn_base():
 # ============================================================================
 
 class WebHandDetector:
-    """MediaPipe-based hand detection for web application"""
+    """MediaPipe-based hand and pose detection for web application"""
     
     def __init__(self):
         if not HAND_DETECTION_AVAILABLE:
             self.hands = None
+            self.pose = None
             return
             
         self.mp_hands = mp.solutions.hands
+        self.mp_pose = mp.solutions.pose
         self.mp_draw = mp.solutions.drawing_utils
+        self.mp_drawing_styles = mp.solutions.drawing_styles
+        
         self.hands = self.mp_hands.Hands(
             static_image_mode=False,
             max_num_hands=2,
             min_detection_confidence=0.5,
             min_tracking_confidence=0.3
+        )
+        
+        self.pose = self.mp_pose.Pose(
+            static_image_mode=False,
+            model_complexity=1,
+            smooth_landmarks=True,
+            enable_segmentation=False,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5
         )
     
     def detect_hands(self, frame):
@@ -172,6 +309,42 @@ class WebHandDetector:
         
         return hands_data
     
+    def extract_pose_landmarks(self, frame):
+        """Extract pose and hand landmarks from frame for model input"""
+        if not self.hands or not self.pose:
+            return np.zeros(225)  # Default pose dimension
+            
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        landmarks = []
+        
+        # Process pose
+        pose_results = self.pose.process(rgb_frame)
+        # Process hands
+        hand_results = self.hands.process(rgb_frame)
+        
+        # Add pose landmarks (33 points × 3 coordinates = 99 features)
+        if pose_results.pose_landmarks:
+            for landmark in pose_results.pose_landmarks.landmark:
+                landmarks.extend([landmark.x, landmark.y, landmark.z])
+        else:
+            landmarks.extend([0.0] * 99)
+        
+        # Add hand landmarks (2 hands × 21 points × 3 coordinates = 126 features)
+        hands_added = 0
+        if hand_results.multi_hand_landmarks:
+            for hand_landmarks in hand_results.multi_hand_landmarks[:2]:  # Max 2 hands
+                for landmark in hand_landmarks.landmark:
+                    landmarks.extend([landmark.x, landmark.y, landmark.z])
+                hands_added += 1
+        
+        # Pad with zeros if less than 2 hands detected
+        while hands_added < 2:
+            landmarks.extend([0.0] * 63)  # 21 points × 3 coordinates
+            hands_added += 1
+        
+        return np.array(landmarks)  # Total: 99 + 126 = 225 features
+    
     def draw_hands(self, frame, hands_data):
         """Draw hand landmarks and bounding boxes"""
         if not self.hands:
@@ -193,24 +366,46 @@ class WebHandDetector:
         
         return frame
     
+    def draw_pose_landmarks(self, frame):
+        """Draw pose landmarks on frame"""
+        if not self.pose:
+            return frame
+            
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        pose_results = self.pose.process(rgb_frame)
+        
+        if pose_results.pose_landmarks:
+            self.mp_draw.draw_landmarks(
+                frame, 
+                pose_results.pose_landmarks, 
+                self.mp_pose.POSE_CONNECTIONS,
+                landmark_drawing_spec=self.mp_drawing_styles.get_default_pose_landmarks_style()
+            )
+        
+        return frame
+    
     def close(self):
         """Clean up resources"""
         if hasattr(self, 'hands') and self.hands:
             self.hands.close()
+        if hasattr(self, 'pose') and self.pose:
+            self.pose.close()
 
 # ============================================================================
 # GESTURE DETECTION SYSTEM
 # ============================================================================
 
 class WebGestureDetector:
-    """Web-based gesture detection system"""
+    """Web-based ensemble gesture detection system using CNN+LSTM and Pose LSTM"""
     
-    def __init__(self, model, device, class_names, buffer_size=16):
-        self.model = model
+    def __init__(self, cnn_model, device, class_names, buffer_size=16):
+        self.cnn_model = cnn_model
+        self.pose_model = pose_model_global  # Get pose model from global
         self.device = device
         self.class_names = class_names
         self.buffer_size = buffer_size
         self.frame_buffer = deque(maxlen=buffer_size)
+        self.pose_buffer = deque(maxlen=buffer_size) 
         self.prediction_history = deque(maxlen=10)
         self.hand_detector = WebHandDetector()
         
@@ -223,30 +418,63 @@ class WebGestureDetector:
         ])
     
     def add_frame(self, frame):
-        """Add frame to buffer"""
+        """Add frame to buffer and extract pose landmarks"""
         self.frame_buffer.append(frame.copy())
+        
+        # Extract pose landmarks for this frame
+        pose_landmarks = self.hand_detector.extract_pose_landmarks(frame)
+        self.pose_buffer.append(pose_landmarks)
     
     def is_buffer_ready(self):
         """Check if buffer has enough frames for prediction"""
-        return len(self.frame_buffer) >= self.buffer_size
+        return len(self.frame_buffer) >= self.buffer_size and len(self.pose_buffer) >= self.buffer_size
     
     def predict_gesture(self):
-        """Predict gesture from current buffer"""
+        """Predict gesture using ensemble of CNN+LSTM and Pose LSTM models"""
         if not self.is_buffer_ready():
             return None, 0.0
         
+        try:
+            cnn_prediction, cnn_confidence = self._predict_with_cnn()
+            pose_prediction, pose_confidence = self._predict_with_pose()
+            
+            # Ensemble prediction - weighted average
+            ensemble_prediction, ensemble_confidence = self._ensemble_predictions(
+                (cnn_prediction, cnn_confidence),
+                (pose_prediction, pose_confidence)
+            )
+            
+            if ensemble_prediction is None:
+                return None, 0.0
+                
+            # Filter low confidence predictions
+            if ensemble_confidence < 0.01:
+                return None, 0.0
+            
+            # Add to history
+            self.prediction_history.append((ensemble_prediction, ensemble_confidence))
+            
+            # Get stable prediction
+            stable_prediction = self._get_stable_prediction()
+            return stable_prediction, ensemble_confidence
+            
+        except Exception as e:
+            print(f"Prediction error: {e}")
+            return None, 0.0
+    
+    def _predict_with_cnn(self):
+        """Make prediction using CNN+LSTM model"""
         try:
             # Preprocess frames
             frames_tensor = self._preprocess_frames(list(self.frame_buffer))
             frames_tensor = frames_tensor.unsqueeze(0).to(self.device)
             
-            # Model prediction
+            # CNN+LSTM prediction
             with torch.no_grad():
-                outputs = self.model(frames_tensor)
+                outputs = self.cnn_model(frames_tensor)
                 
-                # Check for NaN outputs
                 if torch.isnan(outputs).any() or torch.isinf(outputs).any():
-                    print("Model producing NaN outputs")
+                    print("CNN model producing NaN outputs")
                     return None, 0.0
                 
                 probabilities = torch.softmax(outputs, dim=1)
@@ -255,20 +483,70 @@ class WebGestureDetector:
                 predicted_class = self.class_names[predicted_idx.item()]
                 confidence_score = confidence.item()
                 
-                # Filter low confidence predictions
-                if confidence_score < 0.01:
-                    return None, 0.0
-                
-                # Add to history
-                self.prediction_history.append((predicted_class, confidence_score))
-                
-                # Get stable prediction
-                stable_prediction = self._get_stable_prediction()
-                return stable_prediction, confidence_score
+                return predicted_class, confidence_score
                 
         except Exception as e:
-            print(f"Prediction error: {e}")
+            print(f"CNN prediction error: {e}")
             return None, 0.0
+    
+    def _predict_with_pose(self):
+        """Make prediction using Pose LSTM model"""
+        try:
+            if self.pose_model is None:
+                return None, 0.0
+                
+            # Prepare pose sequence  
+            pose_sequence = np.array(list(self.pose_buffer))
+            pose_tensor = torch.FloatTensor(pose_sequence).unsqueeze(0).to(self.device)
+            
+            # Pose LSTM prediction
+            with torch.no_grad():
+                outputs = self.pose_model(pose_tensor)
+                
+                if torch.isnan(outputs).any() or torch.isinf(outputs).any():
+                    print("Pose model producing NaN outputs")
+                    return None, 0.0
+                
+                probabilities = torch.softmax(outputs, dim=1)
+                confidence, predicted_idx = torch.max(probabilities, 1)
+                
+                predicted_class = self.class_names[predicted_idx.item()]
+                confidence_score = confidence.item()
+                
+                return predicted_class, confidence_score
+                
+        except Exception as e:
+            print(f"Pose prediction error: {e}")
+            return None, 0.0
+    
+    def _ensemble_predictions(self, cnn_result, pose_result):
+        """Combine CNN and Pose predictions with weighted ensemble"""
+        cnn_pred, cnn_conf = cnn_result
+        pose_pred, pose_conf = pose_result
+        
+        # If either model failed, use the other
+        if cnn_pred is None and pose_pred is None:
+            return None, 0.0
+        elif cnn_pred is None:
+            return pose_pred, pose_conf * 0.8  # Reduced confidence for single model
+        elif pose_pred is None:
+            return cnn_pred, cnn_conf * 0.8
+        
+        # Both models made predictions
+        # Weight: CNN 60%, Pose 40% (CNN generally more accurate for gesture recognition)
+        cnn_weight = 0.6
+        pose_weight = 0.4
+        
+        # If both models predict the same class, increase confidence
+        if cnn_pred == pose_pred:
+            ensemble_confidence = cnn_weight * cnn_conf + pose_weight * pose_conf
+            return cnn_pred, min(ensemble_confidence * 1.2, 1.0)  # Boost confidence but cap at 1.0
+        else:
+            # Different predictions - choose the more confident one but reduce overall confidence
+            if cnn_conf >= pose_conf:
+                return cnn_pred, cnn_conf * 0.7  # Reduce confidence for disagreement
+            else:
+                return pose_pred, pose_conf * 0.7
     
     def _preprocess_frames(self, frames):
         """Preprocess frames for model input"""
@@ -307,47 +585,79 @@ class WebGestureDetector:
     def cleanup(self):
         """Clean up resources"""
         self.hand_detector.close()
+        
+        # Get recent predictions
+        recent_predictions = [pred[0] for pred in list(self.prediction_history)[-3:]]
+        
+        # Return most common prediction
+        prediction_counts = {}
+        for pred in recent_predictions:
+            prediction_counts[pred] = prediction_counts.get(pred, 0) + 1
+        
+        most_common = max(prediction_counts.items(), key=lambda x: x[1])
+        return most_common[0]
+    
+    def get_hand_overlay_info(self, frame):
+        """Get hand detection information"""
+        try:
+            return self.hand_detector.detect_hands(frame)
+        except Exception as e:
+            print(f"Hand detection error: {e}")
+            return []
+    
+    def cleanup(self):
+        """Clean up resources"""
+        self.hand_detector.close()
 
 # ============================================================================
 # MODEL LOADING
 # ============================================================================
 
-def validate_model(model, device, class_names):
-    """Validate that the model produces valid outputs"""
+def validate_models(cnn_model, pose_model, device, class_names, sequence_length=16):
+    """Validate that both models produce valid outputs"""
     try:
-        model.eval()
+        cnn_model.eval()
+        pose_model.eval()
         
-        # Create dummy input (batch_size=1, seq_len=16, C=3, H=224, W=224)
-        dummy_input = torch.randn(1, 16, 3, 224, 224).to(device)
-        
+        # Test CNN+LSTM model
+        dummy_video = torch.randn(1, sequence_length, 3, 224, 224).to(device)
         with torch.no_grad():
-            output = model(dummy_input)
+            cnn_output = cnn_model(dummy_video)
             
-            # Check output shape
-            if output.shape != (1, len(class_names)):
-                print(f"Model output shape mismatch: expected (1, {len(class_names)}), got {output.shape}")
+            # Check CNN output shape
+            if cnn_output.shape != (1, len(class_names)):
+                print(f"CNN model output shape mismatch: expected (1, {len(class_names)}), got {cnn_output.shape}")
                 return False
             
             # Check for NaN or infinite values
-            if torch.isnan(output).any() or torch.isinf(output).any():
-                print("Model produces NaN or infinite values")
+            if torch.isnan(cnn_output).any() or torch.isinf(cnn_output).any():
+                print("CNN model produces NaN or infinite values")
+                return False
+        
+        # Test Pose LSTM model  
+        dummy_pose = torch.randn(1, sequence_length, 225).to(device)  # 225 features
+        with torch.no_grad():
+            pose_output = pose_model(dummy_pose)
+            
+            # Check Pose output shape
+            if pose_output.shape != (1, len(class_names)):
+                print(f"Pose model output shape mismatch: expected (1, {len(class_names)}), got {pose_output.shape}")
                 return False
             
-            # Apply softmax and check probabilities
-            probs = torch.softmax(output, dim=1)
-            if torch.isnan(probs).any() or torch.isinf(probs).any():
-                print("Softmax produces NaN or infinite values")
+            # Check for NaN or infinite values
+            if torch.isnan(pose_output).any() or torch.isinf(pose_output).any():
+                print("Pose model produces NaN or infinite values")
                 return False
-            
-            print("✓ Model validation passed")
-            return True
-            
+        
+        print("✓ Both models validation passed")
+        return True
+        
     except Exception as e:
-        print(f"Model validation failed: {e}")
+        print(f"Models validation failed: {e}")
         return False
 
-def load_model_and_classes():
-    """Load the SASL model and class names"""
+def load_models_and_classes():
+    """Load both CNN+LSTM and Pose LSTM models with class names"""
     # Load class names
     class_names_path = os.path.join(current_dir, "models", "class_names.json")
     try:
@@ -356,63 +666,76 @@ def load_model_and_classes():
         print(f"✓ Loaded {len(class_names)} classes")
     except Exception as e:
         print(f"Error loading class names: {e}")
-        return None, None
+        return None, None, None
     
-    # Load model
-    model_path = os.path.join(current_dir, "models", "hand_focused_sasl_model.pth")
-    if not os.path.exists(model_path):
-        print(f"Model file not found: {model_path}")
-        print("Please ensure 'hand_focused_sasl_model.pth' is in the models/ directory")
-        return None, None
+    num_classes = len(class_names)
+    sequence_length = 16  # Reduced from 30 for faster processing
+    
+    # Load CNN+LSTM model
+    cnn_model_path = os.path.join(current_dir, "models", "best_sasl_cnn_lstm_model.pth")
+    pose_model_path = os.path.join(current_dir, "models", "best_sasl_pose_lstm_model.pth")
+    
+    if not os.path.exists(cnn_model_path):
+        print(f"CNN model file not found: {cnn_model_path}")
+        return None, None, None
+    
+    if not os.path.exists(pose_model_path):
+        print(f"Pose model file not found: {pose_model_path}")
+        return None, None, None
     
     try:
-        # Create model architecture
-        cnn_base = create_cnn_base()
-        model = HandFocusedCNN_LSTM(
-            cnn=cnn_base,
-            num_classes=len(class_names),
-            hidden_size=256,
-            num_layers=2,
-            dropout=0.3
+        # Create CNN+LSTM model
+        cnn_model = CNNLSTMModel(
+            num_classes=num_classes,
+            sequence_length=sequence_length,
+            input_size=(224, 224)
         ).to(device)
         
-        print(f"✓ Model architecture created")
+        # Create Pose LSTM model
+        pose_model = PoseLSTMModel(
+            num_classes=num_classes,
+            sequence_length=sequence_length,
+            pose_dim=225
+        ).to(device)
         
-        # Load weights
-        checkpoint = torch.load(model_path, map_location=device, weights_only=False)
+        print(f"✓ Model architectures created")
         
-        # Check if the checkpoint keys match our model
-        model_keys = set(model.state_dict().keys())
-        checkpoint_keys = set(checkpoint.keys())
+        # Load CNN+LSTM weights
+        cnn_checkpoint = torch.load(cnn_model_path, map_location=device, weights_only=False)
+        cnn_model.load_state_dict(cnn_checkpoint, strict=False)
+        cnn_model.eval()
+        print(f"✓ CNN+LSTM model weights loaded successfully")
         
-        missing_keys = model_keys - checkpoint_keys
-        unexpected_keys = checkpoint_keys - model_keys
+        # Load Pose LSTM weights  
+        pose_checkpoint = torch.load(pose_model_path, map_location=device, weights_only=False)
+        pose_model.load_state_dict(pose_checkpoint, strict=False)
+        pose_model.eval()
+        print(f"✓ Pose LSTM model weights loaded successfully")
         
-        if missing_keys:
-            print(f"Missing keys in checkpoint: {missing_keys}")
-            return None, None
+        # Validate both models
+        if not validate_models(cnn_model, pose_model, device, class_names, sequence_length):
+            print(f"Models validation failed")
+            return None, None, None
         
-        if unexpected_keys:
-            print(f"! Unexpected keys in checkpoint: {unexpected_keys}")
-        
-        model.load_state_dict(checkpoint, strict=False)
-        model.eval()
-        
-        print(f"✓ Model weights loaded successfully")
-        
-        # Validate the model
-        if not validate_model(model, device, class_names):
-            print(f"Model validation failed")
-            return None, None
-        
-        print(f"✓ Model loaded and validated on {device}")
-        return model, class_names
+        return cnn_model, pose_model, class_names
         
     except Exception as e:
-        print(f"Error loading model: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Error loading models: {e}")
+        return None, None, None
+
+# Legacy function for backward compatibility
+def load_model_and_classes():
+    """Legacy function - loads both models but returns only CNN model for compatibility"""
+    cnn_model, pose_model, class_names = load_models_and_classes()
+    if cnn_model is None:
         return None, None
+    # Store pose model globally for access by detector
+    global pose_model_global
+    pose_model_global = pose_model
+    return cnn_model, class_names
+
+# Initialize global pose model variable
+pose_model_global = None
 
 # Initialize model and detector
 print("Loading SASL AI Model...")
@@ -434,40 +757,44 @@ def generate_frames():
     while is_camera_active and camera is not None:
         success, frame = camera.read()
         if not success:
+            print("Failed to read from camera")
             break
         
         frame_count += 1
         
-        # Add frame to detector if available
+        # Add frame to detector buffer
         if detector:
             detector.add_frame(frame)
             
-            # Get prediction every few frames
+            # Make prediction every few frames to reduce computational load
             if frame_count % 3 == 0 and detector.is_buffer_ready():
-                pred, conf = detector.predict_gesture()
-                if pred:
-                    current_prediction = pred
-                    current_confidence = conf
+                prediction, confidence = detector.predict_gesture()
+                if prediction:
+                    current_prediction = prediction
+                    current_confidence = confidence
         
         # Draw overlays
         frame = draw_overlays(frame)
         
-        # Encode frame
-        ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-        if ret:
-            frame = buffer.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        # Encode frame as JPEG
+        _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        frame_bytes = buffer.tobytes()
+        
+        # Yield frame in multipart format
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
 def draw_overlays(frame):
     """Draw all overlays on frame"""
     global show_hands
     
-    # Hand detection overlay
+    # Hand and pose detection overlay
     if show_hands and detector:
         hands_data = detector.get_hand_overlay_info(frame)
-        if hands_data:
-            frame = detector.hand_detector.draw_hands(frame, hands_data)
+        frame = detector.hand_detector.draw_hands(frame, hands_data)
+        
+        # Also draw pose landmarks
+        frame = detector.hand_detector.draw_pose_landmarks(frame)
     
     # Status overlays
     h, w = frame.shape[:2]
@@ -492,8 +819,8 @@ def draw_overlays(frame):
     
     # Model info
     if detector:
-        cv2.putText(frame, "Model: Hand-Focused SASL", (10, h-70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-        cv2.putText(frame, "Hand-focused attention active", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+        cv2.putText(frame, "Model: CNN+LSTM + Pose Ensemble", (10, h-70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        cv2.putText(frame, "Ensemble AI active", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
     else:
         cv2.putText(frame, "AI Model: Not loaded", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
     
@@ -502,6 +829,40 @@ def draw_overlays(frame):
     cv2.putText(frame, f"Hands: {hand_status}", (w-120, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
     
     return frame
+
+def generate_frames():
+    """Generate video frames for web streaming"""
+    global current_prediction, current_confidence, frame_count, camera, is_camera_active
+    
+    while is_camera_active and camera is not None:
+        success, frame = camera.read()
+        if not success:
+            break
+        
+        frame_count += 1
+        
+        # Add frame to detector if available
+        if detector:
+            detector.add_frame(frame)
+            
+            # Get prediction every few frames
+            if frame_count % 3 == 0 and detector.is_buffer_ready():
+                prediction, confidence = detector.predict_gesture()
+                if prediction:
+                    current_prediction = prediction
+                    current_confidence = confidence
+        
+        # Draw overlays
+        frame = draw_overlays(frame)
+        
+        # Encode frame as JPEG
+        _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        frame_bytes = buffer.tobytes()
+        
+        # Yield frame in multipart format
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
 
 # ============================================================================
 # WEB ROUTES (Updated for Node.js integration)
