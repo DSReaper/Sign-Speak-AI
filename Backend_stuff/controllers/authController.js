@@ -40,7 +40,7 @@ exports.signup = async (req, res) => {
     await user.save();
 
     // Generate token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '1h' });
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '5m' });
 
     res.status(201).json({ message: 'User created successfully', token });
   } catch (error) {
@@ -65,7 +65,7 @@ exports.signin = async (req, res) => {
     }
 
     // Generate token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '1h' });
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '5m' });
 
     res.json({ message: 'Login successful', token, userId: user._id });
   } catch (error) {
