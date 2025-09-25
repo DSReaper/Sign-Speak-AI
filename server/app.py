@@ -349,21 +349,40 @@ class WebHandDetector:
         """Draw hand landmarks and bounding boxes"""
         if not self.hands:
             return frame
-            
+        # Define colors for each finger (thumb, index, middle, ring, pinky)
+        finger_colors = [
+            (255, 0, 0),    # Thumb - Blue
+            (0, 255, 0),    # Index - Green
+            (0, 0, 255),    # Middle - Red
+            (255, 255, 0),  # Ring - Cyan
+            (255, 0, 255)   # Pinky - Magenta
+        ]
+        # Finger landmark indices in MediaPipe
+        finger_indices = [
+            [0, 1, 2, 3, 4],      # Thumb
+            [0, 5, 6, 7, 8],      # Index
+            [0, 9, 10, 11, 12],   # Middle
+            [0, 13, 14, 15, 16],  # Ring
+            [0, 17, 18, 19, 20]   # Pinky
+        ]
         for hand_data in hands_data:
-            # Draw landmarks
-            self.mp_draw.draw_landmarks(
-                frame, 
-                hand_data['landmarks'], 
-                self.mp_hands.HAND_CONNECTIONS
-            )
-            
+            hand_landmarks = hand_data['landmarks']
+            h, w, _ = frame.shape
+            # Draw colored fingers
+            for f, indices in enumerate(finger_indices):
+                for i in range(len(indices)-1):
+                    start = hand_landmarks.landmark[indices[i]]
+                    end = hand_landmarks.landmark[indices[i+1]]
+                    x1, y1 = int(start.x * w), int(start.y * h)
+                    x2, y2 = int(end.x * w), int(end.y * h)
+                    cv2.line(frame, (x1, y1), (x2, y2), finger_colors[f], 3)
+            # Draw all landmarks as small circles
+            for idx, lm in enumerate(hand_landmarks.landmark):
+                x, y = int(lm.x * w), int(lm.y * h)
+                cv2.circle(frame, (x, y), 4, (255, 255, 255), -1)
             # Draw bounding box
             bbox = hand_data['bbox']
             cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
-            cv2.putText(frame, f"Hand {hand_data['confidence']:.2f}", 
-                       (bbox[0], bbox[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-        
         return frame
     
     def draw_pose_landmarks(self, frame):
@@ -762,24 +781,22 @@ def generate_frames():
         
         frame_count += 1
         
+        # Flip the frame horizontally for mirror effect
+        frame = cv2.flip(frame, 1)
         # Add frame to detector buffer
         if detector:
             detector.add_frame(frame)
-            
             # Make prediction every few frames to reduce computational load
             if frame_count % 3 == 0 and detector.is_buffer_ready():
                 prediction, confidence = detector.predict_gesture()
                 if prediction:
                     current_prediction = prediction
                     current_confidence = confidence
-        
         # Draw overlays
         frame = draw_overlays(frame)
-        
         # Encode frame as JPEG
         _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
         frame_bytes = buffer.tobytes()
-        
         # Yield frame in multipart format
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
