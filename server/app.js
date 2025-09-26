@@ -140,6 +140,10 @@ app.get('/settings', authenticateToken, (req, res) => {
   res.render('settings');
 });
 
+app.get('/application_settings', authenticateToken, (req, res) => {
+  res.render('application_settings');
+});
+
 // API endpoint to check Flask service status
 app.get('/api/flask-status', async (req, res) => {
     try {
