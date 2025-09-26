@@ -1,13 +1,3 @@
-// Fallback hand connection list
-const HAND_CONNECTIONS_FALLBACK = [
-    [0,1],[1,2],[2,3],[3,4],
-    [0,5],[5,6],[6,7],[7,8],
-    [5,9],[9,10],[10,11],[11,12],
-    [9,13],[13,14],[14,15],[15,16],
-    [13,17],[17,18],[18,19],[19,20],
-    [0,17]
-];
-
 class AISignLanguageDetection {
     constructor() {
         // visible feed element
@@ -25,7 +15,7 @@ class AISignLanguageDetection {
             this.overlayCanvas.style.display = 'block';
             this.overlayCanvas.style.zIndex = '5';
         }
-        // optional UI elements (may be absent)
+        // other UI elements 
     this.bufferStatus = document.getElementById('bufferStatus');
     this.confidenceStatus = document.getElementById('confidenceStatus');
         this.aiStatus = document.getElementById('aiStatus');
@@ -168,7 +158,6 @@ class AISignLanguageDetection {
             await this._startLocalCameraAndWebSocket();
             this.showLoading(false);
             this.isAIActive = true;
-            this.startStatusUpdates();
 
         } catch (error) {
             console.error('AI Camera start error:', error);
@@ -323,8 +312,6 @@ class AISignLanguageDetection {
         // backpressure: only send when not pending
         this._pending = false;
 
-        this.ws.binaryType = 'arraybuffer';
-
         this.ws.onopen = () => {
             console.log('WebSocket connected to AI detection service');
             this._reconnectAttempts = 0;
@@ -353,54 +340,47 @@ class AISignLanguageDetection {
         };
 
         this.ws.onmessage = (evt) => {
-            // server sends JPEG frames (Blob or ArrayBuffer)
             const data = evt.data;
 
-            if (!(data instanceof ArrayBuffer) && !(data instanceof Blob)) {
-                // Unexpected message type — log and ignore.
-                console.warn('WS: received unexpected non-binary message', data);
-                this._pending = false;
+            // If server sends JSON text (prediction metadata)
+            if (typeof data === 'string') {
+                try {
+                    const obj = JSON.parse(data);
+                    // Example server response: { prediction, confidence, error}
+                    if (obj.prediction) {
+                        // .json object retrieved from the python server
+                        console.log({ prediction: obj.prediction, confidence: (obj.confidence || 0) });
+                        this.updateDetectedPhrase(`"${obj.prediction}"`);
+                        if (this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
+                    } else if (obj.error) {
+                        console.warn('AI server error:', obj.error);
+                    }
+                } catch (err) {
+                    console.warn('Failed to parse WS text message as JSON', err, evt.data);
+                } finally {
+                    this._pending = false;
+                    if (this._pendingTimeout) { clearTimeout(this._pendingTimeout); this._pendingTimeout = null; }
+                }
                 return;
             }
 
-            // convert bytes into a Blob and draw to fallback canvas for diagnostics
-            const blob = data instanceof Blob ? data : new Blob([data], { type: 'image/jpeg' });
-            console.log('WS: received frame blob, size=', blob.size);
-
-            if (!this._fallbackCanvas) {
-                this._fallbackCanvas = document.createElement('canvas');
-                this._fallbackCanvasCtx = this._fallbackCanvas.getContext('2d');
-                this._fallbackCanvas.style.display = 'none';
-                document.body.appendChild(this._fallbackCanvas);
-            }
-
-            // create object URL and draw to fallback canvas
-            const url = URL.createObjectURL(blob);
-            if (!this._fallbackCanvas) {
-                this._fallbackCanvas = document.createElement('canvas');
-                this._fallbackCanvasCtx = this._fallbackCanvas.getContext('2d');
-                this._fallbackCanvas.style.display = 'none';
-                document.body.appendChild(this._fallbackCanvas);
-            }
-
-            // decode image for fallback canvas
-            const img = new Image();
-            img.onload = () => {
-                try {
-                    this._fallbackCanvas.width = img.width;
-                    this._fallbackCanvas.height = img.height;
-                    this._fallbackCanvasCtx.drawImage(img, 0, 0);
-                } catch (err) {
-                    console.warn('Fallback canvas draw error', err);
+            // We expect a JSON string response from the server describing the detected phrase. Parse it and update UI.
+            try {
+                const obj = JSON.parse(data);
+                if (obj.prediction) {
+                    // .json object retrieved from the python server
+                    console.log({ prediction: obj.prediction, confidence: (obj.confidence || 0) });
+                    this.updateDetectedPhrase(`"${obj.prediction}"`);
+                    if (this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
+                } else if (obj.error) {
+                    console.warn('AI server error:', obj.error);
                 }
-                try { URL.revokeObjectURL(url); } catch (err) {  }
+            } catch (err) {
+                console.warn('Failed to parse WS JSON response', err, data);
+            } finally {
                 this._pending = false;
-            };
-            img.onerror = (err) => {
-                console.warn('Image decode error on fallback', err);
-                this._pending = false;
-            };
-            img.src = url;
+                if (this._pendingTimeout) { clearTimeout(this._pendingTimeout); this._pendingTimeout = null; }
+            }
         };
 
         this.ws.onerror = (e) => {
@@ -446,7 +426,6 @@ class AISignLanguageDetection {
                 this._localHandsFrames = 0;
                 this._localHandsLastTime = now;
             }
-            if (Math.random() < 0.01) console.log('Local hands onResults - hands=', results.multiHandLandmarks ? results.multiHandLandmarks.length : 0, 'fps=', this._localHandsLastFps);
         });
 
         this._localHandsSkip = 0;
@@ -552,7 +531,7 @@ class AISignLanguageDetection {
             // Use drawing utilities if available
             if (window.drawConnectors && window.drawLandmarks) {
           
-                const connections = (typeof window.HAND_CONNECTIONS !== 'undefined') ? window.HAND_CONNECTIONS : HAND_CONNECTIONS_FALLBACK;
+                const connections = (typeof window.HAND_CONNECTIONS !== 'undefined' && Array.isArray(window.HAND_CONNECTIONS)) ? window.HAND_CONNECTIONS : [];
                 try {
   
                     const pixelLandmarks = landmarks.map((lm) => {
@@ -756,6 +735,8 @@ class AISignLanguageDetection {
                 
                 if (response.ok) {
                     const data = await response.json();
+                    // Log full status JSON from AI model
+                    console.log('AI /status response:', data);
                     this.updateStatus(data);
                 }
             } catch (error) {

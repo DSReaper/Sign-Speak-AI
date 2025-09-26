@@ -15,7 +15,7 @@ from collections import deque
 import threading
 import time
 import base64
-from flask import Flask, render_template, Response, jsonify, request
+from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 import warnings
 warnings.filterwarnings("ignore")
@@ -41,7 +41,6 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for Node.js integration
 
 # Global variables
-camera = None
 detector = None
 current_prediction = "Loading the AI detection model..."
 current_confidence = 0.0
@@ -52,7 +51,6 @@ show_hands = True
 show_server_overlays = False
 
 frame_count = 0
-is_camera_active = False
 detector_lock = threading.Lock()
 
 # Device and paths
@@ -60,7 +58,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 # ============================================================================
-# MODEL ARCHITECTURES (Same as before)
+# MODEL ARCHITECTURES 
 # ============================================================================
 
 class HandFocusedCNN_LSTM(nn.Module):
@@ -131,7 +129,7 @@ def create_cnn_base():
     return nn.Sequential(*layers)
 
 # ============================================================================
-# HAND DETECTION SYSTEM (Same as before)
+# HAND DETECTION SYSTEM 
 # ============================================================================
 
 class WebHandDetector:
@@ -437,40 +435,8 @@ else:
 # VIDEO STREAMING
 # ============================================================================
 
-def generate_frames():
-    """Generate video frames for web streaming"""
-    global current_prediction, current_confidence, frame_count, camera, is_camera_active
-    
-    while is_camera_active and camera is not None:
-        success, frame = camera.read()
-        if not success:
-            break
-        
-        frame_count += 1
-        
-        # Add frame to detector if available (protected)
-        if detector:
-            with detector_lock:
-                detector.add_frame(frame)
-
-            # Get prediction every few frames
-            if frame_count % 3 == 0:
-                with detector_lock:
-                    if detector.is_buffer_ready():
-                        pred, conf = detector.predict_gesture()
-                        if pred:
-                            current_prediction = pred
-                            current_confidence = conf
-        
-        # Draw overlays
-        frame = draw_overlays(frame)
-        
-        # Encode frame
-        ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-        if ret:
-            frame = buffer.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+# The application now treats web client frames (sent over WebSocket) as the input source. 
+# See ws_handler and FrameProcessorWorker below.
 
 def draw_overlays(frame):
     """Draw all overlays on frame"""
@@ -578,48 +544,9 @@ def draw_overlays(frame):
 # WEB ROUTES (Updated for Node.js integration)
 # ============================================================================
 
-@app.route('/video_feed')
-def video_feed():
-    """Video streaming route"""
-    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+# Clients send frames over the WebSocket for detection and receive JSON responses.
 
-@app.route('/start_camera', methods=['POST'])
-def start_camera():
-    """Start camera capture"""
-    global camera, is_camera_active, current_prediction, current_confidence
-    
-    try:
-        camera = cv2.VideoCapture(0)
-        if not camera.isOpened():
-            return jsonify({'status': 'error', 'message': 'Could not open camera'})
-        
-        # Set camera properties
-        camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        camera.set(cv2.CAP_PROP_FPS, 30)
-        
-        is_camera_active = True
-        current_prediction = "Camera started - collecting frames..."
-        current_confidence = 0.0
-        
-        return jsonify({'status': 'success', 'message': 'AI camera started'})
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)})
-
-@app.route('/stop_camera', methods=['POST'])
-def stop_camera():
-    """Stop camera capture"""
-    global camera, is_camera_active, current_prediction, current_confidence
-    
-    is_camera_active = False
-    if camera:
-        camera.release()
-        camera = None
-    
-    current_prediction = "Camera stopped"
-    current_confidence = 0.0
-    
-    return jsonify({'status': 'success', 'message': 'AI camera stopped'})
+# The frontend captures frames and sends them to the WebSocket server.
 
 @app.route('/toggle_hands', methods=['POST'])
 def toggle_hands():
@@ -637,7 +564,7 @@ def reset_detector():
         detector.frame_buffer.clear()
         detector.prediction_history.clear()
     
-    current_prediction = "Buffer reset - collecting frames..." if is_camera_active else "Camera stopped"
+    current_prediction = "Buffer reset - collecting frames..."
     current_confidence = 0.0
     frame_count = 0
     return jsonify({'status': 'success'})
@@ -652,7 +579,6 @@ def status():
         'show_server_overlays': show_server_overlays,
         'buffer_ready': detector.is_buffer_ready() if detector else False,
         'buffer_size': len(detector.frame_buffer) if detector else 0,
-        'is_camera_active': is_camera_active,
         'model_loaded': detector is not None
     })
 
@@ -670,76 +596,16 @@ def health():
     return jsonify({
         'status': 'healthy',
         'ai_model': 'loaded' if detector else 'not_loaded',
-        'camera': 'active' if is_camera_active else 'inactive',
+        'input_source': 'web_client_frames',
         'device': str(device)
     })
 
 
 # ============================================================================
 # WEBSOCKET SERVER FOR LOW-LATENCY FRAME PROCESSING
-# Clients send binary JPEG frames, server responds with processed JPEG bytes
+# Clients send binary JPEG frames; server processes them and returns small JSON
+# messages containing prediction metadata (prediction + confidence). 
 # ============================================================================
-
-async def process_frame_bytes(frame_bytes):
-    """Async helper that decodes incoming JPEG bytes, runs detection/overlay and
-    returns encoded JPEG bytes.
-
-    Contract / expectations:
-    - Input: `frame_bytes` should be a bytes object containing a JPEG-encoded image
-      produced by the client (canvas.toBlob('image/jpeg')).
-    - Output: bytes of a JPEG image with overlays drawn (or None on failure).
-
-    Notes on implementation:
-    - This function is async because the WebSocket handler awaits it, but the
-      heavy computer-vision work (cv2 / torch) is CPU-bound. In practice callers
-      should run a sync wrapper via a threadpool (see `process_frame_bytes_sync`).
-    - The function decodes the JPEG into an OpenCV BGR image, updates the
-      server-side detector buffer, optionally triggers a prediction and updates
-      the shared `current_prediction`/`current_confidence` values, draws overlays
-      (hands/prediction/status) and re-encodes to JPEG to return to the client.
-
-    Thread-safety:
-    - The detector is a shared object; callers should hold `detector_lock` when
-      mutating or reading detector internals. Here we rely on the higher-level
-      sync wrapper to take the lock (process_frame_bytes_sync does so).
-    """
-    try:
-        # Decode bytes to OpenCV image
-        nparr = np.frombuffer(frame_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        if img is None:
-            return None
-
-        # Add frame to detector buffer and attempt a prediction if the buffer is ready.
-        # NOTE: We intentionally don't acquire detector_lock here because callers
-        # that perform blocking work should run the synchronous wrapper which
-        # already uses the lock. Keep this async function lightweight.
-        if detector:
-            detector.add_frame(img)
-
-            # Run prediction every few calls if buffer ready
-            pred = None
-            conf = 0.0
-            if detector.is_buffer_ready():
-                pred, conf = detector.predict_gesture()
-                if pred:
-                    global current_prediction, current_confidence
-                    current_prediction = pred
-                    current_confidence = conf
-
-        # Draw overlays (hands, status, prediction) onto the image
-        out = draw_overlays(img)
-
-        # Encode back to JPEG (return bytes suitable for websocket binary send)
-        ret, buf = cv2.imencode('.jpg', out, [cv2.IMWRITE_JPEG_QUALITY, 80])
-        if not ret:
-            return None
-        return buf.tobytes()
-    except Exception as e:
-        print(f"Error in process_frame_bytes: {e}")
-        return None
-
 
 async def ws_handler(websocket):
     """WebSocket handler for low-latency frame processing.
@@ -758,7 +624,7 @@ async def ws_handler(websocket):
     binary payloads, catches exceptions, and attempts best-effort notifications
     back to the client when errors occur.
     """
-    # Verbose logging for debugging connection issues
+    # Logging for debugging connection issues
     # We'll create a per-connection background worker with a bounded queue (size 1)
     # that always keeps the latest frame and drops older ones. The worker runs
     # `process_frame_bytes_sync` in its own thread and sends the processed bytes
@@ -806,12 +672,11 @@ async def ws_handler(websocket):
                     break
                 try:
                     # Run CPU-bound processing synchronously in this thread
-                    processed = process_frame_bytes_sync(item)
-                    if processed:
-                        # schedule send on websocket loop
+                    result = process_frame_bytes_sync(item)
+                    if result:
+                        # result is a dict containing prediction metadata
                         try:
-                            fut = asyncio.run_coroutine_threadsafe(self.ws.send(processed), self.loop)
-                            # wait briefly for send to complete or fail
+                            fut = asyncio.run_coroutine_threadsafe(self.ws.send(json.dumps(result)), self.loop)
                             try:
                                 fut.result(timeout=3.0)
                             except Exception as send_exc:
@@ -875,68 +740,67 @@ async def ws_handler(websocket):
 def process_frame_bytes_sync(frame_bytes):
     """Synchronous wrapper for processing incoming JPEG bytes.
 
-    Why this exists:
-    - OpenCV and PyTorch are blocking and CPU-bound. To keep the asyncio
-      WebSocket event loop responsive we run this function in a threadpool.
-
-    Responsibilities and thread-safety:
-    - Decode the JPEG bytes into an OpenCV BGR image.
-    - Acquire `detector_lock` when interacting with the shared detector to
-      avoid concurrent mutations from multiple threadpool workers.
-    - Run prediction logic, update shared prediction state, draw overlays, and
-      encode the resulting image back to JPEG bytes for sending to the client.
+    This version treats incoming frames from the web client as the primary
+    input and returns a JSON-serializable dict containing prediction metadata.
 
     Returns:
-    - JPEG bytes on success, or None on failure.
+    - dict with keys: 'prediction' (str or None), 'confidence' (float)
     """
+  # The json object that will be sent back to the client
+    result = {
+        'prediction': None,
+        'confidence': 0.0,
+    }
+
     try:
         # Decode bytes and log basic diagnostics
         nparr = np.frombuffer(frame_bytes, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         if img is None:
-            # Decoding failed for this frame. Keep a single log entry rather than
-            # per-frame verbose diagnostics to reduce log noise.
             print("process_frame_bytes_sync: cv2.imdecode failed for incoming frame")
-        else:
-            h, w = img.shape[:2]
-            # Optional: compute brightness metric for debugging. Removed the
-            # per-frame print to avoid flooding logs; re-enable if needed.
-            try:
-                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                mean_brightness = float(np.mean(gray))
-            except Exception:
-                mean_brightness = -1.0
-        if img is None:
-            return None
+            return result
+
+        # optional debug metric
+        try:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            mean_brightness = float(np.mean(gray))
+        except Exception:
+            mean_brightness = -1.0
 
         # Interact with the detector under a lock to ensure thread-safety
-        if detector and img is not None:
-            try:
-                with detector_lock:
-                    detector.add_frame(img)
-                    if detector.is_buffer_ready():
-                        pred, conf = detector.predict_gesture()
-                        if pred:
-                            global current_prediction, current_confidence
-                            current_prediction = pred
-                            current_confidence = conf
-            except Exception as det_e:
-                print(f"Detector processing error: {det_e}")
-                import traceback as _tb
-                _tb.print_exc()
+        if detector is None:
+            return result
 
-        # Draw overlays even if detector had issues
-        out = draw_overlays(img if img is not None else np.zeros((480, 640, 3), dtype=np.uint8))
-        ret, buf = cv2.imencode('.jpg', out, [cv2.IMWRITE_JPEG_QUALITY, 80])
-        if not ret:
-            print("process_frame_bytes_sync: cv2.imencode failed")
-            return None
-        return buf.tobytes()
+        try:
+            with detector_lock:
+                detector.add_frame(img)
+                if detector.is_buffer_ready():
+                    pred, conf = detector.predict_gesture()
+                    if pred:
+                        # update shared state
+                        global current_prediction, current_confidence
+                        current_prediction = pred
+                        current_confidence = conf
+                        result['prediction'] = pred
+                        result['confidence'] = float(conf)
+        except Exception as det_e:
+            print(f"Detector processing error: {det_e}")
+            import traceback as _tb
+            _tb.print_exc()
+
+        # Draw overlays (kept for internal use / logs) but not returned
+        try:
+            _ = draw_overlays(img)
+        except Exception:
+            pass
+
+        return result
+
     except Exception as e:
         print(f"process_frame_bytes_sync error: {e}")
         import traceback as _tb
         _tb.print_exc()
-        return None
+        return result
 
 
 async def start_ws_server(host='0.0.0.0', port=5001):
@@ -997,8 +861,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:
-        if camera:
-            camera.release()
         if detector:
             detector.cleanup()
         cv2.destroyAllWindows()
