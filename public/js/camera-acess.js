@@ -146,6 +146,18 @@ class AISignLanguageDetection {
                 }
             });
         }
+
+        // Clear output button
+        const clearBtn = document.getElementById('clearOutputBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', async () => {
+                try {
+                    await this.resetBuffer();
+                } catch (_) { /* ignore */ }
+                // Ensure UI cleared even if backend call fails
+                this.updateDetectedPhrase('');
+            });
+        }
     }
 
     async startAICamera() {
@@ -347,8 +359,11 @@ class AISignLanguageDetection {
                 try {
                     const obj = JSON.parse(data);
                     // Example server response: { prediction, confidence, error}
-                    if (obj.prediction) {
-                        // .json object retrieved from the python server
+                    // Prefer full sentence if provided by backend
+                    if (obj.sentence && obj.sentence.trim().length > 0) {
+                        this.updateDetectedPhrase(obj.sentence);
+                        if (obj.prediction && this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
+                    } else if (obj.prediction) {
                         console.log({ prediction: obj.prediction, confidence: (obj.confidence || 0) });
                         this.updateDetectedPhrase(`"${obj.prediction}"`);
                         if (this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
@@ -367,8 +382,10 @@ class AISignLanguageDetection {
             // We expect a JSON string response from the server describing the detected phrase. Parse it and update UI.
             try {
                 const obj = JSON.parse(data);
-                if (obj.prediction) {
-                    // .json object retrieved from the python server
+                if (obj.sentence && obj.sentence.trim().length > 0) {
+                    this.updateDetectedPhrase(obj.sentence);
+                    if (obj.prediction && this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
+                } else if (obj.prediction) {
                     console.log({ prediction: obj.prediction, confidence: (obj.confidence || 0) });
                     this.updateDetectedPhrase(`"${obj.prediction}"`);
                     if (this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
@@ -781,7 +798,7 @@ class AISignLanguageDetection {
             const response = await fetch(`${this.flaskUrl}/reset_detector`, { method: 'POST' });
             
             if (response.ok) {
-                this.detectedPhrase.textContent = 'Buffer reset - collecting frames...';
+                this.detectedPhrase.textContent = '';
                 console.log('Buffer reset successfully');
             }
         } catch (error) {

@@ -50,7 +50,7 @@ transform: scale(1.05);
 /* Camera Section */
 .camera-section {
 background: rgba(255, 255, 255, 0.95);
-position: relative; /* ensure absolutely-positioned children align to this container */
+position: relative; 
 border-radius: 20px;
 padding: 20px;
 margin: 0 0 10px 0; 
@@ -108,11 +108,8 @@ height: calc(100% - 40px);
 }
 
 .camera-section.expanded #aiCameraFeed {
-	/* Conservative shrink: slightly reduce visible size and add centering to create breathing room */
 	width: auto !important;
-	/* Reduce height so feed doesn't fill the entire area when expanded */
 	height: calc(100% - 140px) !important;
-	/* Keep a tighter max-width so there's horizontal space too */
 	max-width: calc(100% - 160px) !important;
 	object-fit: contain !important;
 	object-position: center center !important;
@@ -236,6 +233,7 @@ display: flex;
 flex-direction: column;
 justify-content: center; 
 box-sizing: border-box; 
+ position: relative; 
 }
 
 .results-title {
@@ -308,6 +306,37 @@ transform: scale(1.05);
 background: #ffd700;
 border-color: #ffd700;
 color: white;
+}
+
+/* Clear Output Button */
+.clear-output-btn {
+ position: absolute;
+ bottom: 12px;
+ right: 12px;
+ display: inline-flex;
+ align-items: center;
+ gap: 6px;
+ background: #000; /* solid black */
+ color: #fff;
+ border: none;
+ padding: 10px 16px;
+ border-radius: 20px;
+ font-size: 12px;
+ font-weight: 500;
+ cursor: pointer;
+ line-height: 1;
+ transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+ }
+
+.clear-output-btn svg { stroke: currentColor; }
+
+.clear-output-btn:hover { background: #111; transform: translateY(-2px); }
+.clear-output-btn:active { transform: translateY(0); }
+.clear-output-btn:focus { outline: 2px solid #000; outline-offset: 2px; }
+
+@media (max-width: 480px) {
+ .clear-output-btn { bottom: 10px; right: 10px; padding: 8px 14px; font-size: 11px; }
+ .clear-output-btn svg { width: 14px; height: 14px; }
 }
 
 /* Responsive Design */

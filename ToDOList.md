@@ -1,5 +1,6 @@
 ## Waldo
-- [ ] Add Zoe's suggestion of a textbox pop up for the non-hearing impaired pearson to respond to the sign language so they can reply and also have the option to save that message.
+- [ ] Add suggestion for sort by phrase use amount (least used by and most used by)
+- [ ] Last used date for a specific phrase
 
 ### Sign up / Sign in page
 - [ x ] Add google auth functionality 

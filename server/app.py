@@ -23,6 +23,7 @@ import asyncio
 import websockets
 from io import BytesIO
 from queue import Queue, Empty
+from datetime import datetime
 
 # Suppress MediaPipe verbose logging
 os.environ['GLOG_minloglevel'] = '2'
@@ -44,6 +45,12 @@ CORS(app)  # Enable CORS for Node.js integration
 detector = None
 current_prediction = "Loading the AI detection model..."
 current_confidence = 0.0
+# Grammar / sentence construction session state
+recognized_words = []  # list of dicts: {text, confidence, t_utc}
+last_display_word = None
+last_display_start = None
+last_committed_word = None
+COMMIT_SECONDS = 0.5  # hold duration before committing a stable prediction
 show_hands = True
 # When False, the server will not draw status/model/prediction text overlays
 # on the returned image frames. Hand landmark/box overlays remain controlled
@@ -52,6 +59,28 @@ show_server_overlays = False
 
 frame_count = 0
 detector_lock = threading.Lock()
+
+# Import grammar utilities (rule-based grammar + optional session persistence)
+# We try relative import first (works when `server` is a package). Fallback to
+# plain import so that running `python server/app.py` still functions.
+try:  # packaged execution
+    from .grammar_utils import grammar_fix, save_session_json  # type: ignore
+except Exception:
+    try:  # script-style execution
+        from grammar_utils import grammar_fix, save_session_json  # type: ignore
+    except Exception:
+        # Minimal fallbacks so the server never hard-crashes just because the
+        # grammar helper is missing. This degrades functionality only.
+        def grammar_fix(words):  # type: ignore
+            return " ".join(words).strip()
+        def save_session_json(out_dir, words, sentence, meta):  # type: ignore
+            return ""  # no-op
+        print("WARNING: grammar_utils import failed; using fallback grammar + no-op save_session_json")
+
+# Feature flags / lightweight configuration
+ENABLE_SESSION_JSON = True  # persist sessions when a new word is committed
+SESSION_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sessions")
+_last_session_path = None  # updated on each save
 
 # Device and paths
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -559,6 +588,7 @@ def toggle_hands():
 def reset_detector():
     """Reset the gesture detector"""
     global current_prediction, current_confidence, frame_count
+    global recognized_words, last_display_word, last_display_start, last_committed_word
     
     if detector:
         detector.frame_buffer.clear()
@@ -567,11 +597,17 @@ def reset_detector():
     current_prediction = "Buffer reset - collecting frames..."
     current_confidence = 0.0
     frame_count = 0
+    recognized_words.clear()
+    last_display_word = None
+    last_display_start = None
+    last_committed_word = None
     return jsonify({'status': 'success'})
 
 @app.route('/status')
 def status():
     """Get current status"""
+    committed = [w['text'] for w in recognized_words]
+    sentence = grammar_fix(committed)
     return jsonify({
         'prediction': current_prediction,
         'confidence': current_confidence,
@@ -579,7 +615,10 @@ def status():
         'show_server_overlays': show_server_overlays,
         'buffer_ready': detector.is_buffer_ready() if detector else False,
         'buffer_size': len(detector.frame_buffer) if detector else 0,
-        'model_loaded': detector is not None
+        'model_loaded': detector is not None,
+        'committed_words': committed,
+        'sentence': sentence,
+        'session_json_path': _last_session_path
     })
 
 
@@ -750,6 +789,8 @@ def process_frame_bytes_sync(frame_bytes):
     result = {
         'prediction': None,
         'confidence': 0.0,
+        'committed_words': [],
+        'sentence': "",
     }
 
     try:
@@ -779,10 +820,48 @@ def process_frame_bytes_sync(frame_bytes):
                     if pred:
                         # update shared state
                         global current_prediction, current_confidence
+                        global last_display_word, last_display_start, last_committed_word
+                        global recognized_words
                         current_prediction = pred
                         current_confidence = conf
                         result['prediction'] = pred
                         result['confidence'] = float(conf)
+                        # Hold-to-commit logic (time based)
+                        now = time.monotonic()
+                        if pred != last_display_word:
+                            last_display_word = pred
+                            last_display_start = now
+                        shown_for = 0.0 if last_display_start is None else (now - last_display_start)
+                        if shown_for >= COMMIT_SECONDS and pred != last_committed_word:
+                            recognized_words.append({
+                                'text': pred,
+                                'confidence': float(conf),
+                                't_utc': datetime.utcnow().isoformat() + 'Z'
+                            })
+                            last_committed_word = pred
+                            # Persist session JSON snapshot on each new committed word
+                            if ENABLE_SESSION_JSON:
+                                try:
+                                    committed_words_snapshot = [w for w in recognized_words]
+                                    sentence_snapshot = grammar_fix([w['text'] for w in committed_words_snapshot])
+                                    meta = {"model_type": "Hand-Focused SASL"}
+                                    global _last_session_path
+                                    _last_session_path = save_session_json(SESSION_DIR, committed_words_snapshot, sentence_snapshot, meta)
+                                except Exception as save_exc:
+                                    # Non-fatal: just log once per failure kind (simple print here)
+                                    print(f"Session save failed: {save_exc}")
+                        committed = [w['text'] for w in recognized_words]
+                        sentence = grammar_fix(committed)
+                        result['committed_words'] = committed
+                        result['sentence'] = sentence
+                # Even if no commit, still compute up-to-date sentence for UI (non-invasive)
+                if not result['sentence']:
+                    try:
+                        committed = [w['text'] for w in recognized_words]
+                        result['committed_words'] = committed
+                        result['sentence'] = grammar_fix(committed)
+                    except Exception:
+                        pass
         except Exception as det_e:
             print(f"Detector processing error: {det_e}")
             import traceback as _tb
@@ -794,6 +873,14 @@ def process_frame_bytes_sync(frame_bytes):
         except Exception:
             pass
 
+        # Provide sentence even if no new prediction (reuse existing committed list)
+        if not result['sentence']:
+            try:
+                committed = [w['text'] for w in recognized_words]
+                result['committed_words'] = committed
+                result['sentence'] = grammar_fix(committed)
+            except Exception:
+                pass
         return result
 
     except Exception as e:
