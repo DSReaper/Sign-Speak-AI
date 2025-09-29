@@ -12,9 +12,17 @@ const userSchema = new mongoose.Schema({
   registered: { type: Date, default: Date.now },
   resetToken: { type: String },
   resetTokenExpires: { type: Date },
+  phrases: [
+    {
+      text: { type: String, required: true },
+      timestamp: { type: Date, default: Date.now }
+    }
+  ]
 });
 
 const User = mongoose.model('User', userSchema);
+
+module.exports.User = User;
 
 exports.signup = async (req, res) => {
   try {
@@ -47,6 +55,7 @@ exports.signup = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 exports.signin = async (req, res) => {
   try {

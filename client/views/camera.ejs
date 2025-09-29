@@ -90,20 +90,48 @@
                         <button class="play-btn" id="playBtn">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                                 <polygon points="5,3 19,12 5,21" fill="currentColor"/>
-                            </svg>
-                            <span>Play audio</span>
-                        </button>
-                        <button class="star-btn" id="starBtn">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 
-                                                 18.18,21.02 12,17.77 5.82,21.02 
-                                                 7,14.14 2,9.27 8.91,8.26"/>
-                            </svg>
-                        </button>
-                    </div>
+                        </svg>
+                        <span>Play audio</span>
+                    </button>
+                    <button class="star-btn" id="starBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14
+                                             18.18,21.02 12,17.77 5.82,21.02
+                                             7,14.14 2,9.27 8.91,8.26"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
+
+        <script>
+          document.getElementById('starBtn').addEventListener('click', async () => {
+            const phrase = document.getElementById('detectedPhrase').textContent.trim();
+            if (!phrase || phrase === 'Loading AI detection model...') {
+              alert('No phrase detected to save.');
+              return;
+            }
+
+            try {
+              const response = await fetch('/translate/phrase', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text: phrase })
+              });
+
+              if (response.ok) {
+                alert('Phrase saved successfully.');
+              } else {
+                const data = await response.json();
+                alert('Error saving phrase: ' + (data.message || 'Unknown error'));
+              }
+            } catch (error) {
+              alert('Network error: ' + error.message);
+            }
+          });
+        </script>
 
         <!-- Navigation Footer (10%) -->
         <div class="nav-wrapper">
