@@ -2,7 +2,6 @@
 // Detects a pinch (thumb tip + index finger tip touching/holding) and triggers the Play button.
 
 (function(){
-  // Gesture module (debug logs removed)
   const MODULE_TAG = '[GestureModule]';
 
   // MediaPipe landmark indices (Hands):
@@ -12,7 +11,7 @@
 
   // Configurable thresholds
   const PINCH_DISTANCE_THRESHOLD = 0.05; // Normalized distance threshold (tweak if needed)
-  const HOLD_DURATION_MS = 500; // Must hold pinch for this long to trigger action
+  const HOLD_DURATION_MS = 2000; // Must hold pinch for this long to trigger action
   const COOLDOWN_MS = 1500; 
 
   let pinchStartTime = null;
