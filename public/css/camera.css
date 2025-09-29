@@ -75,12 +75,6 @@ align-items: center;
 justify-content: center;
 }
 
-#cameraFeed {
-width: 100%;
-height: 100%;
-object-fit: cover;       
-border-radius: 15px;
-}
 
 /* Fullscreen mode */
 .camera-section.expanded {
@@ -149,15 +143,6 @@ padding: 0 10px;
 pointer-events: auto; 
 }
 
-#overlay {
-position: absolute;
-top: 0;
-left: 0;
-width: 100%;
-height: 100%;
-pointer-events: none;
-}
-
 /* Camera Loading State */
 .camera-loading {
 display: flex;
@@ -191,12 +176,6 @@ align-items: center;
 justify-content: center;
 height: 100%;
 color: #666;
-}
-
-.error-icon {
-font-size: 48px;
-margin-bottom: 15px;
-opacity: 0.6;
 }
 
 .retry-btn {
@@ -422,8 +401,8 @@ right: 20px;
 transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
-/* Pop up response box modal */
-.modal {
+/* Camera response modal */
+.camera-modal {
 display: none; 
 position: fixed; 
 z-index: 1000; 
@@ -436,8 +415,8 @@ justify-content: center;
 align-items: center;
 }
 
-/* Modal box */
-.modal-content {
+/* Camera modal box */
+.camera-modal-content {
 background: #fff;
 padding: 2rem;
 border-radius: 1rem;
@@ -449,12 +428,12 @@ box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.3);
 overflow-y: auto;  
 }
 
-.modal-content h2 {
+.camera-modal-content h2 {
 margin-bottom: 1rem;
 font-size: 1.4rem;
 }
 
-.modal-content textarea {
+.camera-modal-content textarea {
 width: 100%;
 padding: 1rem;
 margin: 1rem 0;
@@ -465,7 +444,7 @@ min-height: 20vh;
 font-size: 1rem;
 }
 
-.modal-content button {
+.camera-modal-content button {
 padding: 0.6rem 1.2rem;
 border: none;
 border-radius: 0.5rem;
@@ -546,10 +525,6 @@ font-weight: bold;
 margin-right: 8px;
 }
 
-.confidence-high { color: #4CAF50; }
-.confidence-medium { color: #FF9800; }
-.confidence-low { color: #f44336; }
-
 .camera-options {
 display: flex;
 gap: 10px;
@@ -583,16 +558,4 @@ object-fit: cover;
 border-radius: 10px;
 }
 
-/* Remove browser focus outline / green border when image is clicked or focused */
-#aiCameraFeed:focus,
-#aiCameraFeed:active,
-#aiCameraFeed:focus-visible {
-	outline: none !important;
-	box-shadow: none !important;
-}
-
-/* If the image is programmatically focusable via tabindex, ensure it doesn't draw focus rings */
-#aiCameraFeed[tabindex] {
-	outline: none !important;
-}
 

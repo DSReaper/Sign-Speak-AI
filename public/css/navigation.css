@@ -31,8 +31,6 @@
 }
 
 .nav-item.center-button {
-  /* keep size and spacing for the center item, but do not force a filled background
-     so the active state can be applied to any nav item dynamically */
   width: 65px;
   height: 65px;
   margin: 0 50px;
@@ -47,11 +45,9 @@
 .nav-item.center-button img {
   width: 28px;
   height: 28px;
-  /* default icon appearance — not inverted unless active */
   filter: brightness(0.4);
 }
 
-/* Active state - show filled circular background behind the active nav item */
 .nav-item.active {
   position: relative;
   z-index: 1;
@@ -66,23 +62,19 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: #000; /* filled black like the previous camera button */
+  background: #000; 
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   z-index: -1;
 }
 
 .nav-item.active img {
-  /* make the icon appear white when its nav item is active */
   filter: brightness(0) invert(1);
 }
 
-/* Make the center button's active background slightly larger to match previous design */
 .nav-item.center-button.active::after {
   width: 76px;
   height: 76px;
 }
-
-
 
 @media (max-width: 390px) {
   .nav-item {

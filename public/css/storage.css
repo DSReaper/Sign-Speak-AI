@@ -21,7 +21,6 @@ top: 0;
 z-index: 10;
 }
 
-/* Apple-like search bar styles: soft background, rounded pill input, subtle shadow */
 .storage-search-input {
 	flex: 1;
 	padding: 10px 14px;
@@ -40,7 +39,6 @@ z-index: 10;
 	color: #9aa0a6;
 }
 
-/* Sort select styled like a subtle segmented control/dropdown */
 .storage-sort-select {
 	appearance: none;
 	-webkit-appearance: none;
