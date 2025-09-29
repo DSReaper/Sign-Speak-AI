@@ -135,11 +135,11 @@ app.get('/reset-password', (req, res) => {
 });
 
 app.get('/storage', authenticateToken, (req, res) => {
-    res.render('storage');
+    res.render('storage', { currentPath: '/storage' });
 });
 
 app.get('/settings', authenticateToken, (req, res) => {
-  res.render('settings');
+  res.render('settings', { currentPath: '/settings' });
 });
 
 app.get('/application_settings', authenticateToken, (req, res) => {
