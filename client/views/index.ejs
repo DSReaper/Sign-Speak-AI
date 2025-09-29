@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/css/login.css">
 </head>
 <body>
-    <div class="container" id="main-content">
+  <div class="container" id="main-content">
         <div class="header">
             <button class="tab-button active" id="sign-in-tab" aria-selected="true" aria-controls="sign-in-form">Sign In</button>
             <button class="tab-button" id="sign-up-tab" aria-selected="false" aria-controls="sign-up-form">Sign Up</button>
@@ -21,7 +21,7 @@
                 <p>Bridging communication with AI</p>
             </div>
 
-          <form id="sign-in-form" class="form active" method="POST" action="/login">
+            <form id="sign-in-form" class="form active" method="POST" action="/login">
                 <div class="form-group">
                     <label for="sign-in-email">Email Address</label>
                     <input type="email" id="sign-in-email" name="email" class="form-control" placeholder="Enter your email" required>
@@ -42,20 +42,12 @@
 
                 <button type="submit" class="btn btn-primary">Sign In</button>
 
-                <div class="divider">
-                    <span class="divider-text">or</span>
-                </div>
-
-                <button type="button" class="btn btn-google">
-                    <i class="fab fa-google"></i> Sign in with Google
-                </button>
-
                 <div class="form-footer">
                     Don't have an account? <a href="#" id="switch-to-sign-up">Sign Up</a>
                 </div>
             </form>
 
-            <form id="sign-up-form" class="form">
+            <form id="sign-up-form" class="form slide-right">
                 <div class="form-group">
                     <label for="sign-up-email">Email Address</label>
                     <input type="email" id="sign-up-email" class="form-control" placeholder="Enter your email" required>
@@ -101,14 +93,6 @@
                 </div>
 
                 <button type="submit" class="btn btn-primary">Create Account</button>
-
-                <div class="divider">
-                    <span class="divider-text">or</span>
-                </div>
-
-                <button type="button" class="btn btn-google">
-                    <i class="fab fa-google"></i> Sign up with Google
-                </button>
 
                 <div class="form-footer">
                     Already have an account? <a href="#" id="switch-to-sign-in">Sign In</a>

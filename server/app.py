@@ -15,10 +15,15 @@ from collections import deque
 import threading
 import time
 import base64
-from flask import Flask, render_template, Response, jsonify, request
+from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 import warnings
 warnings.filterwarnings("ignore")
+import asyncio
+import websockets
+from io import BytesIO
+from queue import Queue, Empty
+from datetime import datetime
 
 # Suppress MediaPipe verbose logging
 os.environ['GLOG_minloglevel'] = '2'
@@ -38,20 +43,52 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for Node.js integration
 
 # Global variables
-camera = None
 detector = None
-current_prediction = "Waiting for camera..."
+current_prediction = "Loading the AI detection model..."
 current_confidence = 0.0
+# Grammar / sentence construction session state
+recognized_words = []  # list of dicts: {text, confidence, t_utc}
+last_display_word = None
+last_display_start = None
+last_committed_word = None
+COMMIT_SECONDS = 0.5  # hold duration before committing a stable prediction
 show_hands = True
+# When False, the server will not draw status/model/prediction text overlays
+# on the returned image frames. Hand landmark/box overlays remain controlled
+# separately by `show_hands` so the visual hand guidance is preserved.
+show_server_overlays = False
+
 frame_count = 0
-is_camera_active = False
+detector_lock = threading.Lock()
+
+# Import grammar utilities (rule-based grammar + optional session persistence)
+# We try relative import first (works when `server` is a package). Fallback to
+# plain import so that running `python server/app.py` still functions.
+try:  # packaged execution
+    from .grammar_utils import grammar_fix, save_session_json  # type: ignore
+except Exception:
+    try:  # script-style execution
+        from grammar_utils import grammar_fix, save_session_json  # type: ignore
+    except Exception:
+        # Minimal fallbacks so the server never hard-crashes just because the
+        # grammar helper is missing. This degrades functionality only.
+        def grammar_fix(words):  # type: ignore
+            return " ".join(words).strip()
+        def save_session_json(out_dir, words, sentence, meta):  # type: ignore
+            return ""  # no-op
+        print("WARNING: grammar_utils import failed; using fallback grammar + no-op save_session_json")
+
+# Feature flags / lightweight configuration
+ENABLE_SESSION_JSON = True  # persist sessions when a new word is committed
+SESSION_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sessions")
+_last_session_path = None  # updated on each save
 
 # Device and paths
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 # ============================================================================
-# MODEL ARCHITECTURES
+# MODEL ARCHITECTURES 
 # ============================================================================
 
 class CNNLSTMModel(nn.Module):
@@ -245,7 +282,7 @@ def create_cnn_base():
     return nn.Sequential(*layers)
 
 # ============================================================================
-# HAND DETECTION SYSTEM (Same as before)
+# HAND DETECTION SYSTEM 
 # ============================================================================
 
 class WebHandDetector:
@@ -502,37 +539,16 @@ class WebGestureDetector:
                 predicted_class = self.class_names[predicted_idx.item()]
                 confidence_score = confidence.item()
                 
-                return predicted_class, confidence_score
-                
-        except Exception as e:
-            print(f"CNN prediction error: {e}")
-            return None, 0.0
-    
-    def _predict_with_pose(self):
-        """Make prediction using Pose LSTM model"""
-        try:
-            if self.pose_model is None:
-                return None, 0.0
-                
-            # Prepare pose sequence  
-            pose_sequence = np.array(list(self.pose_buffer))
-            pose_tensor = torch.FloatTensor(pose_sequence).unsqueeze(0).to(self.device)
-            
-            # Pose LSTM prediction
-            with torch.no_grad():
-                outputs = self.pose_model(pose_tensor)
-                
-                if torch.isnan(outputs).any() or torch.isinf(outputs).any():
-                    print("Pose model producing NaN outputs")
+                # Filter low confidence predictions
+                if confidence_score < 0.01:
                     return None, 0.0
                 
-                probabilities = torch.softmax(outputs, dim=1)
-                confidence, predicted_idx = torch.max(probabilities, 1)
+                # Add to history
+                self.prediction_history.append((predicted_class, confidence_score))
                 
-                predicted_class = self.class_names[predicted_idx.item()]
-                confidence_score = confidence.item()
-                
-                return predicted_class, confidence_score
+                # Get stable prediction
+                stable_prediction = self._get_stable_prediction()
+                return stable_prediction, confidence_score
                 
         except Exception as e:
             print(f"Pose prediction error: {e}")
@@ -703,21 +719,17 @@ def load_models_and_classes():
         return None, None, None
     
     try:
-        # Create CNN+LSTM model
-        cnn_model = CNNLSTMModel(
-            num_classes=num_classes,
-            sequence_length=sequence_length,
-            input_size=(224, 224)
+        # Create model architecture
+        cnn_base = create_cnn_base()
+        model = HandFocusedCNN_LSTM(
+            cnn=cnn_base,
+            num_classes=len(class_names),
+            hidden_size=256,
+            num_layers=2,
+            dropout=0.3
         ).to(device)
         
-        # Create Pose LSTM model
-        pose_model = PoseLSTMModel(
-            num_classes=num_classes,
-            sequence_length=sequence_length,
-            pose_dim=225
-        ).to(device)
-        
-        print(f"✓ Model architectures created")
+        print(f"✓ Model architecture created")
         
         # Load CNN+LSTM weights
         cnn_checkpoint = torch.load(cnn_model_path, map_location=device, weights_only=False)
@@ -769,164 +781,118 @@ else:
 # VIDEO STREAMING
 # ============================================================================
 
-def generate_frames():
-    """Generate video frames for web streaming"""
-    global current_prediction, current_confidence, frame_count, camera, is_camera_active
-    
-    while is_camera_active and camera is not None:
-        success, frame = camera.read()
-        if not success:
-            print("Failed to read from camera")
-            break
-        
-        frame_count += 1
-        
-        # Flip the frame horizontally for mirror effect
-        frame = cv2.flip(frame, 1)
-        # Add frame to detector buffer
-        if detector:
-            detector.add_frame(frame)
-            # Make prediction every few frames to reduce computational load
-            if frame_count % 3 == 0 and detector.is_buffer_ready():
-                prediction, confidence = detector.predict_gesture()
-                if prediction:
-                    current_prediction = prediction
-                    current_confidence = confidence
-        # Draw overlays
-        frame = draw_overlays(frame)
-        # Encode frame as JPEG
-        _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-        frame_bytes = buffer.tobytes()
-        # Yield frame in multipart format
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+# The application now treats web client frames (sent over WebSocket) as the input source. 
+# See ws_handler and FrameProcessorWorker below.
 
 def draw_overlays(frame):
     """Draw all overlays on frame"""
     global show_hands
+    global show_server_overlays
     
-    # Hand and pose detection overlay
+    # Hand detection overlay (use lock when interacting with detector)
     if show_hands and detector:
-        hands_data = detector.get_hand_overlay_info(frame)
-        frame = detector.hand_detector.draw_hands(frame, hands_data)
-        
-        # Also draw pose landmarks
-        frame = detector.hand_detector.draw_pose_landmarks(frame)
+        with detector_lock:
+            hands_data = detector.get_hand_overlay_info(frame)
+            if hands_data:
+                # Draw hands with slightly thicker visuals for visibility
+                frame = detector.hand_detector.draw_hands(frame, hands_data)
+                try:
+                    # Also draw bounding boxes more prominently
+                    for hand_data in hands_data:
+                        bbox = hand_data.get('bbox', None)
+                        if bbox and len(bbox) == 4:
+                            cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 3)
+                except Exception:
+                    pass
     
-    # Status overlays
-    h, w = frame.shape[:2]
-    
-    # Buffer status
-    if detector and not detector.is_buffer_ready():
-        buffer_text = f"Collecting frames: {len(detector.frame_buffer)}/{detector.buffer_size}"
-        cv2.putText(frame, buffer_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
-    
-    # Prediction
-    if current_prediction not in ["Waiting...", "Waiting for camera..."]:
-        # Confidence color coding
-        if current_confidence > 0.7:
-            color = (0, 255, 0)  # Green
-        elif current_confidence > 0.3:
-            color = (0, 165, 255)  # Orange
+    # Status/model/prediction overlays are optional. If the server flag
+    # `show_server_overlays` is False we skip drawing those textual overlays so
+    # the image contains only the visual hand guidance (if enabled).
+    if show_server_overlays:
+        # Status overlays
+        h, w = frame.shape[:2]
+
+        # Buffer status
+        try:
+            if detector:
+                buffer_text = f"Frames: {len(detector.frame_buffer)}/{detector.buffer_size}"
+            else:
+                buffer_text = "Detector: not loaded"
+            # Draw a background for readability
+            (tx, ty), _ = cv2.getTextSize(buffer_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+            cv2.rectangle(frame, (10, 10), (10 + tx + 12, 10 + ty + 12), (0, 0, 0), -1)
+            cv2.putText(frame, buffer_text, (16, 10 + ty + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        except Exception:
+            pass
+
+        # Prediction
+        try:
+            pred_text = None
+            if current_prediction and current_prediction not in ["Waiting...", "Loading the AI detection model..."]:
+                # Confidence color coding
+                if current_confidence > 0.7:
+                    color = (0, 220, 0)  # Green
+                elif current_confidence > 0.3:
+                    color = (0, 165, 255)  # Orange
+                else:
+                    color = (0, 0, 255)  # Red
+                pred_text = f"{current_prediction} ({current_confidence:.3f})"
+            else:
+                pred_text = "Waiting for prediction..."
+
+            # Draw prediction box centered near bottom
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.9
+            thickness = 2
+            (pw, ph), _ = cv2.getTextSize(pred_text, font, font_scale, thickness)
+            box_w = pw + 24
+            box_h = ph + 18
+            box_x = max(10, (w - box_w) // 2)
+            box_y = h - box_h - 10
+            # Semi-opaque background
+            overlay = frame.copy()
+            cv2.rectangle(overlay, (box_x, box_y), (box_x + box_w, box_y + box_h), (0, 0, 0), -1)
+            alpha = 0.6
+            cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
+            # Text
+            text_x = box_x + 12
+            text_y = box_y + box_h - 8
+            cv2.putText(frame, pred_text, (text_x, text_y), font, font_scale, color, thickness, cv2.LINE_AA)
+        except Exception:
+            pass
+
+        # Model info
+        if detector:
+            try:
+                cv2.putText(frame, "Model: Hand-Focused SASL", (10, h-70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                cv2.putText(frame, "Hand-focused attention active", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 1)
+            except Exception:
+                pass
         else:
-            color = (0, 0, 255)  # Red
-        
-        pred_text = f"Gesture: {current_prediction} ({current_confidence:.3f})"
-        cv2.putText(frame, pred_text, (10, h-100), cv2.FONT_HERSHEY_SIMPLEX, 1.0, color, 2)
-    
-    # Model info
-    if detector:
-        cv2.putText(frame, "Model: CNN+LSTM + Pose Ensemble", (10, h-70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-        cv2.putText(frame, "Ensemble AI active", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
-    else:
-        cv2.putText(frame, "AI Model: Not loaded", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-    
-    # Hand detection status
-    hand_status = "ON" if show_hands else "OFF"
-    cv2.putText(frame, f"Hands: {hand_status}", (w-120, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            try:
+                cv2.putText(frame, "AI Model: Not loaded", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+            except Exception:
+                pass
+
+        # Hand detection status
+        try:
+            hand_status = "ON" if show_hands else "OFF"
+            status_text = f"Hands: {hand_status}"
+            (sx, sy), _ = cv2.getTextSize(status_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+            cv2.rectangle(frame, (w - sx - 22, 10), (w - 10, 10 + sy + 12), (0, 0, 0), -1)
+            cv2.putText(frame, status_text, (w - sx - 16, 10 + sy + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        except Exception:
+            pass
     
     return frame
-
-def generate_frames():
-    """Generate video frames for web streaming"""
-    global current_prediction, current_confidence, frame_count, camera, is_camera_active
-    
-    while is_camera_active and camera is not None:
-        success, frame = camera.read()
-        if not success:
-            break
-        
-        frame_count += 1
-        
-        # Add frame to detector if available
-        if detector:
-            detector.add_frame(frame)
-            
-            # Get prediction every few frames
-            if frame_count % 3 == 0 and detector.is_buffer_ready():
-                prediction, confidence = detector.predict_gesture()
-                if prediction:
-                    current_prediction = prediction
-                    current_confidence = confidence
-        
-        # Draw overlays
-        frame = draw_overlays(frame)
-        
-        # Encode frame as JPEG
-        _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-        frame_bytes = buffer.tobytes()
-        
-        # Yield frame in multipart format
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
 
 # ============================================================================
 # WEB ROUTES (Updated for Node.js integration)
 # ============================================================================
 
-@app.route('/video_feed')
-def video_feed():
-    """Video streaming route"""
-    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+# Clients send frames over the WebSocket for detection and receive JSON responses.
 
-@app.route('/start_camera', methods=['POST'])
-def start_camera():
-    """Start camera capture"""
-    global camera, is_camera_active, current_prediction, current_confidence
-    
-    try:
-        camera = cv2.VideoCapture(0)
-        if not camera.isOpened():
-            return jsonify({'status': 'error', 'message': 'Could not open camera'})
-        
-        # Set camera properties
-        camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        camera.set(cv2.CAP_PROP_FPS, 30)
-        
-        is_camera_active = True
-        current_prediction = "Camera started - collecting frames..."
-        current_confidence = 0.0
-        
-        return jsonify({'status': 'success', 'message': 'AI camera started'})
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)})
-
-@app.route('/stop_camera', methods=['POST'])
-def stop_camera():
-    """Stop camera capture"""
-    global camera, is_camera_active, current_prediction, current_confidence
-    
-    is_camera_active = False
-    if camera:
-        camera.release()
-        camera = None
-    
-    current_prediction = "Camera stopped"
-    current_confidence = 0.0
-    
-    return jsonify({'status': 'success', 'message': 'AI camera stopped'})
+# The frontend captures frames and sends them to the WebSocket server.
 
 @app.route('/toggle_hands', methods=['POST'])
 def toggle_hands():
@@ -939,28 +905,46 @@ def toggle_hands():
 def reset_detector():
     """Reset the gesture detector"""
     global current_prediction, current_confidence, frame_count
+    global recognized_words, last_display_word, last_display_start, last_committed_word
     
     if detector:
         detector.frame_buffer.clear()
         detector.prediction_history.clear()
     
-    current_prediction = "Buffer reset - collecting frames..." if is_camera_active else "Camera stopped"
+    current_prediction = "Buffer reset - collecting frames..."
     current_confidence = 0.0
     frame_count = 0
+    recognized_words.clear()
+    last_display_word = None
+    last_display_start = None
+    last_committed_word = None
     return jsonify({'status': 'success'})
 
 @app.route('/status')
 def status():
     """Get current status"""
+    committed = [w['text'] for w in recognized_words]
+    sentence = grammar_fix(committed)
     return jsonify({
         'prediction': current_prediction,
         'confidence': current_confidence,
         'show_hands': show_hands,
+        'show_server_overlays': show_server_overlays,
         'buffer_ready': detector.is_buffer_ready() if detector else False,
         'buffer_size': len(detector.frame_buffer) if detector else 0,
-        'is_camera_active': is_camera_active,
-        'model_loaded': detector is not None
+        'model_loaded': detector is not None,
+        'committed_words': committed,
+        'sentence': sentence,
+        'session_json_path': _last_session_path
     })
+
+
+@app.route('/toggle_overlays', methods=['POST'])
+def toggle_overlays():
+    """Toggle whether the server draws status/prediction/model overlays onto frames."""
+    global show_server_overlays
+    show_server_overlays = not show_server_overlays
+    return jsonify({'status': 'success', 'show_server_overlays': show_server_overlays})
 
 @app.route('/health')
 def health():
@@ -968,9 +952,275 @@ def health():
     return jsonify({
         'status': 'healthy',
         'ai_model': 'loaded' if detector else 'not_loaded',
-        'camera': 'active' if is_camera_active else 'inactive',
+        'input_source': 'web_client_frames',
         'device': str(device)
     })
+
+
+# ============================================================================
+# WEBSOCKET SERVER FOR LOW-LATENCY FRAME PROCESSING
+# Clients send binary JPEG frames; server processes them and returns small JSON
+# messages containing prediction metadata (prediction + confidence). 
+# ============================================================================
+
+async def ws_handler(websocket):
+    """WebSocket handler for low-latency frame processing.
+
+    Behavior and message flow:
+    - Expects binary messages containing JPEG bytes from the client.
+    - For binary messages: decodes -> process (detector/prediction/overlays) -> encodes -> send back binary JPEG bytes.
+    - For text messages: replies with a simple acknowledgement ('OK').
+
+    Implementation notes:
+    - cv2 and torch are blocking; we offload the heavy work to a threadpool via
+    `asyncio.get_event_loop().run_in_executor(...)` which calls the sync wrapper
+    `process_frame_bytes_sync`. That wrapper performs locking around the shared
+    detector object and runs the blocking code safely.
+    - This handler is defensive: it logs sizes/previews instead of dumping raw
+    binary payloads, catches exceptions, and attempts best-effort notifications
+    back to the client when errors occur.
+    """
+    # Logging for debugging connection issues
+    # We'll create a per-connection background worker with a bounded queue (size 1)
+    # that always keeps the latest frame and drops older ones. The worker runs
+    # `process_frame_bytes_sync` in its own thread and sends the processed bytes
+    # back to the websocket using the connection's asyncio loop. This prevents
+    # blocking the asyncio event loop on CPU-bound CV/model work and avoids
+    # unbounded memory growth when clients send frames faster than processing.
+    class FrameProcessorWorker:
+        def __init__(self, ws, loop, queue_maxsize=1):
+            self.ws = ws
+            self.loop = loop
+            self.queue = Queue(maxsize=queue_maxsize)
+            self._stop_event = threading.Event()
+            self.thread = threading.Thread(target=self._run, daemon=True)
+            self.thread.start()
+
+        def push_frame(self, frame_bytes):
+            # Non-blocking: drop older frame when queue full to keep latest only
+            try:
+                if self.queue.full():
+                    try:
+                        self.queue.get_nowait()
+                    except Empty:
+                        pass
+                self.queue.put_nowait(frame_bytes)
+            except Exception as e:
+                # If anything goes wrong, just drop the frame
+                print(f"FrameProcessorWorker: push_frame drop due to {e}")
+
+        def stop(self):
+            self._stop_event.set()
+            # Put a sentinel to unblock the thread if waiting
+            try:
+                self.queue.put_nowait(None)
+            except Exception:
+                pass
+            self.thread.join(timeout=1.0)
+
+        def _run(self):
+            while not self._stop_event.is_set():
+                try:
+                    item = self.queue.get(timeout=0.5)
+                except Empty:
+                    continue
+                if item is None:
+                    break
+                try:
+                    # Run CPU-bound processing synchronously in this thread
+                    result = process_frame_bytes_sync(item)
+                    if result:
+                        # result is a dict containing prediction metadata
+                        try:
+                            fut = asyncio.run_coroutine_threadsafe(self.ws.send(json.dumps(result)), self.loop)
+                            try:
+                                fut.result(timeout=3.0)
+                            except Exception as send_exc:
+                                print(f"FrameProcessorWorker: send failed: {send_exc}")
+                        except Exception as sch_exc:
+                            print(f"FrameProcessorWorker: schedule send failed: {sch_exc}")
+                except Exception as e:
+                    print(f"FrameProcessorWorker: processing error: {e}")
+
+    try:
+        # websockets library newer versions provide the path on the websocket object
+        ws_path = getattr(websocket, 'path', None)
+        print(f"WS client connected: {websocket.remote_address} path={ws_path}")
+
+        # Create a per-connection worker and tie it to this websocket's loop
+        loop = asyncio.get_event_loop()
+        worker = FrameProcessorWorker(websocket, loop, queue_maxsize=1)
+
+        async for message in websocket:
+            try:
+                if isinstance(message, bytes):
+                    # Enqueue the frame for background processing; return quickly
+                    worker.push_frame(message)
+                else:
+                    # Text messages (log content up to 200 chars)
+                    text_preview = str(message)[:200]
+                    print(f"WS: received text message: {text_preview}")
+                    await websocket.send('OK')
+            except websockets.exceptions.ConnectionClosed:
+                print(f"WS loop connection closed while handling message from {websocket.remote_address}")
+                break
+            except Exception as inner_e:
+                print(f"WS handler inner exception: {inner_e}")
+                import traceback as _tb
+                _tb.print_exc()
+                # Try to send an error notice to client (best-effort)
+                try:
+                    await websocket.send('ERROR')
+                except Exception:
+                    pass
+    except websockets.exceptions.ConnectionClosed as cc:
+        print(f"WS connection closed prematurely: {cc}")
+    except Exception as e:
+        print(f"WS error (outer): {e}")
+        import traceback as _tb
+        _tb.print_exc()
+    finally:
+        try:
+            # Stop worker and drain resources
+            try:
+                worker.stop()
+            except Exception:
+                pass
+            ws_path = getattr(websocket, 'path', None)
+            print(f"WS client disconnected: {websocket.remote_address} path={ws_path}")
+        except Exception:
+            print("WS client disconnected (remote address unavailable)")
+
+
+# Helper sync wrapper because cv2 and torch code is blocking and easier to run in threadpool
+def process_frame_bytes_sync(frame_bytes):
+    """Synchronous wrapper for processing incoming JPEG bytes.
+
+    This version treats incoming frames from the web client as the primary
+    input and returns a JSON-serializable dict containing prediction metadata.
+
+    Returns:
+    - dict with keys: 'prediction' (str or None), 'confidence' (float)
+    """
+  # The json object that will be sent back to the client
+    result = {
+        'prediction': None,
+        'confidence': 0.0,
+        'committed_words': [],
+        'sentence': "",
+    }
+
+    try:
+        # Decode bytes and log basic diagnostics
+        nparr = np.frombuffer(frame_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img is None:
+            print("process_frame_bytes_sync: cv2.imdecode failed for incoming frame")
+            return result
+
+        # optional debug metric
+        try:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            mean_brightness = float(np.mean(gray))
+        except Exception:
+            mean_brightness = -1.0
+
+        # Interact with the detector under a lock to ensure thread-safety
+        if detector is None:
+            return result
+
+        try:
+            with detector_lock:
+                detector.add_frame(img)
+                if detector.is_buffer_ready():
+                    pred, conf = detector.predict_gesture()
+                    if pred:
+                        # update shared state
+                        global current_prediction, current_confidence
+                        global last_display_word, last_display_start, last_committed_word
+                        global recognized_words
+                        current_prediction = pred
+                        current_confidence = conf
+                        result['prediction'] = pred
+                        result['confidence'] = float(conf)
+                        # Hold-to-commit logic (time based)
+                        now = time.monotonic()
+                        if pred != last_display_word:
+                            last_display_word = pred
+                            last_display_start = now
+                        shown_for = 0.0 if last_display_start is None else (now - last_display_start)
+                        if shown_for >= COMMIT_SECONDS and pred != last_committed_word:
+                            recognized_words.append({
+                                'text': pred,
+                                'confidence': float(conf),
+                                't_utc': datetime.utcnow().isoformat() + 'Z'
+                            })
+                            last_committed_word = pred
+                            # Persist session JSON snapshot on each new committed word
+                            if ENABLE_SESSION_JSON:
+                                try:
+                                    committed_words_snapshot = [w for w in recognized_words]
+                                    sentence_snapshot = grammar_fix([w['text'] for w in committed_words_snapshot])
+                                    meta = {"model_type": "Hand-Focused SASL"}
+                                    global _last_session_path
+                                    _last_session_path = save_session_json(SESSION_DIR, committed_words_snapshot, sentence_snapshot, meta)
+                                except Exception as save_exc:
+                                    # Non-fatal: just log once per failure kind (simple print here)
+                                    print(f"Session save failed: {save_exc}")
+                        committed = [w['text'] for w in recognized_words]
+                        sentence = grammar_fix(committed)
+                        result['committed_words'] = committed
+                        result['sentence'] = sentence
+                # Even if no commit, still compute up-to-date sentence for UI (non-invasive)
+                if not result['sentence']:
+                    try:
+                        committed = [w['text'] for w in recognized_words]
+                        result['committed_words'] = committed
+                        result['sentence'] = grammar_fix(committed)
+                    except Exception:
+                        pass
+        except Exception as det_e:
+            print(f"Detector processing error: {det_e}")
+            import traceback as _tb
+            _tb.print_exc()
+
+        # Draw overlays (kept for internal use / logs) but not returned
+        try:
+            _ = draw_overlays(img)
+        except Exception:
+            pass
+
+        # Provide sentence even if no new prediction (reuse existing committed list)
+        if not result['sentence']:
+            try:
+                committed = [w['text'] for w in recognized_words]
+                result['committed_words'] = committed
+                result['sentence'] = grammar_fix(committed)
+            except Exception:
+                pass
+        return result
+
+    except Exception as e:
+        print(f"process_frame_bytes_sync error: {e}")
+        import traceback as _tb
+        _tb.print_exc()
+        return result
+
+
+async def start_ws_server(host='0.0.0.0', port=5001):
+        """Start the WebSocket server used for low-latency AI frame processing.
+
+        Notes:
+        - The `websockets.serve` call runs an asyncio-based WebSocket server.
+        - We set `max_size` to 4MB to allow reasonably sized JPEG frames from the
+            client without rejecting them; adjust if clients send larger images.
+        - This coroutine blocks by awaiting an unresolved Future so the server
+            keeps running until the process is terminated.
+        """
+        print(f"Starting WebSocket AI server on ws://{host}:{port}/ai/ws")
+        async with websockets.serve(ws_handler, host, port, max_size=4*1024*1024):
+                await asyncio.Future()  # run forever
+
 
 # ============================================================================
 # ERROR HANDLERS
@@ -1001,12 +1251,20 @@ if __name__ == '__main__':
     print("Press Ctrl+C to stop the server")
     
     try:
+        # Start WebSocket server in background thread
+        def ws_thread():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(start_ws_server(host='0.0.0.0', port=5001))
+
+        t = threading.Thread(target=ws_thread, daemon=True)
+        t.start()
+
+        # Start Flask app (HTTP endpoints)
         app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:
-        if camera:
-            camera.release()
         if detector:
             detector.cleanup()
         cv2.destroyAllWindows()

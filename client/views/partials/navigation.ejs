@@ -1,16 +1,21 @@
 <div class="bottom-nav">
-  <div class="nav-item">
+  <div class="nav-item <%= currentPath === '/storage' ? 'active' : '' %>">
     <a href="/storage">
       <img src="/images/folder-icon.svg" alt="Folder" />
     </a>
   </div>
-  <div class="nav-item center-button">
+  <div class="nav-item center-button <%= currentPath === '/camera' ? 'active' : '' %>">
     <a href="/camera">
       <img src="/images/camera-icon.svg" alt="Camera" />
     </a>
   </div>
+<<<<<<< HEAD
   <div class="nav-item">
     <a href="/settings">
+=======
+  <div class="nav-item <%= currentPath === '/profile' ? 'active' : '' %>">
+    <a href="/profile">
+>>>>>>> integrated-app-waldo
       <img src="/images/user-icon.svg" alt="User" />
     </a>
   </div>

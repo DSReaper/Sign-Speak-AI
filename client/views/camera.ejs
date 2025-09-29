@@ -22,16 +22,15 @@
                 
                 <!-- Camera Section -->
                 <div class="camera-section" id="cameraSection">
-                    <div class="camera-container">
-                        <!-- Controls inside the camera section -->
+                    <div class="camera-container" style="position: relative;">
                         <div class="camera-controls">
                             <div class="detection-mode">
                                 <button class="mode-btn active" id="basicDetect">Basic Detect</button>
                                 <button class="mode-btn" id="advancedDetect">Advanced Detect</button>
                             </div>
                             <div class="camera-options">
-                                <button class="option-btn" id="toggleHands">Hand Detection</button>
-                                <button class="option-btn" id="resetBuffer">Reset</button>
+                                <button class="option-btn" id="toggleHands" style="visibility: hidden;"></button>
+                                <button class="option-btn" id="resetBuffer" style="visibility: hidden;"></button></button>
                             </div>
                             <div class="expand-btn" id="expandBtn">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -42,40 +41,48 @@
                             </div>
                         </div>
 
-                        <!-- AI Camera Feed from Flask -->
-                        <img id="aiCameraFeed" src="" alt="AI Camera Feed" style="display: none;">
+                        <!-- Local browser camera feed (replaces server image feed) -->
+                        <video id="aiCameraFeed" autoplay muted playsinline style="display: block; width: 100%; height: 100%; object-fit: cover;"></video>
+
+                        <!-- Overlay canvas for local hand drawing (drawn from hidden local video) -->
+                        <canvas id="overlayCanvas" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; display: block; z-index: 5;" aria-hidden="true"></canvas>
                         
                         <!-- Camera Loading -->
                         <div class="camera-loading" id="cameraLoading">
                             <div class="loading-spinner"></div>
-                            <p>Starting AI camera...</p>
                         </div>
 
                         <!-- Camera Error -->
                         <div class="camera-error" id="cameraError" style="display: none;">
-                            <p>Unable to start AI camera. Please check if the AI service is running.</p>
+                            <p>No camera detected please check your camera permissions</p>
                             <button class="retry-btn" id="retryCamera">Try Again</button>
                         </div>
 
                         <!-- AI Status Display -->
-                        <div class="ai-status" id="aiStatus">
-                            <div class="status-item">
-                                <span class="status-label">Buffer:</span>
-                                <span id="bufferStatus">Not started</span>
-                            </div>
-                            <div class="status-item">
-                                <span class="status-label">Confidence:</span>
-                                <span id="confidenceStatus" class="confidence-low">0.000</span>
-                            </div>
-                        </div>
+                                <div class="ai-status" id="aiStatus">
+                                    <div class="status-connection">
+                            <span class="status-dot disconnected" id="connectionStatusDot" aria-hidden="true"></span>
+                                        <span id="connectionStatusText">Disconnected</span>
+                                    </div>
+                                </div>
                     </div>
                 </div>
 
                 <!-- Detection Results -->
                 <div class="results-section">
+                    <button id="clearOutputBtn" class="clear-output-btn" title="Clear output" aria-label="Clear detected output">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                            <path d="M10 11v6" />
+                            <path d="M14 11v6" />
+                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                        </svg>
+                        <span>Clear output</span>
+                    </button>
                     <h2 class="results-title">Detected sign(s):</h2>
                     <div class="detected-phrase" id="detectedPhrase">
-                        Waiting for AI detection...
+                        Loading AI detection model...
                     </div>
                     
                     <!-- Audio Playback -->
@@ -104,6 +111,12 @@
         </div>
     </div>
 
+    <!-- MediaPipe: hands & drawing utils (client-side hand overlay) -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="/js/play-audio.js"></script>
     <script src="/js/camera-acess.js"></script>
+    <!-- Custom Gesture recognition for user actions-->
+    <script src="/js/custom-app-gestures.js"></script>
 </body>
 </html>
