@@ -1,0 +1,87 @@
+/* Styling for legal / document pages */
+.document-container {
+  max-width: 900px;
+  margin: 2rem auto 6rem; 
+  background: #ffffff; 
+  padding: 2rem 2.5rem;
+  border-radius: 12px;
+  border: 1px solid #e2e2e2;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  line-height: 1.55;
+  font-size: 0.98rem;
+  color: #111;
+}
+
+.main-content {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 1rem; 
+}
+
+.back-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  color: #111;
+  font-weight: 600;
+}
+.back-link i { color: #111; }
+.back-link:hover { text-decoration: underline; }
+
+.document-container h1 {
+  margin-top: 0;
+  font-size: 2rem;
+  letter-spacing: 0.5px;
+  color: #111;
+}
+
+.document-container h2 {
+  margin-top: 2rem;
+  font-size: 1.35rem;
+  color: #111;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.4rem;
+}
+
+.document-container h3 {
+  margin-top: 1.5rem;
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #222;
+}
+
+.document-container p { 
+  color: #222; 
+  margin: 0.7rem 0; 
+}
+
+.document-container ul { 
+  margin: 0.5rem 0 1rem 1.2rem; 
+  padding: 0; 
+}
+.document-container ul li { 
+  margin: 0.35rem 0; 
+  color: #222; 
+  list-style: disc; 
+}
+
+.document-container hr { 
+  border: none; 
+  border-top: 1px solid #e3e3e3; 
+  margin: 2.5rem 0 1.5rem; 
+}
+
+.document-container strong { color: #000; }
+
+@media (max-width: 700px) {
+  .document-container { 
+    padding: 1.5rem 1.25rem; 
+    margin: 1rem 0 6rem; 
+    border-radius: 0; 
+  }
+  .document-container h1 { font-size: 1.75rem; }
+  .document-container h2 { font-size: 1.2rem; }
+}

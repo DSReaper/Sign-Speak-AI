@@ -146,6 +146,15 @@ app.get('/application_settings', authenticateToken, (req, res) => {
   res.render('application_settings');
 });
 
+// Legal / Documents routes
+app.get('/privacy-policy', authenticateToken, (req, res) => {
+        res.render('privacy_policy', { currentPath: '/privacy-policy' });
+});
+
+app.get('/terms-and-conditions', authenticateToken, (req, res) => {
+        res.render('terms_conditions', { currentPath: '/terms-and-conditions' });
+});
+
 // API endpoint to check Flask service status
 app.get('/api/flask-status', async (req, res) => {
     try {

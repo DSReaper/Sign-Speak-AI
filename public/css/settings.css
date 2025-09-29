@@ -4,6 +4,12 @@ text-decoration: none;
 }
 
 .settings-list { list-style: none; flex: 1; }
+
+.settings-list a {
+  text-decoration: none; 
+  color: black
+}
+
 .settings-list li {
   display: flex; align-items: center;
   padding: 14px 0; font-size: 15px; cursor: pointer;
