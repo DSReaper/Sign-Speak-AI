@@ -435,6 +435,7 @@ class AISignLanguageDetection {
         this._localHandsLastFps = 0;
 
         this._hands.onResults((results) => {
+            // Existing overlay drawing
             this._drawHands(results);
             this._localHandsFrames += 1;
             const now = performance.now();
@@ -442,6 +443,16 @@ class AISignLanguageDetection {
                 this._localHandsLastFps = Math.round((this._localHandsFrames * 1000) / (now - this._localHandsLastTime));
                 this._localHandsFrames = 0;
                 this._localHandsLastTime = now;
+            }
+
+            try {
+                const evt = new CustomEvent('aiHandsResults', { detail: {
+                    multiHandLandmarks: results.multiHandLandmarks || [],
+                    multiHandedness: results.multiHandedness || []
+                }});
+                window.dispatchEvent(evt);
+            } catch (e) {
+                // Swallow errors to avoid breaking main loop
             }
         });
 

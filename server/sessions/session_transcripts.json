@@ -1412,5 +1412,959 @@
       }
     ],
     "final_sentence": "You want home you phone morning."
+  },
+  {
+    "session_id": "20250929T105447Z",
+    "created_utc": "2025-09-29T10:54:47.788051Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.15728303790092468,
+        "t_utc": "2025-09-29T10:54:47.785432Z"
+      }
+    ],
+    "final_sentence": "I do not want no."
+  },
+  {
+    "session_id": "20250929T105503Z",
+    "created_utc": "2025-09-29T10:55:03.182775Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.15728303790092468,
+        "t_utc": "2025-09-29T10:54:47.785432Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.11344679445028305,
+        "t_utc": "2025-09-29T10:55:03.181771Z"
+      }
+    ],
+    "final_sentence": "I do not want no bad."
+  },
+  {
+    "session_id": "20250929T110249Z",
+    "created_utc": "2025-09-29T11:02:49.378191Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.14463388919830322,
+        "t_utc": "2025-09-29T11:02:49.375994Z"
+      }
+    ],
+    "final_sentence": "I do not want no."
+  },
+  {
+    "session_id": "20250929T110310Z",
+    "created_utc": "2025-09-29T11:03:10.967660Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.14463388919830322,
+        "t_utc": "2025-09-29T11:02:49.375994Z"
+      },
+      {
+        "text": "Morning",
+        "confidence": 0.2193489819765091,
+        "t_utc": "2025-09-29T11:03:10.966664Z"
+      }
+    ],
+    "final_sentence": "I do not want no morning."
+  },
+  {
+    "session_id": "20250929T110321Z",
+    "created_utc": "2025-09-29T11:03:21.156791Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.14463388919830322,
+        "t_utc": "2025-09-29T11:02:49.375994Z"
+      },
+      {
+        "text": "Morning",
+        "confidence": 0.2193489819765091,
+        "t_utc": "2025-09-29T11:03:10.966664Z"
+      },
+      {
+        "text": "Clothes",
+        "confidence": 0.09321209043264389,
+        "t_utc": "2025-09-29T11:03:21.154799Z"
+      }
+    ],
+    "final_sentence": "I do not want no clothes morning."
+  },
+  {
+    "session_id": "20250929T110329Z",
+    "created_utc": "2025-09-29T11:03:29.638079Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.14463388919830322,
+        "t_utc": "2025-09-29T11:02:49.375994Z"
+      },
+      {
+        "text": "Morning",
+        "confidence": 0.2193489819765091,
+        "t_utc": "2025-09-29T11:03:10.966664Z"
+      },
+      {
+        "text": "Clothes",
+        "confidence": 0.09321209043264389,
+        "t_utc": "2025-09-29T11:03:21.154799Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.1611163467168808,
+        "t_utc": "2025-09-29T11:03:29.637082Z"
+      }
+    ],
+    "final_sentence": "I do not want no clothes morning today."
+  },
+  {
+    "session_id": "20250929T110343Z",
+    "created_utc": "2025-09-29T11:03:43.074616Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.14463388919830322,
+        "t_utc": "2025-09-29T11:02:49.375994Z"
+      },
+      {
+        "text": "Morning",
+        "confidence": 0.2193489819765091,
+        "t_utc": "2025-09-29T11:03:10.966664Z"
+      },
+      {
+        "text": "Clothes",
+        "confidence": 0.09321209043264389,
+        "t_utc": "2025-09-29T11:03:21.154799Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.1611163467168808,
+        "t_utc": "2025-09-29T11:03:29.637082Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.24136888980865479,
+        "t_utc": "2025-09-29T11:03:43.072633Z"
+      }
+    ],
+    "final_sentence": "I do not want no clothes please morning today."
+  },
+  {
+    "session_id": "20250929T110352Z",
+    "created_utc": "2025-09-29T11:03:52.153235Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.14463388919830322,
+        "t_utc": "2025-09-29T11:02:49.375994Z"
+      },
+      {
+        "text": "Morning",
+        "confidence": 0.2193489819765091,
+        "t_utc": "2025-09-29T11:03:10.966664Z"
+      },
+      {
+        "text": "Clothes",
+        "confidence": 0.09321209043264389,
+        "t_utc": "2025-09-29T11:03:21.154799Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.1611163467168808,
+        "t_utc": "2025-09-29T11:03:29.637082Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.24136888980865479,
+        "t_utc": "2025-09-29T11:03:43.072633Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.3047850430011749,
+        "t_utc": "2025-09-29T11:03:52.151929Z"
+      }
+    ],
+    "final_sentence": "I do not want no clothes please hello morning today."
+  },
+  {
+    "session_id": "20250929T110400Z",
+    "created_utc": "2025-09-29T11:04:00.194594Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.14463388919830322,
+        "t_utc": "2025-09-29T11:02:49.375994Z"
+      },
+      {
+        "text": "Morning",
+        "confidence": 0.2193489819765091,
+        "t_utc": "2025-09-29T11:03:10.966664Z"
+      },
+      {
+        "text": "Clothes",
+        "confidence": 0.09321209043264389,
+        "t_utc": "2025-09-29T11:03:21.154799Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.1611163467168808,
+        "t_utc": "2025-09-29T11:03:29.637082Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.24136888980865479,
+        "t_utc": "2025-09-29T11:03:43.072633Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.3047850430011749,
+        "t_utc": "2025-09-29T11:03:52.151929Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.28397586941719055,
+        "t_utc": "2025-09-29T11:04:00.193607Z"
+      }
+    ],
+    "final_sentence": "I do not want no clothes please hello night morning today."
+  },
+  {
+    "session_id": "20250929T110625Z",
+    "created_utc": "2025-09-29T11:06:25.563803Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Hello",
+        "confidence": 0.189487487077713,
+        "t_utc": "2025-09-29T11:06:25.561297Z"
+      }
+    ],
+    "final_sentence": "I want hello."
+  },
+  {
+    "session_id": "20250929T110632Z",
+    "created_utc": "2025-09-29T11:06:32.138459Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Hello",
+        "confidence": 0.189487487077713,
+        "t_utc": "2025-09-29T11:06:25.561297Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.22699415683746338,
+        "t_utc": "2025-09-29T11:06:32.137445Z"
+      }
+    ],
+    "final_sentence": "I want hello night."
+  },
+  {
+    "session_id": "20250929T110641Z",
+    "created_utc": "2025-09-29T11:06:41.968573Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Hello",
+        "confidence": 0.189487487077713,
+        "t_utc": "2025-09-29T11:06:25.561297Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.22699415683746338,
+        "t_utc": "2025-09-29T11:06:32.137445Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.2295033186674118,
+        "t_utc": "2025-09-29T11:06:41.966179Z"
+      }
+    ],
+    "final_sentence": "I want hello night hello."
+  },
+  {
+    "session_id": "20250929T110655Z",
+    "created_utc": "2025-09-29T11:06:55.467676Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Hello",
+        "confidence": 0.189487487077713,
+        "t_utc": "2025-09-29T11:06:25.561297Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.22699415683746338,
+        "t_utc": "2025-09-29T11:06:32.137445Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.2295033186674118,
+        "t_utc": "2025-09-29T11:06:41.966179Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.241665318608284,
+        "t_utc": "2025-09-29T11:06:55.466682Z"
+      }
+    ],
+    "final_sentence": "I want hello night hello night."
+  },
+  {
+    "session_id": "20250929T110949Z",
+    "created_utc": "2025-09-29T11:09:49.119047Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Clothes",
+        "confidence": 0.0871259868144989,
+        "t_utc": "2025-09-29T11:09:49.118055Z"
+      }
+    ],
+    "final_sentence": "I want clothes."
+  },
+  {
+    "session_id": "20250929T111017Z",
+    "created_utc": "2025-09-29T11:10:17.302724Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Clothes",
+        "confidence": 0.0871259868144989,
+        "t_utc": "2025-09-29T11:09:49.118055Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.11898475885391235,
+        "t_utc": "2025-09-29T11:10:17.301169Z"
+      }
+    ],
+    "final_sentence": "I think clothes."
+  },
+  {
+    "session_id": "20250929T111031Z",
+    "created_utc": "2025-09-29T11:10:31.695097Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Clothes",
+        "confidence": 0.0871259868144989,
+        "t_utc": "2025-09-29T11:09:49.118055Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.11898475885391235,
+        "t_utc": "2025-09-29T11:10:17.301169Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.16114196181297302,
+        "t_utc": "2025-09-29T11:10:31.694101Z"
+      }
+    ],
+    "final_sentence": "I think clothes night."
+  },
+  {
+    "session_id": "20250929T111043Z",
+    "created_utc": "2025-09-29T11:10:43.207947Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Clothes",
+        "confidence": 0.0871259868144989,
+        "t_utc": "2025-09-29T11:09:49.118055Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.11898475885391235,
+        "t_utc": "2025-09-29T11:10:17.301169Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.16114196181297302,
+        "t_utc": "2025-09-29T11:10:31.694101Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.09337972849607468,
+        "t_utc": "2025-09-29T11:10:43.206947Z"
+      }
+    ],
+    "final_sentence": "I do not think clothes night no."
+  },
+  {
+    "session_id": "20250929T111049Z",
+    "created_utc": "2025-09-29T11:10:49.150070Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Clothes",
+        "confidence": 0.0871259868144989,
+        "t_utc": "2025-09-29T11:09:49.118055Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.11898475885391235,
+        "t_utc": "2025-09-29T11:10:17.301169Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.16114196181297302,
+        "t_utc": "2025-09-29T11:10:31.694101Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.09337972849607468,
+        "t_utc": "2025-09-29T11:10:43.206947Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.19283483922481537,
+        "t_utc": "2025-09-29T11:10:49.148558Z"
+      }
+    ],
+    "final_sentence": "I do not think clothes night no night."
+  },
+  {
+    "session_id": "20250929T111117Z",
+    "created_utc": "2025-09-29T11:11:17.547216Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Clothes",
+        "confidence": 0.0871259868144989,
+        "t_utc": "2025-09-29T11:09:49.118055Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.11898475885391235,
+        "t_utc": "2025-09-29T11:10:17.301169Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.16114196181297302,
+        "t_utc": "2025-09-29T11:10:31.694101Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.09337972849607468,
+        "t_utc": "2025-09-29T11:10:43.206947Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.19283483922481537,
+        "t_utc": "2025-09-29T11:10:49.148558Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.12770865857601166,
+        "t_utc": "2025-09-29T11:11:17.545733Z"
+      }
+    ],
+    "final_sentence": "I do not think clothes night no night hello."
+  },
+  {
+    "session_id": "20250929T111133Z",
+    "created_utc": "2025-09-29T11:11:33.570401Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Clothes",
+        "confidence": 0.0871259868144989,
+        "t_utc": "2025-09-29T11:09:49.118055Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.11898475885391235,
+        "t_utc": "2025-09-29T11:10:17.301169Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.16114196181297302,
+        "t_utc": "2025-09-29T11:10:31.694101Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.09337972849607468,
+        "t_utc": "2025-09-29T11:10:43.206947Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.19283483922481537,
+        "t_utc": "2025-09-29T11:10:49.148558Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.12770865857601166,
+        "t_utc": "2025-09-29T11:11:17.545733Z"
+      },
+      {
+        "text": "Tea",
+        "confidence": 0.15022672712802887,
+        "t_utc": "2025-09-29T11:11:33.566420Z"
+      }
+    ],
+    "final_sentence": "I do not think clothes night no night hello tea."
+  },
+  {
+    "session_id": "20250929T111144Z",
+    "created_utc": "2025-09-29T11:11:44.892184Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Clothes",
+        "confidence": 0.0871259868144989,
+        "t_utc": "2025-09-29T11:09:49.118055Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.11898475885391235,
+        "t_utc": "2025-09-29T11:10:17.301169Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.16114196181297302,
+        "t_utc": "2025-09-29T11:10:31.694101Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.09337972849607468,
+        "t_utc": "2025-09-29T11:10:43.206947Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.19283483922481537,
+        "t_utc": "2025-09-29T11:10:49.148558Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.12770865857601166,
+        "t_utc": "2025-09-29T11:11:17.545733Z"
+      },
+      {
+        "text": "Tea",
+        "confidence": 0.15022672712802887,
+        "t_utc": "2025-09-29T11:11:33.566420Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.21391183137893677,
+        "t_utc": "2025-09-29T11:11:44.889190Z"
+      }
+    ],
+    "final_sentence": "I do not think clothes night no night hello tea hello."
+  },
+  {
+    "session_id": "20250929T111220Z",
+    "created_utc": "2025-09-29T11:12:20.766657Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Clothes",
+        "confidence": 0.0871259868144989,
+        "t_utc": "2025-09-29T11:09:49.118055Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.11898475885391235,
+        "t_utc": "2025-09-29T11:10:17.301169Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.16114196181297302,
+        "t_utc": "2025-09-29T11:10:31.694101Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.09337972849607468,
+        "t_utc": "2025-09-29T11:10:43.206947Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.19283483922481537,
+        "t_utc": "2025-09-29T11:10:49.148558Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.12770865857601166,
+        "t_utc": "2025-09-29T11:11:17.545733Z"
+      },
+      {
+        "text": "Tea",
+        "confidence": 0.15022672712802887,
+        "t_utc": "2025-09-29T11:11:33.566420Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.21391183137893677,
+        "t_utc": "2025-09-29T11:11:44.889190Z"
+      },
+      {
+        "text": "Tea",
+        "confidence": 0.17619352042675018,
+        "t_utc": "2025-09-29T11:12:20.765158Z"
+      }
+    ],
+    "final_sentence": "I do not think clothes night no night hello tea hello tea."
+  },
+  {
+    "session_id": "20250929T111240Z",
+    "created_utc": "2025-09-29T11:12:40.446454Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Clothes",
+        "confidence": 0.0871259868144989,
+        "t_utc": "2025-09-29T11:09:49.118055Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.11898475885391235,
+        "t_utc": "2025-09-29T11:10:17.301169Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.16114196181297302,
+        "t_utc": "2025-09-29T11:10:31.694101Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.09337972849607468,
+        "t_utc": "2025-09-29T11:10:43.206947Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.19283483922481537,
+        "t_utc": "2025-09-29T11:10:49.148558Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.12770865857601166,
+        "t_utc": "2025-09-29T11:11:17.545733Z"
+      },
+      {
+        "text": "Tea",
+        "confidence": 0.15022672712802887,
+        "t_utc": "2025-09-29T11:11:33.566420Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.21391183137893677,
+        "t_utc": "2025-09-29T11:11:44.889190Z"
+      },
+      {
+        "text": "Tea",
+        "confidence": 0.17619352042675018,
+        "t_utc": "2025-09-29T11:12:20.765158Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.1799132227897644,
+        "t_utc": "2025-09-29T11:12:40.445451Z"
+      }
+    ],
+    "final_sentence": "I do not think clothes night no night hello tea hello tea night."
+  },
+  {
+    "session_id": "20250929T111256Z",
+    "created_utc": "2025-09-29T11:12:56.260673Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Clothes",
+        "confidence": 0.0871259868144989,
+        "t_utc": "2025-09-29T11:09:49.118055Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.11898475885391235,
+        "t_utc": "2025-09-29T11:10:17.301169Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.16114196181297302,
+        "t_utc": "2025-09-29T11:10:31.694101Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.09337972849607468,
+        "t_utc": "2025-09-29T11:10:43.206947Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.19283483922481537,
+        "t_utc": "2025-09-29T11:10:49.148558Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.12770865857601166,
+        "t_utc": "2025-09-29T11:11:17.545733Z"
+      },
+      {
+        "text": "Tea",
+        "confidence": 0.15022672712802887,
+        "t_utc": "2025-09-29T11:11:33.566420Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.21391183137893677,
+        "t_utc": "2025-09-29T11:11:44.889190Z"
+      },
+      {
+        "text": "Tea",
+        "confidence": 0.17619352042675018,
+        "t_utc": "2025-09-29T11:12:20.765158Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.1799132227897644,
+        "t_utc": "2025-09-29T11:12:40.445451Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.2289823740720749,
+        "t_utc": "2025-09-29T11:12:56.260673Z"
+      }
+    ],
+    "final_sentence": "I do not think clothes night no night hello tea hello tea night no."
+  },
+  {
+    "session_id": "20250929T111311Z",
+    "created_utc": "2025-09-29T11:13:11.554821Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Clothes",
+        "confidence": 0.0871259868144989,
+        "t_utc": "2025-09-29T11:09:49.118055Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.11898475885391235,
+        "t_utc": "2025-09-29T11:10:17.301169Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.16114196181297302,
+        "t_utc": "2025-09-29T11:10:31.694101Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.09337972849607468,
+        "t_utc": "2025-09-29T11:10:43.206947Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.19283483922481537,
+        "t_utc": "2025-09-29T11:10:49.148558Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.12770865857601166,
+        "t_utc": "2025-09-29T11:11:17.545733Z"
+      },
+      {
+        "text": "Tea",
+        "confidence": 0.15022672712802887,
+        "t_utc": "2025-09-29T11:11:33.566420Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.21391183137893677,
+        "t_utc": "2025-09-29T11:11:44.889190Z"
+      },
+      {
+        "text": "Tea",
+        "confidence": 0.17619352042675018,
+        "t_utc": "2025-09-29T11:12:20.765158Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.1799132227897644,
+        "t_utc": "2025-09-29T11:12:40.445451Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.2289823740720749,
+        "t_utc": "2025-09-29T11:12:56.260673Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.18048252165317535,
+        "t_utc": "2025-09-29T11:13:11.552193Z"
+      }
+    ],
+    "final_sentence": "I do not think clothes night no night hello tea hello tea night no night."
+  },
+  {
+    "session_id": "20250929T111347Z",
+    "created_utc": "2025-09-29T11:13:47.249768Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Phone",
+        "confidence": 0.10358446091413498,
+        "t_utc": "2025-09-29T11:13:47.246532Z"
+      }
+    ],
+    "final_sentence": "I want phone."
+  },
+  {
+    "session_id": "20250929T111518Z",
+    "created_utc": "2025-09-29T11:15:18.004585Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Night",
+        "confidence": 0.16709011793136597,
+        "t_utc": "2025-09-29T11:15:18.004081Z"
+      }
+    ],
+    "final_sentence": "I want night."
+  },
+  {
+    "session_id": "20250929T111533Z",
+    "created_utc": "2025-09-29T11:15:33.856118Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Night",
+        "confidence": 0.16709011793136597,
+        "t_utc": "2025-09-29T11:15:18.004081Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.2265113741159439,
+        "t_utc": "2025-09-29T11:15:33.854651Z"
+      }
+    ],
+    "final_sentence": "I want night hello."
+  },
+  {
+    "session_id": "20250929T112203Z",
+    "created_utc": "2025-09-29T11:22:03.684681Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Thanks",
+        "confidence": 0.3063392639160156,
+        "t_utc": "2025-09-29T11:22:03.682337Z"
+      }
+    ],
+    "final_sentence": "I want thanks."
+  },
+  {
+    "session_id": "20250929T112218Z",
+    "created_utc": "2025-09-29T11:22:18.090066Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Thanks",
+        "confidence": 0.3063392639160156,
+        "t_utc": "2025-09-29T11:22:03.682337Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.2727603316307068,
+        "t_utc": "2025-09-29T11:22:18.088859Z"
+      }
+    ],
+    "final_sentence": "I want thanks yes."
+  },
+  {
+    "session_id": "20250929T112225Z",
+    "created_utc": "2025-09-29T11:22:25.645924Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Thanks",
+        "confidence": 0.3063392639160156,
+        "t_utc": "2025-09-29T11:22:03.682337Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.2727603316307068,
+        "t_utc": "2025-09-29T11:22:18.088859Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.38528454303741455,
+        "t_utc": "2025-09-29T11:22:25.644674Z"
+      }
+    ],
+    "final_sentence": "I do not want thanks yes no."
+  },
+  {
+    "session_id": "20250929T112303Z",
+    "created_utc": "2025-09-29T11:23:03.619528Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Thanks",
+        "confidence": 0.3063392639160156,
+        "t_utc": "2025-09-29T11:22:03.682337Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.2727603316307068,
+        "t_utc": "2025-09-29T11:22:18.088859Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.38528454303741455,
+        "t_utc": "2025-09-29T11:22:25.644674Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.13652634620666504,
+        "t_utc": "2025-09-29T11:23:03.618319Z"
+      }
+    ],
+    "final_sentence": "I do not think thanks yes no."
+  },
+  {
+    "session_id": "20250929T112313Z",
+    "created_utc": "2025-09-29T11:23:13.928323Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Thanks",
+        "confidence": 0.3063392639160156,
+        "t_utc": "2025-09-29T11:22:03.682337Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.2727603316307068,
+        "t_utc": "2025-09-29T11:22:18.088859Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.38528454303741455,
+        "t_utc": "2025-09-29T11:22:25.644674Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.13652634620666504,
+        "t_utc": "2025-09-29T11:23:03.618319Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.24923132359981537,
+        "t_utc": "2025-09-29T11:23:13.926104Z"
+      }
+    ],
+    "final_sentence": "I do not think thanks yes no no."
   }
 ]
