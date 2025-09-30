@@ -11,5 +11,6 @@ router.get('/history/:userId', controller.getHistory);
 // Phrase routes
 router.post('/phrase', authenticateToken, phraseController.savePhrase);
 router.get('/phrases', authenticateToken, phraseController.getPhrases);
+router.delete('/phrase/:id', authenticateToken, phraseController.deletePhrase);
 
 module.exports = router;

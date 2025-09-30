@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sign Speak - AI | Stored Phrases</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
   <div class="app-grid">
@@ -22,7 +22,7 @@
 
         <!-- Search Header -->
         <header class="storage-search-bar">
-          <input id="storageSearchInput" type="text" class="storage-search-input" placeholder="Search">
+          <input id="storageSearchInput" type="text" class="storage-search-input" placeholder="Search" />
           <select id="storageSortSelect" class="storage-sort-select" aria-label="Sort stored phrases">
             <option value="">Sort </option>
             <option value="date-new-old">Date (new → old)</option>
@@ -37,61 +37,62 @@
           <h2 class="storage-page-title">Stored Phrases</h2>
           <ul id="phrasesList" class="storage-phrase-list"></ul>
 
-            <script>
-              async function fetchPhrases() {
-                try {
-                  const response = await fetch('/translate/phrases');
-                  if (!response.ok) {
-                    throw new Error('Failed to fetch phrases');
-                  }
-                  const data = await response.json();
-                  const phrases = data.phrases || [];
-                  const phrasesList = document.getElementById('phrasesList');
-                  phrasesList.innerHTML = '';
-
-                  phrases.forEach((phrase, index) => {
-                    const li = document.createElement('li');
-                    li.className = 'storage-phrase-item';
-
-                    const date = new Date(phrase.timestamp).toLocaleDateString();
-
-                    li.innerHTML = `
-                      <div class="storage-phrase-content">
-                        <!-- Star Button -->
-                        <button class="storage-star-btn" data-phrase-index="${index}" data-starred="true">
-                          <!-- Filled Star SVG -->
-                          <svg class="storage-star-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                          </svg>
-                        </button>
-
-                        <!-- Phrase Text + Date Wrapper -->
-                        <div class="storage-phrase-text-wrapper">
-                          <span class="storage-phrase-text">"${phrase.text}"</span>
-                          <div class="storage-phrase-date">${date}</div>
-                        </div>
-
-                        <!-- Play Button -->
-                        <button class="storage-play-btn" data-phrase-index="${index}">
-                          <!-- Play Button SVG -->
-                          <svg class="storage-play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M8 5v14l11-7z"/>
-                          </svg>
-                        </button>
-                      </div>
-                    `;
-                    phrasesList.appendChild(li);
-                  });
-                } catch (error) {
-                  console.error('Error fetching phrases:', error);
-                  const phrasesList = document.getElementById('phrasesList');
-                  phrasesList.innerHTML = '<li class="storage-phrase-item"><div class="storage-phrase-content">Error loading phrases. Please try again.</div></li>';
+          <script>
+            async function fetchPhrases() {
+              try {
+                const response = await fetch('/translate/phrases');
+                if (!response.ok) {
+                  throw new Error('Failed to fetch phrases');
                 }
-              }
+                const data = await response.json();
+                const phrases = data.phrases || [];
+                const phrasesList = document.getElementById('phrasesList');
+                phrasesList.innerHTML = '';
 
-              // Fetch phrases when the page loads
-              fetchPhrases();
-            </script>
+                phrases.forEach((phrase, index) => {
+                  const li = document.createElement('li');
+                  li.className = 'storage-phrase-item';
+                  li.setAttribute('data-phrase-id', phrase._id);
+
+                  const date = new Date(phrase.timestamp).toLocaleDateString();
+
+                  li.innerHTML = `
+                    <div class="storage-phrase-content">
+                      <!-- Star Button -->
+                      <button class="storage-star-btn" data-phrase-id="${phrase._id}" data-starred="true" aria-label="Delete phrase">
+                        <!-- Filled Star SVG -->
+                        <svg class="storage-star-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                      </button>
+
+                      <!-- Phrase Text + Date Wrapper -->
+                      <div class="storage-phrase-text-wrapper">
+                        <span class="storage-phrase-text">"${phrase.text}"</span>
+                        <div class="storage-phrase-date">${date}</div>
+                      </div>
+
+                      <!-- Play Button -->
+                      <button class="storage-play-btn" data-phrase-index="${index}">
+                        <!-- Play Button SVG -->
+                        <svg class="storage-play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  `;
+                  phrasesList.appendChild(li);
+                });
+              } catch (error) {
+                console.error('Error fetching phrases:', error);
+                const phrasesList = document.getElementById('phrasesList');
+                phrasesList.innerHTML = '<li class="storage-phrase-item"><div class="storage-phrase-content">Error loading phrases. Please try again.</div></li>';
+              }
+            }
+
+            // Fetch phrases when the page loads
+            fetchPhrases();
+          </script>
         </main>
       </div>
     </div>

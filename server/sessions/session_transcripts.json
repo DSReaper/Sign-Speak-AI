@@ -1,0 +1,1784 @@
+[
+  {
+    "session_id": "20250929T145815Z",
+    "created_utc": "2025-09-29T14:58:15.155428Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      }
+    ],
+    "final_sentence": "I do not want no."
+  },
+  {
+    "session_id": "20250929T145817Z",
+    "created_utc": "2025-09-29T14:58:17.429610Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      }
+    ],
+    "final_sentence": "I do not want no family."
+  },
+  {
+    "session_id": "20250929T145822Z",
+    "created_utc": "2025-09-29T14:58:22.276919Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks."
+  },
+  {
+    "session_id": "20250929T145825Z",
+    "created_utc": "2025-09-29T14:58:25.305223Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks today."
+  },
+  {
+    "session_id": "20250929T145827Z",
+    "created_utc": "2025-09-29T14:58:27.789431Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.10742250829935074,
+        "t_utc": "2025-09-29T14:58:27.788245Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks please today."
+  },
+  {
+    "session_id": "20250929T145829Z",
+    "created_utc": "2025-09-29T14:58:29.674550Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.10742250829935074,
+        "t_utc": "2025-09-29T14:58:27.788245Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10135873407125473,
+        "t_utc": "2025-09-29T14:58:29.673553Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks please bad today."
+  },
+  {
+    "session_id": "20250929T145830Z",
+    "created_utc": "2025-09-29T14:58:30.846388Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.10742250829935074,
+        "t_utc": "2025-09-29T14:58:27.788245Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10135873407125473,
+        "t_utc": "2025-09-29T14:58:29.673553Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.09277647733688354,
+        "t_utc": "2025-09-29T14:58:30.845391Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks please bad good today."
+  },
+  {
+    "session_id": "20250929T145831Z",
+    "created_utc": "2025-09-29T14:58:31.829521Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.10742250829935074,
+        "t_utc": "2025-09-29T14:58:27.788245Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10135873407125473,
+        "t_utc": "2025-09-29T14:58:29.673553Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.09277647733688354,
+        "t_utc": "2025-09-29T14:58:30.845391Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10020322352647781,
+        "t_utc": "2025-09-29T14:58:31.828504Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks please bad good bad today."
+  },
+  {
+    "session_id": "20250929T145835Z",
+    "created_utc": "2025-09-29T14:58:35.288305Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.10742250829935074,
+        "t_utc": "2025-09-29T14:58:27.788245Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10135873407125473,
+        "t_utc": "2025-09-29T14:58:29.673553Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.09277647733688354,
+        "t_utc": "2025-09-29T14:58:30.845391Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10020322352647781,
+        "t_utc": "2025-09-29T14:58:31.828504Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.08519505709409714,
+        "t_utc": "2025-09-29T14:58:35.286787Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks please bad good bad no today."
+  },
+  {
+    "session_id": "20250929T145836Z",
+    "created_utc": "2025-09-29T14:58:36.422412Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.10742250829935074,
+        "t_utc": "2025-09-29T14:58:27.788245Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10135873407125473,
+        "t_utc": "2025-09-29T14:58:29.673553Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.09277647733688354,
+        "t_utc": "2025-09-29T14:58:30.845391Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10020322352647781,
+        "t_utc": "2025-09-29T14:58:31.828504Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.08519505709409714,
+        "t_utc": "2025-09-29T14:58:35.286787Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.07052626460790634,
+        "t_utc": "2025-09-29T14:58:36.421406Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks please bad good bad no hello today."
+  },
+  {
+    "session_id": "20250929T145840Z",
+    "created_utc": "2025-09-29T14:58:40.279150Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.10742250829935074,
+        "t_utc": "2025-09-29T14:58:27.788245Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10135873407125473,
+        "t_utc": "2025-09-29T14:58:29.673553Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.09277647733688354,
+        "t_utc": "2025-09-29T14:58:30.845391Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10020322352647781,
+        "t_utc": "2025-09-29T14:58:31.828504Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.08519505709409714,
+        "t_utc": "2025-09-29T14:58:35.286787Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.07052626460790634,
+        "t_utc": "2025-09-29T14:58:36.421406Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.3680140972137451,
+        "t_utc": "2025-09-29T14:58:40.279150Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks please bad good bad no hello thanks today."
+  },
+  {
+    "session_id": "20250929T145842Z",
+    "created_utc": "2025-09-29T14:58:42.577632Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.10742250829935074,
+        "t_utc": "2025-09-29T14:58:27.788245Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10135873407125473,
+        "t_utc": "2025-09-29T14:58:29.673553Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.09277647733688354,
+        "t_utc": "2025-09-29T14:58:30.845391Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10020322352647781,
+        "t_utc": "2025-09-29T14:58:31.828504Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.08519505709409714,
+        "t_utc": "2025-09-29T14:58:35.286787Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.07052626460790634,
+        "t_utc": "2025-09-29T14:58:36.421406Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.3680140972137451,
+        "t_utc": "2025-09-29T14:58:40.279150Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.17953386902809143,
+        "t_utc": "2025-09-29T14:58:42.576640Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks please bad good bad no hello thanks bad today."
+  },
+  {
+    "session_id": "20250929T145844Z",
+    "created_utc": "2025-09-29T14:58:44.394833Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.10742250829935074,
+        "t_utc": "2025-09-29T14:58:27.788245Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10135873407125473,
+        "t_utc": "2025-09-29T14:58:29.673553Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.09277647733688354,
+        "t_utc": "2025-09-29T14:58:30.845391Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10020322352647781,
+        "t_utc": "2025-09-29T14:58:31.828504Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.08519505709409714,
+        "t_utc": "2025-09-29T14:58:35.286787Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.07052626460790634,
+        "t_utc": "2025-09-29T14:58:36.421406Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.3680140972137451,
+        "t_utc": "2025-09-29T14:58:40.279150Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.17953386902809143,
+        "t_utc": "2025-09-29T14:58:42.576640Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.19512838125228882,
+        "t_utc": "2025-09-29T14:58:44.393840Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks please bad good bad no hello thanks bad no today."
+  },
+  {
+    "session_id": "20250929T145856Z",
+    "created_utc": "2025-09-29T14:58:56.073952Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.10742250829935074,
+        "t_utc": "2025-09-29T14:58:27.788245Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10135873407125473,
+        "t_utc": "2025-09-29T14:58:29.673553Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.09277647733688354,
+        "t_utc": "2025-09-29T14:58:30.845391Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10020322352647781,
+        "t_utc": "2025-09-29T14:58:31.828504Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.08519505709409714,
+        "t_utc": "2025-09-29T14:58:35.286787Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.07052626460790634,
+        "t_utc": "2025-09-29T14:58:36.421406Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.3680140972137451,
+        "t_utc": "2025-09-29T14:58:40.279150Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.17953386902809143,
+        "t_utc": "2025-09-29T14:58:42.576640Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.19512838125228882,
+        "t_utc": "2025-09-29T14:58:44.393840Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.15680932998657227,
+        "t_utc": "2025-09-29T14:58:56.072952Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks please bad good bad no hello thanks bad no bad today."
+  },
+  {
+    "session_id": "20250929T145909Z",
+    "created_utc": "2025-09-29T14:59:09.485921Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.10742250829935074,
+        "t_utc": "2025-09-29T14:58:27.788245Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10135873407125473,
+        "t_utc": "2025-09-29T14:58:29.673553Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.09277647733688354,
+        "t_utc": "2025-09-29T14:58:30.845391Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10020322352647781,
+        "t_utc": "2025-09-29T14:58:31.828504Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.08519505709409714,
+        "t_utc": "2025-09-29T14:58:35.286787Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.07052626460790634,
+        "t_utc": "2025-09-29T14:58:36.421406Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.3680140972137451,
+        "t_utc": "2025-09-29T14:58:40.279150Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.17953386902809143,
+        "t_utc": "2025-09-29T14:58:42.576640Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.19512838125228882,
+        "t_utc": "2025-09-29T14:58:44.393840Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.15680932998657227,
+        "t_utc": "2025-09-29T14:58:56.072952Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.06843487918376923,
+        "t_utc": "2025-09-29T14:59:09.484928Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks please bad good bad no hello thanks bad no bad no today."
+  },
+  {
+    "session_id": "20250929T145911Z",
+    "created_utc": "2025-09-29T14:59:11.540525Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.10742250829935074,
+        "t_utc": "2025-09-29T14:58:27.788245Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10135873407125473,
+        "t_utc": "2025-09-29T14:58:29.673553Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.09277647733688354,
+        "t_utc": "2025-09-29T14:58:30.845391Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10020322352647781,
+        "t_utc": "2025-09-29T14:58:31.828504Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.08519505709409714,
+        "t_utc": "2025-09-29T14:58:35.286787Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.07052626460790634,
+        "t_utc": "2025-09-29T14:58:36.421406Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.3680140972137451,
+        "t_utc": "2025-09-29T14:58:40.279150Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.17953386902809143,
+        "t_utc": "2025-09-29T14:58:42.576640Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.19512838125228882,
+        "t_utc": "2025-09-29T14:58:44.393840Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.15680932998657227,
+        "t_utc": "2025-09-29T14:58:56.072952Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.06843487918376923,
+        "t_utc": "2025-09-29T14:59:09.484928Z"
+      },
+      {
+        "text": "Clothes",
+        "confidence": 0.059517502784729004,
+        "t_utc": "2025-09-29T14:59:11.539522Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks please bad good bad no hello thanks bad no bad no clothes today."
+  },
+  {
+    "session_id": "20250929T145913Z",
+    "created_utc": "2025-09-29T14:59:13.424942Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.040707170963287354,
+        "t_utc": "2025-09-29T14:58:15.155428Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.09987979382276535,
+        "t_utc": "2025-09-29T14:58:17.428603Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.14601117372512817,
+        "t_utc": "2025-09-29T14:58:22.276919Z"
+      },
+      {
+        "text": "Today",
+        "confidence": 0.07145281881093979,
+        "t_utc": "2025-09-29T14:58:25.305223Z"
+      },
+      {
+        "text": "Please",
+        "confidence": 0.10742250829935074,
+        "t_utc": "2025-09-29T14:58:27.788245Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10135873407125473,
+        "t_utc": "2025-09-29T14:58:29.673553Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.09277647733688354,
+        "t_utc": "2025-09-29T14:58:30.845391Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.10020322352647781,
+        "t_utc": "2025-09-29T14:58:31.828504Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.08519505709409714,
+        "t_utc": "2025-09-29T14:58:35.286787Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.07052626460790634,
+        "t_utc": "2025-09-29T14:58:36.421406Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.3680140972137451,
+        "t_utc": "2025-09-29T14:58:40.279150Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.17953386902809143,
+        "t_utc": "2025-09-29T14:58:42.576640Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.19512838125228882,
+        "t_utc": "2025-09-29T14:58:44.393840Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.15680932998657227,
+        "t_utc": "2025-09-29T14:58:56.072952Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.06843487918376923,
+        "t_utc": "2025-09-29T14:59:09.484928Z"
+      },
+      {
+        "text": "Clothes",
+        "confidence": 0.059517502784729004,
+        "t_utc": "2025-09-29T14:59:11.539522Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.1326701045036316,
+        "t_utc": "2025-09-29T14:59:13.424212Z"
+      }
+    ],
+    "final_sentence": "I do not want no family thanks please bad good bad no hello thanks bad no bad no clothes no today."
+  },
+  {
+    "session_id": "20250929T145918Z",
+    "created_utc": "2025-09-29T14:59:18.660397Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.16884364187717438,
+        "t_utc": "2025-09-29T14:59:18.659382Z"
+      }
+    ],
+    "final_sentence": "I do not want no."
+  },
+  {
+    "session_id": "20250929T145920Z",
+    "created_utc": "2025-09-29T14:59:20.550936Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.16884364187717438,
+        "t_utc": "2025-09-29T14:59:18.659382Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.16213098168373108,
+        "t_utc": "2025-09-29T14:59:20.549939Z"
+      }
+    ],
+    "final_sentence": "I do not want no bad."
+  },
+  {
+    "session_id": "20250929T145929Z",
+    "created_utc": "2025-09-29T14:59:29.927115Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.16884364187717438,
+        "t_utc": "2025-09-29T14:59:18.659382Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.16213098168373108,
+        "t_utc": "2025-09-29T14:59:20.549939Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17980490624904633,
+        "t_utc": "2025-09-29T14:59:29.927115Z"
+      }
+    ],
+    "final_sentence": "I do not want no bad no."
+  },
+  {
+    "session_id": "20250929T145936Z",
+    "created_utc": "2025-09-29T14:59:36.030075Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.16884364187717438,
+        "t_utc": "2025-09-29T14:59:18.659382Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.16213098168373108,
+        "t_utc": "2025-09-29T14:59:20.549939Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17980490624904633,
+        "t_utc": "2025-09-29T14:59:29.927115Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.2044127732515335,
+        "t_utc": "2025-09-29T14:59:36.030075Z"
+      }
+    ],
+    "final_sentence": "I do not want no bad no yes."
+  },
+  {
+    "session_id": "20250929T145945Z",
+    "created_utc": "2025-09-29T14:59:45.810867Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.16884364187717438,
+        "t_utc": "2025-09-29T14:59:18.659382Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.16213098168373108,
+        "t_utc": "2025-09-29T14:59:20.549939Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17980490624904633,
+        "t_utc": "2025-09-29T14:59:29.927115Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.2044127732515335,
+        "t_utc": "2025-09-29T14:59:36.030075Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.2693623900413513,
+        "t_utc": "2025-09-29T14:59:45.810867Z"
+      }
+    ],
+    "final_sentence": "I do not want no bad no yes no."
+  },
+  {
+    "session_id": "20250929T145955Z",
+    "created_utc": "2025-09-29T14:59:55.521501Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.16884364187717438,
+        "t_utc": "2025-09-29T14:59:18.659382Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.16213098168373108,
+        "t_utc": "2025-09-29T14:59:20.549939Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17980490624904633,
+        "t_utc": "2025-09-29T14:59:29.927115Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.2044127732515335,
+        "t_utc": "2025-09-29T14:59:36.030075Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.2693623900413513,
+        "t_utc": "2025-09-29T14:59:45.810867Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.24331003427505493,
+        "t_utc": "2025-09-29T14:59:55.520504Z"
+      }
+    ],
+    "final_sentence": "I do not want no bad no yes no family."
+  },
+  {
+    "session_id": "20250929T150000Z",
+    "created_utc": "2025-09-29T15:00:00.549802Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.16884364187717438,
+        "t_utc": "2025-09-29T14:59:18.659382Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.16213098168373108,
+        "t_utc": "2025-09-29T14:59:20.549939Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17980490624904633,
+        "t_utc": "2025-09-29T14:59:29.927115Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.2044127732515335,
+        "t_utc": "2025-09-29T14:59:36.030075Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.2693623900413513,
+        "t_utc": "2025-09-29T14:59:45.810867Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.24331003427505493,
+        "t_utc": "2025-09-29T14:59:55.520504Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.19574081897735596,
+        "t_utc": "2025-09-29T15:00:00.548805Z"
+      }
+    ],
+    "final_sentence": "I do not want no bad no yes no family bad."
+  },
+  {
+    "session_id": "20250929T150003Z",
+    "created_utc": "2025-09-29T15:00:03.595975Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.16884364187717438,
+        "t_utc": "2025-09-29T14:59:18.659382Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.16213098168373108,
+        "t_utc": "2025-09-29T14:59:20.549939Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17980490624904633,
+        "t_utc": "2025-09-29T14:59:29.927115Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.2044127732515335,
+        "t_utc": "2025-09-29T14:59:36.030075Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.2693623900413513,
+        "t_utc": "2025-09-29T14:59:45.810867Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.24331003427505493,
+        "t_utc": "2025-09-29T14:59:55.520504Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.19574081897735596,
+        "t_utc": "2025-09-29T15:00:00.548805Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17378322780132294,
+        "t_utc": "2025-09-29T15:00:03.595468Z"
+      }
+    ],
+    "final_sentence": "I do not want no bad no yes no family bad no."
+  },
+  {
+    "session_id": "20250929T150005Z",
+    "created_utc": "2025-09-29T15:00:05.958742Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.16884364187717438,
+        "t_utc": "2025-09-29T14:59:18.659382Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.16213098168373108,
+        "t_utc": "2025-09-29T14:59:20.549939Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17980490624904633,
+        "t_utc": "2025-09-29T14:59:29.927115Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.2044127732515335,
+        "t_utc": "2025-09-29T14:59:36.030075Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.2693623900413513,
+        "t_utc": "2025-09-29T14:59:45.810867Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.24331003427505493,
+        "t_utc": "2025-09-29T14:59:55.520504Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.19574081897735596,
+        "t_utc": "2025-09-29T15:00:00.548805Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17378322780132294,
+        "t_utc": "2025-09-29T15:00:03.595468Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.11299457401037216,
+        "t_utc": "2025-09-29T15:00:05.958742Z"
+      }
+    ],
+    "final_sentence": "I do not want no bad no yes no family bad no bad."
+  },
+  {
+    "session_id": "20250929T150007Z",
+    "created_utc": "2025-09-29T15:00:07.321907Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.16884364187717438,
+        "t_utc": "2025-09-29T14:59:18.659382Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.16213098168373108,
+        "t_utc": "2025-09-29T14:59:20.549939Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17980490624904633,
+        "t_utc": "2025-09-29T14:59:29.927115Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.2044127732515335,
+        "t_utc": "2025-09-29T14:59:36.030075Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.2693623900413513,
+        "t_utc": "2025-09-29T14:59:45.810867Z"
+      },
+      {
+        "text": "Family",
+        "confidence": 0.24331003427505493,
+        "t_utc": "2025-09-29T14:59:55.520504Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.19574081897735596,
+        "t_utc": "2025-09-29T15:00:00.548805Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17378322780132294,
+        "t_utc": "2025-09-29T15:00:03.595468Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.11299457401037216,
+        "t_utc": "2025-09-29T15:00:05.958742Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.10849154740571976,
+        "t_utc": "2025-09-29T15:00:07.321907Z"
+      }
+    ],
+    "final_sentence": "I do not think no bad no yes no family bad no bad."
+  },
+  {
+    "session_id": "20250929T150013Z",
+    "created_utc": "2025-09-29T15:00:13.718045Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.36995479464530945,
+        "t_utc": "2025-09-29T15:00:13.717045Z"
+      }
+    ],
+    "final_sentence": "I do not want no."
+  },
+  {
+    "session_id": "20250929T150021Z",
+    "created_utc": "2025-09-29T15:00:21.957927Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.36995479464530945,
+        "t_utc": "2025-09-29T15:00:13.717045Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.23353515565395355,
+        "t_utc": "2025-09-29T15:00:21.957927Z"
+      }
+    ],
+    "final_sentence": "I do not want no bad."
+  },
+  {
+    "session_id": "20250929T150051Z",
+    "created_utc": "2025-09-29T15:00:51.519372Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.36995479464530945,
+        "t_utc": "2025-09-29T15:00:13.717045Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.23353515565395355,
+        "t_utc": "2025-09-29T15:00:21.957927Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.1665126383304596,
+        "t_utc": "2025-09-29T15:00:51.519372Z"
+      }
+    ],
+    "final_sentence": "I do not want no bad no."
+  },
+  {
+    "session_id": "20250929T150055Z",
+    "created_utc": "2025-09-29T15:00:55.540159Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.36995479464530945,
+        "t_utc": "2025-09-29T15:00:13.717045Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.23353515565395355,
+        "t_utc": "2025-09-29T15:00:21.957927Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.1665126383304596,
+        "t_utc": "2025-09-29T15:00:51.519372Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.15174204111099243,
+        "t_utc": "2025-09-29T15:00:55.540159Z"
+      }
+    ],
+    "final_sentence": "I do not think no bad no."
+  },
+  {
+    "session_id": "20250929T150109Z",
+    "created_utc": "2025-09-29T15:01:09.552038Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.36995479464530945,
+        "t_utc": "2025-09-29T15:00:13.717045Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.23353515565395355,
+        "t_utc": "2025-09-29T15:00:21.957927Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.1665126383304596,
+        "t_utc": "2025-09-29T15:00:51.519372Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.15174204111099243,
+        "t_utc": "2025-09-29T15:00:55.540159Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.1421756148338318,
+        "t_utc": "2025-09-29T15:01:09.552038Z"
+      }
+    ],
+    "final_sentence": "I do not think no bad no good."
+  },
+  {
+    "session_id": "20250929T150121Z",
+    "created_utc": "2025-09-29T15:01:21.457679Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.36995479464530945,
+        "t_utc": "2025-09-29T15:00:13.717045Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.23353515565395355,
+        "t_utc": "2025-09-29T15:00:21.957927Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.1665126383304596,
+        "t_utc": "2025-09-29T15:00:51.519372Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.15174204111099243,
+        "t_utc": "2025-09-29T15:00:55.540159Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.1421756148338318,
+        "t_utc": "2025-09-29T15:01:09.552038Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.15137791633605957,
+        "t_utc": "2025-09-29T15:01:21.456700Z"
+      }
+    ],
+    "final_sentence": "I do not think no bad no good bad."
+  },
+  {
+    "session_id": "20250929T150146Z",
+    "created_utc": "2025-09-29T15:01:46.147429Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.36995479464530945,
+        "t_utc": "2025-09-29T15:00:13.717045Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.23353515565395355,
+        "t_utc": "2025-09-29T15:00:21.957927Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.1665126383304596,
+        "t_utc": "2025-09-29T15:00:51.519372Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.15174204111099243,
+        "t_utc": "2025-09-29T15:00:55.540159Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.1421756148338318,
+        "t_utc": "2025-09-29T15:01:09.552038Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.15137791633605957,
+        "t_utc": "2025-09-29T15:01:21.456700Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.26694193482398987,
+        "t_utc": "2025-09-29T15:01:46.146429Z"
+      }
+    ],
+    "final_sentence": "I do not think no bad no good bad no."
+  },
+  {
+    "session_id": "20250929T150147Z",
+    "created_utc": "2025-09-29T15:01:47.656213Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.36995479464530945,
+        "t_utc": "2025-09-29T15:00:13.717045Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.23353515565395355,
+        "t_utc": "2025-09-29T15:00:21.957927Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.1665126383304596,
+        "t_utc": "2025-09-29T15:00:51.519372Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.15174204111099243,
+        "t_utc": "2025-09-29T15:00:55.540159Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.1421756148338318,
+        "t_utc": "2025-09-29T15:01:09.552038Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.15137791633605957,
+        "t_utc": "2025-09-29T15:01:21.456700Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.26694193482398987,
+        "t_utc": "2025-09-29T15:01:46.146429Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.1910020262002945,
+        "t_utc": "2025-09-29T15:01:47.655223Z"
+      }
+    ],
+    "final_sentence": "I do not think no bad no good bad no yes."
+  },
+  {
+    "session_id": "20250929T150148Z",
+    "created_utc": "2025-09-29T15:01:48.911074Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.36995479464530945,
+        "t_utc": "2025-09-29T15:00:13.717045Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.23353515565395355,
+        "t_utc": "2025-09-29T15:00:21.957927Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.1665126383304596,
+        "t_utc": "2025-09-29T15:00:51.519372Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.15174204111099243,
+        "t_utc": "2025-09-29T15:00:55.540159Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.1421756148338318,
+        "t_utc": "2025-09-29T15:01:09.552038Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.15137791633605957,
+        "t_utc": "2025-09-29T15:01:21.456700Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.26694193482398987,
+        "t_utc": "2025-09-29T15:01:46.146429Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.1910020262002945,
+        "t_utc": "2025-09-29T15:01:47.655223Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17716750502586365,
+        "t_utc": "2025-09-29T15:01:48.910085Z"
+      }
+    ],
+    "final_sentence": "I do not think no bad no good bad no yes no."
+  },
+  {
+    "session_id": "20250929T150156Z",
+    "created_utc": "2025-09-29T15:01:56.159407Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.36995479464530945,
+        "t_utc": "2025-09-29T15:00:13.717045Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.23353515565395355,
+        "t_utc": "2025-09-29T15:00:21.957927Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.1665126383304596,
+        "t_utc": "2025-09-29T15:00:51.519372Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.15174204111099243,
+        "t_utc": "2025-09-29T15:00:55.540159Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.1421756148338318,
+        "t_utc": "2025-09-29T15:01:09.552038Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.15137791633605957,
+        "t_utc": "2025-09-29T15:01:21.456700Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.26694193482398987,
+        "t_utc": "2025-09-29T15:01:46.146429Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.1910020262002945,
+        "t_utc": "2025-09-29T15:01:47.655223Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17716750502586365,
+        "t_utc": "2025-09-29T15:01:48.910085Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.18710364401340485,
+        "t_utc": "2025-09-29T15:01:56.159407Z"
+      }
+    ],
+    "final_sentence": "I do not think no bad no good bad no yes no yes."
+  },
+  {
+    "session_id": "20250929T150200Z",
+    "created_utc": "2025-09-29T15:02:00.260292Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "No",
+        "confidence": 0.36995479464530945,
+        "t_utc": "2025-09-29T15:00:13.717045Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.23353515565395355,
+        "t_utc": "2025-09-29T15:00:21.957927Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.1665126383304596,
+        "t_utc": "2025-09-29T15:00:51.519372Z"
+      },
+      {
+        "text": "Think",
+        "confidence": 0.15174204111099243,
+        "t_utc": "2025-09-29T15:00:55.540159Z"
+      },
+      {
+        "text": "Good",
+        "confidence": 0.1421756148338318,
+        "t_utc": "2025-09-29T15:01:09.552038Z"
+      },
+      {
+        "text": "Bad",
+        "confidence": 0.15137791633605957,
+        "t_utc": "2025-09-29T15:01:21.456700Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.26694193482398987,
+        "t_utc": "2025-09-29T15:01:46.146429Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.1910020262002945,
+        "t_utc": "2025-09-29T15:01:47.655223Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.17716750502586365,
+        "t_utc": "2025-09-29T15:01:48.910085Z"
+      },
+      {
+        "text": "Yes",
+        "confidence": 0.18710364401340485,
+        "t_utc": "2025-09-29T15:01:56.159407Z"
+      },
+      {
+        "text": "No",
+        "confidence": 0.19030718505382538,
+        "t_utc": "2025-09-29T15:02:00.260292Z"
+      }
+    ],
+    "final_sentence": "I do not think no bad no good bad no yes no yes no."
+  },
+  {
+    "session_id": "20250929T194918Z",
+    "created_utc": "2025-09-29T19:49:18.158116Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Morning",
+        "confidence": 0.3011966049671173,
+        "t_utc": "2025-09-29T19:49:18.157117Z"
+      }
+    ],
+    "final_sentence": "I am ing morning."
+  },
+  {
+    "session_id": "20250930T170338Z",
+    "created_utc": "2025-09-30T17:03:38.000766Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Yes",
+        "confidence": 0.6847284436225891,
+        "t_utc": "2025-09-30T17:03:38.000766Z"
+      }
+    ],
+    "final_sentence": "I want yes."
+  },
+  {
+    "session_id": "20250930T170346Z",
+    "created_utc": "2025-09-30T17:03:46.898041Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Yes",
+        "confidence": 0.6847284436225891,
+        "t_utc": "2025-09-30T17:03:38.000766Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.2191382348537445,
+        "t_utc": "2025-09-30T17:03:46.897054Z"
+      }
+    ],
+    "final_sentence": "I want yes hello."
+  },
+  {
+    "session_id": "20250930T170348Z",
+    "created_utc": "2025-09-30T17:03:48.511966Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Yes",
+        "confidence": 0.6847284436225891,
+        "t_utc": "2025-09-30T17:03:38.000766Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.2191382348537445,
+        "t_utc": "2025-09-30T17:03:46.897054Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.391814261674881,
+        "t_utc": "2025-09-30T17:03:48.510967Z"
+      }
+    ],
+    "final_sentence": "I want yes hello night."
+  },
+  {
+    "session_id": "20250930T170351Z",
+    "created_utc": "2025-09-30T17:03:51.994506Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Yes",
+        "confidence": 0.6847284436225891,
+        "t_utc": "2025-09-30T17:03:38.000766Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.2191382348537445,
+        "t_utc": "2025-09-30T17:03:46.897054Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.391814261674881,
+        "t_utc": "2025-09-30T17:03:48.510967Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.8637833595275879,
+        "t_utc": "2025-09-30T17:03:51.994506Z"
+      }
+    ],
+    "final_sentence": "I want yes hello night thanks."
+  },
+  {
+    "session_id": "20250930T172856Z",
+    "created_utc": "2025-09-30T17:28:56.169948Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Yes",
+        "confidence": 0.6847284436225891,
+        "t_utc": "2025-09-30T17:28:56.168951Z"
+      }
+    ],
+    "final_sentence": "I want yes."
+  }
+]
