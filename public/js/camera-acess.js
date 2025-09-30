@@ -968,20 +968,45 @@ class AISignLanguageDetection {
 
     toggleStar() {
         const starBtn = document.getElementById('starBtn');
+        const detectedPhraseEl = document.getElementById('detectedPhrase');
+        const phrase = detectedPhraseEl ? detectedPhraseEl.textContent.trim() : '';
+        if (!phrase || phrase === 'Loading AI detection model...') {
+            alert('No phrase detected to save.');
+            return;
+        }
+
         const isStarred = starBtn.classList.contains('active');
-        
+
         if (isStarred) {
+            // Optionally, implement phrase removal here if desired
             starBtn.classList.remove('active');
             console.log('Removed from favorites');
         } else {
-            starBtn.classList.add('active');
-            console.log('Added to favorites');
-            
-            // Animation after the star is clicked
-            starBtn.style.transform = 'scale(1.2)';
-            setTimeout(() => {
-                starBtn.style.transform = 'scale(1)';
-            }, 200);
+            try {
+                fetch('/translate/phrase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: phrase })
+                }).then(response => {
+                    if (response.ok) {
+                        starBtn.classList.add('active');
+                        console.log('Added to favorites');
+                        // Animation after the star is clicked
+                        starBtn.style.transform = 'scale(1.2)';
+                        setTimeout(() => {
+                            starBtn.style.transform = 'scale(1)';
+                        }, 200);
+                    } else {
+                        response.json().then(data => {
+                            alert('Error saving phrase: ' + (data.message || 'Unknown error'));
+                        });
+                    }
+                }).catch(error => {
+                    alert('Network error: ' + error.message);
+                });
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
         }
     }
 

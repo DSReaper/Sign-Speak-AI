@@ -1672,5 +1672,18 @@
       }
     ],
     "final_sentence": "I do not think no bad no good bad no yes no yes no."
+  },
+  {
+    "session_id": "20250929T194918Z",
+    "created_utc": "2025-09-29T19:49:18.158116Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Morning",
+        "confidence": 0.3011966049671173,
+        "t_utc": "2025-09-29T19:49:18.157117Z"
+      }
+    ],
+    "final_sentence": "I am ing morning."
   }
 ]
