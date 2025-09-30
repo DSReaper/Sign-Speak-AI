@@ -1685,5 +1685,100 @@
       }
     ],
     "final_sentence": "I am ing morning."
+  },
+  {
+    "session_id": "20250930T170338Z",
+    "created_utc": "2025-09-30T17:03:38.000766Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Yes",
+        "confidence": 0.6847284436225891,
+        "t_utc": "2025-09-30T17:03:38.000766Z"
+      }
+    ],
+    "final_sentence": "I want yes."
+  },
+  {
+    "session_id": "20250930T170346Z",
+    "created_utc": "2025-09-30T17:03:46.898041Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Yes",
+        "confidence": 0.6847284436225891,
+        "t_utc": "2025-09-30T17:03:38.000766Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.2191382348537445,
+        "t_utc": "2025-09-30T17:03:46.897054Z"
+      }
+    ],
+    "final_sentence": "I want yes hello."
+  },
+  {
+    "session_id": "20250930T170348Z",
+    "created_utc": "2025-09-30T17:03:48.511966Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Yes",
+        "confidence": 0.6847284436225891,
+        "t_utc": "2025-09-30T17:03:38.000766Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.2191382348537445,
+        "t_utc": "2025-09-30T17:03:46.897054Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.391814261674881,
+        "t_utc": "2025-09-30T17:03:48.510967Z"
+      }
+    ],
+    "final_sentence": "I want yes hello night."
+  },
+  {
+    "session_id": "20250930T170351Z",
+    "created_utc": "2025-09-30T17:03:51.994506Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Yes",
+        "confidence": 0.6847284436225891,
+        "t_utc": "2025-09-30T17:03:38.000766Z"
+      },
+      {
+        "text": "Hello",
+        "confidence": 0.2191382348537445,
+        "t_utc": "2025-09-30T17:03:46.897054Z"
+      },
+      {
+        "text": "Night",
+        "confidence": 0.391814261674881,
+        "t_utc": "2025-09-30T17:03:48.510967Z"
+      },
+      {
+        "text": "Thanks",
+        "confidence": 0.8637833595275879,
+        "t_utc": "2025-09-30T17:03:51.994506Z"
+      }
+    ],
+    "final_sentence": "I want yes hello night thanks."
+  },
+  {
+    "session_id": "20250930T172856Z",
+    "created_utc": "2025-09-30T17:28:56.169948Z",
+    "model_type": "Hand-Focused SASL",
+    "words": [
+      {
+        "text": "Yes",
+        "confidence": 0.6847284436225891,
+        "t_utc": "2025-09-30T17:28:56.168951Z"
+      }
+    ],
+    "final_sentence": "I want yes."
   }
 ]

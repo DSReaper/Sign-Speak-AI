@@ -33,7 +33,6 @@ exports.savePhrase = async (req, res) => {
   }
 };
 
-// Get stored phrases for the logged-in user
 exports.getPhrases = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -49,8 +48,48 @@ exports.getPhrases = async (req, res) => {
       return res.status(200).json({ phrases: [] });
     }
 
+
     res.status(200).json({ phrases: phraseDoc.phrases });
   } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Delete a phrase by its _id for the logged-in user
+exports.deletePhrase = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const phraseId = req.params.id;
+
+    if (!phraseId) {
+      return res.status(400).json({ message: 'Phrase ID is required' });
+    }
+
+    // Check if user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Find phrase document for user
+    const phraseDoc = await Phrase.findOne({ userId });
+    if (!phraseDoc) {
+      return res.status(404).json({ message: 'No phrases found for user' });
+    }
+
+    // Remove phrase with matching _id from phrases array
+    const initialLength = phraseDoc.phrases.length;
+    phraseDoc.phrases = phraseDoc.phrases.filter(p => p._id.toString() !== phraseId);
+
+    if (phraseDoc.phrases.length === initialLength) {
+      return res.status(404).json({ message: 'Phrase not found' });
+    }
+
+    await phraseDoc.save();
+
+    res.status(200).json({ message: 'Phrase deleted successfully' });
+  } catch (error) {
+    console.error('Error in deletePhrase:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

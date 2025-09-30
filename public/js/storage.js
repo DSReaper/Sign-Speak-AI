@@ -137,4 +137,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
   attachStoragePlayHandlers();
 
+  // Add event listener for star buttons to delete phrase
+  function attachStarButtonHandlers() {
+    const phraseList = document.getElementById('phrasesList');
+    if (!phraseList) return;
+
+    phraseList.addEventListener('click', async (event) => {
+      const target = event.target.closest('.storage-star-btn');
+      if (!target) return;
+
+      event.stopPropagation(); // Prevent event bubbling to phrase block
+
+      const phraseId = target.getAttribute('data-phrase-id');
+      if (!phraseId) return;
+
+      // Confirm deletion (optional)
+      if (!confirm('Are you sure you want to delete this phrase?')) return;
+
+      try {
+        const response = await fetch(`/translate/phrase/${phraseId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          alert('Failed to delete phrase: ' + (errorData.message || 'Unknown error'));
+          return;
+        }
+
+        // Remove phrase from UI
+        const li = target.closest('li.storage-phrase-item');
+        if (li) {
+          li.remove();
+        }
+      } catch (error) {
+        console.error('Error deleting phrase:', error);
+        alert('Error deleting phrase. Please try again.');
+      }
+    });
+  }
+
+  attachStarButtonHandlers();
+
 });
