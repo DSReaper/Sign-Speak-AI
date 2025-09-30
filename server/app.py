@@ -60,27 +60,16 @@ show_server_overlays = False
 frame_count = 0
 detector_lock = threading.Lock()
 
-# Import grammar utilities (rule-based grammar + optional session persistence)
-# We try relative import first (works when `server` is a package). Fallback to
-# plain import so that running `python server/app.py` still functions.
+# Import grammar utilities (rule-based grammar)
 try:  # packaged execution
-    from .grammar_utils import grammar_fix, save_session_json  # type: ignore
+    from .grammar_utils import grammar_fix  # type: ignore
 except Exception:
     try:  # script-style execution
-        from grammar_utils import grammar_fix, save_session_json  # type: ignore
+        from grammar_utils import grammar_fix  # type: ignore
     except Exception:
-        # Minimal fallbacks so the server never hard-crashes just because the
-        # grammar helper is missing. This degrades functionality only.
         def grammar_fix(words):  # type: ignore
             return " ".join(words).strip()
-        def save_session_json(out_dir, words, sentence, meta):  # type: ignore
-            return ""  # no-op
-        print("WARNING: grammar_utils import failed; using fallback grammar + no-op save_session_json")
-
-# Feature flags / lightweight configuration
-ENABLE_SESSION_JSON = True  # persist sessions when a new word is committed
-SESSION_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sessions")
-_last_session_path = None  # updated on each save
+        print("WARNING: grammar_utils.py was not found.")
 
 # Device and paths
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -618,7 +607,6 @@ def status():
         'model_loaded': detector is not None,
         'committed_words': committed,
         'sentence': sentence,
-        'session_json_path': _last_session_path
     })
 
 
@@ -647,29 +635,6 @@ def health():
 # ============================================================================
 
 async def ws_handler(websocket):
-    """WebSocket handler for low-latency frame processing.
-
-    Behavior and message flow:
-    - Expects binary messages containing JPEG bytes from the client.
-    - For binary messages: decodes -> process (detector/prediction/overlays) -> encodes -> send back binary JPEG bytes.
-    - For text messages: replies with a simple acknowledgement ('OK').
-
-    Implementation notes:
-    - cv2 and torch are blocking; we offload the heavy work to a threadpool via
-    `asyncio.get_event_loop().run_in_executor(...)` which calls the sync wrapper
-    `process_frame_bytes_sync`. That wrapper performs locking around the shared
-    detector object and runs the blocking code safely.
-    - This handler is defensive: it logs sizes/previews instead of dumping raw
-    binary payloads, catches exceptions, and attempts best-effort notifications
-    back to the client when errors occur.
-    """
-    # Logging for debugging connection issues
-    # We'll create a per-connection background worker with a bounded queue (size 1)
-    # that always keeps the latest frame and drops older ones. The worker runs
-    # `process_frame_bytes_sync` in its own thread and sends the processed bytes
-    # back to the websocket using the connection's asyncio loop. This prevents
-    # blocking the asyncio event loop on CPU-bound CV/model work and avoids
-    # unbounded memory growth when clients send frames faster than processing.
     class FrameProcessorWorker:
         def __init__(self, ws, loop, queue_maxsize=1):
             self.ws = ws
@@ -840,16 +805,6 @@ def process_frame_bytes_sync(frame_bytes):
                             })
                             last_committed_word = pred
                             # Persist session JSON snapshot on each new committed word
-                            if ENABLE_SESSION_JSON:
-                                try:
-                                    committed_words_snapshot = [w for w in recognized_words]
-                                    sentence_snapshot = grammar_fix([w['text'] for w in committed_words_snapshot])
-                                    meta = {"model_type": "Hand-Focused SASL"}
-                                    global _last_session_path
-                                    _last_session_path = save_session_json(SESSION_DIR, committed_words_snapshot, sentence_snapshot, meta)
-                                except Exception as save_exc:
-                                    # Non-fatal: just log once per failure kind (simple print here)
-                                    print(f"Session save failed: {save_exc}")
                         committed = [w['text'] for w in recognized_words]
                         sentence = grammar_fix(committed)
                         result['committed_words'] = committed
@@ -891,7 +846,7 @@ def process_frame_bytes_sync(frame_bytes):
 
 
 async def start_ws_server(host='0.0.0.0', port=5001):
-        """Start the WebSocket server used for low-latency AI frame processing.
+        """Start the WebSocket server used for low-latency frame processing.
 
         Notes:
         - The `websockets.serve` call runs an asyncio-based WebSocket server.

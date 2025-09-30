@@ -1,7 +1,5 @@
 
 from __future__ import annotations
-import os, json
-from datetime import datetime
 from typing import List, Dict, Tuple
 
 # ========================= 
@@ -296,27 +294,6 @@ def grammar_fix(words_in: List[str]) -> str:
 
     return tidy(phrase)
 
-# =========================
-#   JSON SAVE
-# =========================
-def save_session_json(out_dir: str, words: List[Dict[str, float]], sentence: str, meta: Dict[str, str]) -> str:
-    os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, "session_transcripts.json")
-    session_obj = {
-        "session_id": datetime.utcnow().strftime("%Y%m%dT%H%M%SZ"),
-        "created_utc": datetime.utcnow().isoformat() + "Z",
-        "model_type": meta.get("model_type", ""),
-        "words": words,           # [{"text": "...", "confidence": 0.93, "t_utc": "..."}]
-        "final_sentence": sentence
-    }
-    try:
-        data = json.load(open(path, "r", encoding="utf-8")) if os.path.exists(path) else []
-        if not isinstance(data, list): data = []
-    except Exception:
-        data = []
-    data.append(session_obj)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    return path
 
-__all__ = ["grammar_fix", "save_session_json"]
+#Make grammar_fix the single exported/public function of the module 
+__all__ = ["grammar_fix"]

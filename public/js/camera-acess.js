@@ -154,7 +154,13 @@ class AISignLanguageDetection {
                 try {
                     await this.resetBuffer();
                 } catch (_) { /* ignore */ }
-                // Ensure UI cleared even if backend call fails
+                // Clear ALL session storage per new requirement (transcripts & any other session-scoped state)
+                try {
+                    sessionStorage.clear();
+                } catch (e) {
+                    console.warn('Failed to clear sessionStorage', e);
+                }
+                // Ensure UI cleared even if backend call fails (will also repopulate empty keys)
                 this.updateDetectedPhrase('');
             });
         }
@@ -358,14 +364,12 @@ class AISignLanguageDetection {
             if (typeof data === 'string') {
                 try {
                     const obj = JSON.parse(data);
-                    // Example server response: { prediction, confidence, error}
-                    // Prefer full sentence if provided by backend
+                    // Example server response: { prediction, confidence, committed_words, sentence }
                     if (obj.sentence && obj.sentence.trim().length > 0) {
-                        this.updateDetectedPhrase(obj.sentence);
+                        this.updateDetectedPhrase(obj.sentence, obj.committed_words || []);
                         if (obj.prediction && this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
                     } else if (obj.prediction) {
-                        console.log({ prediction: obj.prediction, confidence: (obj.confidence || 0) });
-                        this.updateDetectedPhrase(`"${obj.prediction}"`);
+                        this.updateDetectedPhrase(`"${obj.prediction}"`, obj.committed_words || []);
                         if (this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
                     } else if (obj.error) {
                         console.warn('AI server error:', obj.error);
@@ -383,11 +387,10 @@ class AISignLanguageDetection {
             try {
                 const obj = JSON.parse(data);
                 if (obj.sentence && obj.sentence.trim().length > 0) {
-                    this.updateDetectedPhrase(obj.sentence);
+                    this.updateDetectedPhrase(obj.sentence, obj.committed_words || []);
                     if (obj.prediction && this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
                 } else if (obj.prediction) {
-                    console.log({ prediction: obj.prediction, confidence: (obj.confidence || 0) });
-                    this.updateDetectedPhrase(`"${obj.prediction}"`);
+                    this.updateDetectedPhrase(`"${obj.prediction}"`, obj.committed_words || []);
                     if (this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
                 } else if (obj.error) {
                     console.warn('AI server error:', obj.error);
@@ -886,11 +889,35 @@ class AISignLanguageDetection {
         }
     }
 
-    updateDetectedPhrase(phrase) {
+    updateDetectedPhrase(phrase, committedWords = []) {
+        // Persist to sessionStorage (client-side transcript history)
+        try {
+            const keyCurrent = 'ssai_current_sentence';
+            const keyHistory = 'ssai_sentence_history';
+            const keyWords = 'ssai_committed_words';
+            sessionStorage.setItem(keyCurrent, phrase || '');
+            if (Array.isArray(committedWords)) {
+                sessionStorage.setItem(keyWords, JSON.stringify(committedWords));
+            }
+            // Maintain a rolling history (last 50 sentences, no duplicates in a row)
+            let hist = [];
+            try { hist = JSON.parse(sessionStorage.getItem(keyHistory) || '[]'); } catch (_) { hist = []; }
+            if (phrase && phrase.trim()) {
+                const last = hist.length ? hist[hist.length - 1] : null;
+                if (last !== phrase) {
+                    hist.push(phrase);
+                    if (hist.length > 50) hist = hist.slice(-50);
+                    sessionStorage.setItem(keyHistory, JSON.stringify(hist));
+                }
+            }
+        } catch (e) {
+            // Non-fatal; storage may be unavailable (privacy mode, etc.)
+            console.warn('sessionStorage unavailable for transcript persistence', e);
+        }
+
         // Animate the phrase update
         this.detectedPhrase.style.opacity = '0.5';
         this.detectedPhrase.style.transform = 'scale(0.95)';
-        
         setTimeout(() => {
             this.detectedPhrase.textContent = phrase;
             this.detectedPhrase.style.opacity = '1';
