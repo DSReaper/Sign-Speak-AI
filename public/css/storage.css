@@ -179,7 +179,9 @@ display: block;
 background: none;
 border: none;
 cursor: pointer;
-padding: 8px;
+width: 36px;
+height: 36px;
+padding: 0;
 display: flex;
 align-items: center;
 justify-content: center;
@@ -192,6 +194,9 @@ width: 20px;
 height: 20px;
 color: #4CAF50;
 transition: color 0.2s ease;
+/* Prevent layout shift on click/focus */
+display: block;
+pointer-events: none;
 }
 
 .storage-play-btn:hover .storage-play-icon {
