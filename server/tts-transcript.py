@@ -7,7 +7,7 @@ Live TTS (no file) for SASL-AI
 - Automatically selects a female / more natural voice if available
 """
 
-import os, json, sys
+import os, json, sys, time, argparse, hashlib
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -63,26 +63,41 @@ def choose_sentence(sessions: List[Dict[str, Any]]) -> str:
 # ----------------------------------------------------------------------
 # Speech
 # ----------------------------------------------------------------------
-def speak(text: str) -> None:
+def configure_engine(engine, voice_pref: str, rate: int, volume: float):
+    engine.setProperty("rate", rate)
+    engine.setProperty("volume", volume)
+
+    if voice_pref:
+        pref = voice_pref.lower()
+        female_keywords = {"female", "zira", "aria", "samantha", "ava", "jenny"}
+        male_keywords   = {"male", "david", "mark", "alex", "george", "daniel"}
+        for v in engine.getProperty('voices'):
+            name_lower = v.name.lower()
+            gender = getattr(v, 'gender', '').lower()
+            if pref.startswith('f'):
+                if any(k in name_lower for k in female_keywords) or 'female' in gender:
+                    engine.setProperty('voice', v.id)
+                    break
+            elif pref.startswith('m'):
+                if any(k in name_lower for k in male_keywords) or 'male' in gender:
+                    engine.setProperty('voice', v.id)
+                    break
+
+def speak(text: str):
     import pyttsx3
     engine = pyttsx3.init()
-    engine.setProperty("rate", 160)   # slightly slower for natural speech
-    engine.setProperty("volume", 0.9) # slight headroom
-
-    # -------- try to select a female / natural voice --------
-    female_keywords = {"female", "zira", "aria", "samantha", "ava", "jenny"}
-    for v in engine.getProperty('voices'):
-        name_lower = v.name.lower()
-        gender = getattr(v, 'gender', '').lower()
-        if any(k in name_lower for k in female_keywords) or "female" in gender:
-            engine.setProperty('voice', v.id)
-            break
-    # --------------------------------------------------------
-
-    print("\nSpeaking…")
+    configure_engine(engine, 'female', 160, 0.9)
     engine.say(text)
-    engine.runAndWait()  # blocks until finished
-    print("Done.")
+    engine.runAndWait()
+
+def synth_to_file(text: str, out_path: Path, voice: str, rate: int, volume: float) -> Path:
+    import pyttsx3
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    engine = pyttsx3.init()
+    configure_engine(engine, voice, rate, volume)
+    engine.save_to_file(text, str(out_path))
+    engine.runAndWait()  # ensure file is written
+    return out_path
 
 # ----------------------------------------------------------------------
 # Main
@@ -104,4 +119,50 @@ def run_interactive() -> None:
     speak(text)
 
 if __name__ == "__main__":
-    run_interactive()
+    parser = argparse.ArgumentParser(description="TTS utility (interactive or CLI)")
+    parser.add_argument('--text', help='Text to synthesize to WAV (non-interactive).')
+    parser.add_argument('--out', help='Output WAV path (non-interactive).')
+    parser.add_argument('--voice', default='female', help='Preferred voice (female|male).')
+    parser.add_argument('--rate', type=int, default=160, help='Speech rate (default 160).')
+    parser.add_argument('--volume', type=float, default=0.9, help='Volume 0..1 (default 0.9).')
+    parser.add_argument('--hash-name', action='store_true', help='Derive filename from SHA256(text). Overrides --out basename.')
+    args = parser.parse_args()
+
+    if not args.text:
+        # fallback to legacy interactive mode
+        run_interactive()
+        sys.exit(0)
+
+    text = args.text.strip()
+    if not text:
+        print(json.dumps({"ok": False, "error": "Empty text"}))
+        sys.exit(1)
+
+    # Decide output path
+    if args.out:
+        out_path = Path(args.out).resolve()
+    else:
+        out_dir = Path(os.getenv('TTS_OUTPUT_DIR', Path(__file__).resolve().parent / 'tts_audio'))
+        out_dir.mkdir(parents=True, exist_ok=True)
+        base = 'speech.wav'
+        out_path = out_dir / base
+
+    if args.hash_name:
+        h = hashlib.sha256(text.encode('utf-8')).hexdigest()[:16]
+        out_path = out_path.with_name(f"tts_{h}.wav")
+
+    start = time.time()
+    try:
+        synth_to_file(text, out_path, args.voice, args.rate, args.volume)
+        size = out_path.stat().st_size if out_path.exists() else 0
+        elapsed = int((time.time() - start) * 1000)
+        print(json.dumps({
+            "ok": True,
+            "path": str(out_path),
+            "bytes": size,
+            "elapsed_ms": elapsed
+        }))
+        sys.exit(0)
+    except Exception as e:
+        print(json.dumps({"ok": False, "error": str(e)}))
+        sys.exit(2)

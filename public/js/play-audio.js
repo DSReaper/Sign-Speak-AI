@@ -1,7 +1,10 @@
-(function(global){
-  const defaultDuration = 2000;
-  const pauseShape = { type: 'rects' };
+ (function(global){
   const playPoints = '5,3 19,12 5,21';
+  const PLACEHOLDER_TEXTS = [
+    'Loading AI detection model...',
+    'No detection yet',
+    ''
+  ];
 
   let modalEl = null;
   let textareaEl = null;
@@ -60,15 +63,54 @@
     }
   }
 
-  function playFromElement(btn, opts = {}){
+  async function playFromElement(btn){
     if (!btn) return;
-    const duration = opts.duration || defaultDuration;
-    setButtonPlayingState(btn);
+    if (btn.classList.contains('playing')) return; // prevent double clicks
+    const phraseEl = document.getElementById('detectedPhrase');
+    if (!phraseEl){
+      alert('Phrase element not found');
+      return;
+    }
+    const raw = phraseEl.textContent.trim();
+    if (!raw || PLACEHOLDER_TEXTS.includes(raw)){
+      alert('No phrase available to speak yet.');
+      return;
+    }
 
-    setTimeout(() => {
+    setButtonPlayingState(btn);
+    try {
+      const resp = await fetch('/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: raw })
+      });
+      if (!resp.ok){
+        let errText = 'TTS request failed';
+        try { const j = await resp.json(); errText = j.error || errText; } catch {}
+        throw new Error(errText);
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.addEventListener('ended', () => {
+        resetButton(btn);
+        URL.revokeObjectURL(url);
+        openModal();
+      });
+      audio.addEventListener('error', () => {
+        resetButton(btn);
+        URL.revokeObjectURL(url);
+        alert('Could not play audio');
+      });
+      audio.play().catch(err => {
+        resetButton(btn);
+        URL.revokeObjectURL(url);
+        alert('Playback error: ' + err.message);
+      });
+    } catch (e){
       resetButton(btn);
-      openModal();
-    }, duration);
+      alert(e.message || 'TTS error');
+    }
   }
 
   function attachToSelector(sel){
@@ -80,7 +122,6 @@
   function attachToElement(el){
     if (!el) return;
     el.addEventListener('click', (e) => {
-      // allow button default behavior to be prevented externally
       e.preventDefault();
       playFromElement(el);
     });

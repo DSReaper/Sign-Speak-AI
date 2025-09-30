@@ -3,6 +3,8 @@ const path = require('path');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const { spawn } = require('child_process');
+const crypto = require('crypto');
 const connectDB = require('../Backend_stuff/database/db.js');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
@@ -186,6 +188,67 @@ app.get('/health', (req, res) => {
         server: 'Express with EJS',
         aiService: 'Proxied to Flask on port 5000'
     });
+});
+
+// ------------------------------------------------------------------
+// Text-to-Speech endpoint (uses Python tts-transcript.py)
+// POST /tts { text: "Hello" }
+// Returns audio/wav binary.
+// ------------------------------------------------------------------
+app.post('/tts', authenticateToken, async (req, res) => {
+    try {
+        const text = (req.body && req.body.text || '').trim();
+        if (!text) {
+            return res.status(400).json({ ok: false, error: 'Missing text' });
+        }
+
+        // Create a unique temp filename each request 
+        const fs = require('fs');
+        const tmpDir = path.join(__dirname, 'tts_tmp');
+        fs.mkdirSync(tmpDir, { recursive: true });
+        const unique = Date.now().toString(36) + '_' + crypto.randomBytes(4).toString('hex');
+        const outPath = path.join(tmpDir, `tts_${unique}.wav`);
+
+        const pythonExe = process.env.PYTHON || 'python';
+        const scriptPath = path.join(__dirname, 'tts-transcript.py');
+        const args = [scriptPath, '--text', text, '--out', outPath];
+
+        const py = spawn(pythonExe, args, { stdio: ['ignore','pipe','pipe'] });
+        let stdout = '';
+        let stderr = '';
+        py.stdout.on('data', d => { stdout += d.toString(); });
+        py.stderr.on('data', d => { stderr += d.toString(); });
+        py.on('error', err => console.error('TTS spawn error:', err));
+        py.on('close', code => {
+            const cleanup = () => {
+                // Delete temp file asynchronously 
+                fs.unlink(outPath, () => {});
+            };
+            if (code !== 0) {
+                console.error('TTS failed:', code, stderr, stdout);
+                let parsed;
+                try { parsed = JSON.parse(stdout.trim()); } catch {}
+                cleanup();
+                return res.status(500).json({ ok: false, error: parsed?.error || 'TTS process failed', code, stderr });
+            }
+            if (!fs.existsSync(outPath)) {
+                cleanup();
+                return res.status(500).json({ ok: false, error: 'Output file missing after TTS' });
+            }
+            res.setHeader('Content-Type', 'audio/wav');
+            // Stream and then delete file at end
+            const stream = fs.createReadStream(outPath);
+            stream.on('close', cleanup);
+            stream.on('error', err => {
+                console.error('Stream error:', err);
+                cleanup();
+            });
+            stream.pipe(res);
+        });
+    } catch (e) {
+        console.error('TTS route error:', e);
+        res.status(500).json({ ok: false, error: e.message });
+    }
 });
 
 // Error handling middleware
