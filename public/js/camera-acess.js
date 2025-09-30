@@ -227,7 +227,26 @@ class AISignLanguageDetection {
         // Acquire user camera and prepare local video/canvas
         try {
             const capConstraints = (this.performanceMode === 'quality') ? { width: 1280, height: 720 } : { width: 640, height: 480 };
-            this.captureStream = await navigator.mediaDevices.getUserMedia({ video: Object.assign({ facingMode: 'user' }, capConstraints), audio: false });
+            // Attempt to use preferred camera if selected in settings
+            let preferredId = null;
+            try { preferredId = localStorage.getItem('ssai_preferred_camera_id') || null; } catch (_) { preferredId = null; }
+            let videoConstraint;
+            if (preferredId) {
+                videoConstraint = Object.assign({ deviceId: { exact: preferredId } }, capConstraints);
+            } else {
+                videoConstraint = Object.assign({ facingMode: 'user' }, capConstraints);
+            }
+            try {
+                this.captureStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: false });
+            } catch (primaryErr) {
+                if (preferredId) {
+                    console.warn('Preferred camera failed, retrying with default constraints:', primaryErr.message);
+                    // Fallback to default user-facing camera
+                    this.captureStream = await navigator.mediaDevices.getUserMedia({ video: Object.assign({ facingMode: 'user' }, capConstraints), audio: false });
+                } else {
+                    throw primaryErr;
+                }
+            }
         } catch (err) {
             throw new Error('Unable to access camera: ' + err.message);
         }

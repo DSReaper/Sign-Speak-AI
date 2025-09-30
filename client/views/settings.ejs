@@ -21,6 +21,18 @@
                 <i class="fa fa-cog"></i> Application settings
               </a>
           </li>
+          <!-- Camera Selection -->
+          <li>
+            <div class="setting-link" style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px; cursor: default;">
+              <div style="display:flex; align-items:center; gap:6px; font-weight:600;">
+                <i class="fa fa-video"></i> <span>Camera Source</span>
+              </div>
+              <select id="cameraSelect" aria-label="Select camera" style="width:100%; padding:8px; border-radius:6px; border:1px solid #444; background:#1f1f1f; color:#fff;">
+                <option value="" disabled selected>Loading cameras...</option>
+              </select>
+              <small id="cameraSelectStatus" style="color:#aaa; font-size:11px;">We'll list available video inputs once permission is granted.</small>
+            </div>
+          </li>
           <li>
             <a href="/privacy-policy" class="setting-link">
               <i class="fa fa-lock"></i> Privacy Policy
