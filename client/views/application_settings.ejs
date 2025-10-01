@@ -7,33 +7,8 @@
 
   <!-- Reuse your existing styles -->
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/css/settings.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-  <style>
-    /* Page-specific, minimal */
-    .page { max-width: 900px; margin: 0 auto; padding: 24px; }
-    .card { background:#fff; border:1px solid #eee; border-radius:12px; padding:18px; margin-bottom:18px; }
-    .card h2 { font-size:18px; margin-bottom:12px; }
-    .row { display:flex; gap:18px; flex-wrap:wrap; }
-    .field { flex:1 1 260px; display:flex; flex-direction:column; gap:8px; }
-    .field label { font-weight:600; }
-    .actions { display:flex; gap:12px; margin-top:12px; }
-    .btn { cursor:pointer; border:0; padding:10px 14px; border-radius:10px; font-weight:600; }
-    .btn.primary { background:#111; color:#fff; }
-    .btn.ghost { background:transparent; border:1px solid #ddd; }
-    .back-link { text-decoration:none; display:inline-flex; align-items:center; gap:8px; margin-bottom:18px; color:#111; }
-
-    /* High contrast mode */
-    .high-contrast { background:#000 !important; color:#fff !important; }
-    .high-contrast .card { background:#000 !important; color:#fff !important; border-color:#fff !important; }
-    .high-contrast a, .high-contrast label { color:#fff !important; }
-
-    /* Theme via data-attribute */
-    :root[data-theme="dark"] { color-scheme: dark; }
-    :root[data-theme="dark"] body { background:#0f0f10; color:#e8e8e8; }
-    :root[data-theme="light"] body { background:#ffffff; color:#111111; }
-  </style>
 </head>
 <body>
   <div class="page">

@@ -140,3 +140,7 @@ venv/
 
 # Server sessions
 server/sessions/
+
+# Python cache directories and compiled files
+__pycache__/
+*.py[cod]

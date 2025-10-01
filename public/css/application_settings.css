@@ -1,1 +1,68 @@
-/* Application Settings Styles - Placeholder for future custom styles if needed. Inline styles are used in the EJS for now. */
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.card h2 {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.field {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.btn {
+  cursor: pointer;
+  border: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.btn.primary {
+  background: #111;
+  color: #fff;
+}
+
+.btn.ghost {
+  background: transparent;
+  border: 1px solid #ddd;
+}
+
+.back-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  color: #111;
+}

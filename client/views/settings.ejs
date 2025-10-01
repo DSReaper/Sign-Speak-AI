@@ -21,8 +21,28 @@
                 <i class="fa fa-cog"></i> Application settings
               </a>
           </li>
-          <li><i class="fa fa-lock"></i> Privacy Policy</li>
-          <li><i class="fa fa-file-alt"></i> Terms and Conditions</li>
+          <!-- Camera Selection -->
+          <li>
+            <div class="setting-link" style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px; cursor: default;">
+              <div style="display:flex; align-items:center; gap:6px; font-weight:600;">
+                <i class="fa fa-video"></i> <span>Camera Source</span>
+              </div>
+              <select id="cameraSelect" aria-label="Select camera" style="width:100%; padding:8px; border-radius:6px; border:1px solid #444; background:#1f1f1f; color:#fff;">
+                <option value="" disabled selected>Loading cameras...</option>
+              </select>
+              <small id="cameraSelectStatus" style="color:#aaa; font-size:11px;">We'll list available video inputs once permission is granted.</small>
+            </div>
+          </li>
+          <li>
+            <a href="/privacy-policy" class="setting-link">
+              <i class="fa fa-lock"></i> Privacy Policy
+            </a>
+          </li>
+          <li>
+            <a href="/terms-and-conditions" class="setting-link">
+              <i class="fa fa-file-alt"></i> Terms and Conditions
+            </a>
+          </li>
 
           <li class="danger" id="change-password-btn"><i class="fa fa-key"></i> Change password</li>
           <li class="danger" id="change-email-btn"><i class="fa fa-envelope"></i> Change email</li>
@@ -40,9 +60,9 @@
     </div>
   </div>
 
-  <!-- Modals -->
-  <div id="change-password-modal" class="modal">
-    <div class="modal-content">
+  <!-- Settings Modals -->
+  <div id="change-password-modal" class="settings-modal">
+    <div class="settings-modal-content">
       <span class="close">&times;</span>
       <h2>Change Password</h2>
       <form id="change-password-form">
@@ -54,8 +74,8 @@
     </div>
   </div>
 
-  <div id="change-email-modal" class="modal">
-    <div class="modal-content">
+  <div id="change-email-modal" class="settings-modal">
+    <div class="settings-modal-content">
       <span class="close">&times;</span>
       <h2>Change Email</h2>
       <form id="change-email-form">

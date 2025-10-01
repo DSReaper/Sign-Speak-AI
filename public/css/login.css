@@ -168,36 +168,6 @@ body {
     padding: 5px;
 }
 
-.radio-group {
-    display: flex;
-    gap: 20px;
-    margin-top: 10px;
-}
-
-.radio-option {
-    flex: 1;
-}
-
-.radio-input {
-    display: none;
-}
-
-.radio-label {
-    display: block;
-    padding: 12px 15px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    text-align: center;
-    cursor: pointer;
-    transition: var(--transition);
-}
-
-.radio-input:checked + .radio-label {
-    border-color: var(--primary);
-    background-color: var(--primary-light);
-    color: var(--primary);
-}
-
 .info-icon {
     display: inline-block;
     margin-left: 5px;
@@ -261,36 +231,9 @@ body {
     transform: translateY(-2px);
 }
 
-.btn-google {
-    background-color: var(--google-blue);
-    color: var(--white);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-}
-
 .btn-google:hover {
     background-color: #357ABD;
     transform: translateY(-2px);
-}
-
-.divider {
-    display: flex;
-    align-items: center;
-    margin: 20px 0;
-    color: var(--gray-medium);
-}
-
-.divider::before, .divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background-color: #ddd;
-}
-
-.divider-text {
-    padding: 0 10px;
 }
 
 .forgot-password {
@@ -322,13 +265,6 @@ body {
 
 .error-message {
     color: var(--error);
-    font-size: 14px;
-    margin-top: 5px;
-    display: none;
-}
-
-.success-message {
-    color: var(--success);
     font-size: 14px;
     margin-top: 5px;
     display: none;

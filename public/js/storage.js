@@ -108,34 +108,33 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.PlayAudioModule && typeof window.PlayAudioModule.init === 'function') {
     window.PlayAudioModule.init({ modalSelector: '#responseModal', textareaSelector: '#userResponse', closeBtnSelector: '#closeModal' });
   }
-  // Attach play button behavior: delegate to PlayAudioModule when available
-  function attachStoragePlayHandlers() {
-    const playButtons = document.querySelectorAll('.storage-play-btn');
-    if (!playButtons || playButtons.length === 0) return;
-
-    if (window.PlayAudioModule && typeof window.PlayAudioModule.attachToElement === 'function') {
-      playButtons.forEach(btn => window.PlayAudioModule.attachToElement(btn));
-      return;
-    }
-
-    // Fallback: simple simulated play behavior (same UX as camera page fallback)
-    playButtons.forEach(btn => {
-      btn.addEventListener('click', (e) => {
+  // Attach play button behavior using event delegation so dynamically
+  function setupDelegatedPlay(){
+    if (!phraseList.__delegatedPlayBound){
+      phraseList.addEventListener('click', (e) => {
+        const btn = e.target.closest('.storage-play-btn');
+        if (!btn) return;
         e.preventDefault();
-        const textEl = btn.querySelector('span');
-        btn.classList.add('playing');
-        if (textEl) textEl.textContent = 'Playing...';
-        setTimeout(() => {
-          btn.classList.remove('playing');
-          if (textEl) textEl.textContent = 'Play audio';
-          const modal = document.getElementById('responseModal');
-          if (modal) modal.style.display = 'flex';
-        }, 2000);
+        if (window.PlayAudioModule && typeof window.PlayAudioModule.playFromElement === 'function') {
+            window.PlayAudioModule.playFromElement(btn);
+        } else {
+          // Fallback basic simulation
+          btn.classList.add('playing');
+          const svg = btn.querySelector('svg');
+          if (svg) svg.innerHTML = '<g><rect x="6" y="4" width="3" height="16" fill="currentColor"/><rect x="14" y="4" width="3" height="16" fill="currentColor"/></g>';
+          setTimeout(() => {
+            btn.classList.remove('playing');
+            if (svg) svg.innerHTML = '<path d="M8 5v14l11-7z"/>';
+            const modal = document.getElementById('responseModal');
+            if (modal) modal.style.display = 'flex';
+          }, 2000);
+        }
       });
-    });
+      phraseList.__delegatedPlayBound = true;
+    }
   }
 
-  attachStoragePlayHandlers();
+  setupDelegatedPlay();
 
   // Add event listener for star buttons to delete phrase
   function attachStarButtonHandlers() {

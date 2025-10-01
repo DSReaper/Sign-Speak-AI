@@ -1,7 +1,10 @@
 (function(global){
-  const defaultDuration = 2000;
-  const pauseShape = { type: 'rects' };
-  const playPoints = '5,3 19,12 5,21';
+  const PLAY_ICON_PATH = '<path d="M8 5v14l11-7z"/>';
+  const PLACEHOLDER_TEXTS = [
+    'Loading AI detection model...',
+    'No detection yet',
+    ''
+  ];
 
   let modalEl = null;
   let textareaEl = null;
@@ -40,7 +43,7 @@
     btn.classList.add('playing');
     if (textEl) textEl.textContent = 'Playing...';
 
-    // Try to transform icon into a pause icon. Support polygon/path or replace svg innerHTML.
+    // Try to transform icon into a pause icon.
     const svg = btn.querySelector('svg');
     if (svg) {
       // Replace with two rects to represent pause
@@ -56,19 +59,73 @@
 
     const svg = btn.querySelector('svg');
     if (svg) {
-      svg.innerHTML = `<polygon points="${playPoints}" fill="currentColor"/>`;
+      svg.innerHTML = PLAY_ICON_PATH;
     }
   }
 
-  function playFromElement(btn, opts = {}){
+  async function playFromElement(btn){
     if (!btn) return;
-    const duration = opts.duration || defaultDuration;
-    setButtonPlayingState(btn);
+    if (btn.classList.contains('playing')) return; // prevent double clicks
 
-    setTimeout(() => {
+    // Determine source of phrase text.
+    let raw = '';
+
+    // 1. Storage page context: inside a .storage-phrase-item
+    const storageItem = btn.closest('.storage-phrase-item');
+    if (storageItem){
+      const textSpan = storageItem.querySelector('.storage-phrase-text');
+      if (textSpan){
+        raw = (textSpan.textContent || '').replace(/(^"|"$)/g, '').trim();
+      }
+    }
+
+    // 2. Fallback to camera detected phrase element
+    if (!raw){
+      const phraseEl = document.getElementById('detectedPhrase');
+      if (phraseEl){
+        raw = phraseEl.textContent.trim();
+      }
+    }
+
+    if (!raw || PLACEHOLDER_TEXTS.includes(raw)){
+      alert('No phrase available to speak yet.');
+      return;
+    }
+
+    setButtonPlayingState(btn);
+    try {
+      const resp = await fetch('/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: raw })
+      });
+      if (!resp.ok){
+        let errText = 'TTS request failed';
+        try { const j = await resp.json(); errText = j.error || errText; } catch {}
+        throw new Error(errText);
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.addEventListener('ended', () => {
+        resetButton(btn);
+        URL.revokeObjectURL(url);
+        openModal();
+      });
+      audio.addEventListener('error', () => {
+        resetButton(btn);
+        URL.revokeObjectURL(url);
+        alert('Could not play audio');
+      });
+      audio.play().catch(err => {
+        resetButton(btn);
+        URL.revokeObjectURL(url);
+        alert('Playback error: ' + err.message);
+      });
+    } catch (e){
       resetButton(btn);
-      openModal();
-    }, duration);
+      alert(e.message || 'TTS error');
+    }
   }
 
   function attachToSelector(sel){
@@ -79,8 +136,10 @@
 
   function attachToElement(el){
     if (!el) return;
+    // Avoid attaching multiple times
+    if (el.__playAudioBound) return;
+    el.__playAudioBound = true;
     el.addEventListener('click', (e) => {
-      // allow button default behavior to be prevented externally
       e.preventDefault();
       playFromElement(el);
     });
