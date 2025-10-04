@@ -1,86 +1,123 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="page-application-settings">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sign Speak - AI | Application Settings</title>
-
-  <!-- Reuse your existing styles -->
+  <%- include('partials/theme') %>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
 </head>
-<body>
+<body class="page-application-settings">
   <div class="page">
-    <a class="back-link" href="/settings"><i class="fa fa-angle-left"></i> Back to Settings</a>
-    <h1>Application settings</h1>
+    <a class="back-link" href="/settings">
+      <i class="fa fa-arrow-left"></i>
+      <span>Back to Settings</span>
+    </a>
 
-    <!-- Speech output settings -->
-    <div class="card">
-      <h2><i class="fa fa-volume-high"></i> Speech output</h2>
-      <div class="row">
-        <div class="field">
-          <label>Voice type</label>
-          <div>
-            <label><input type="radio" name="voiceGender" value="female" checked> Female</label>
-            &nbsp;&nbsp;
-            <label><input type="radio" name="voiceGender" value="male"> Male</label>
+    <h1>Application Settings</h1>
+
+    <!-- Speech Output Section -->
+    <div class="settings-section">
+      <div class="section-header">
+        <i class="fa fa-volume-high"></i>
+        <h2>Speech Output</h2>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-label">
+          <i class="fa fa-user"></i>
+          <span>Voice Type</span>
+        </div>
+        <div class="radio-group">
+          <label class="radio-option">
+            <input type="radio" name="voiceGender" value="female" checked>
+            <span>Female</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="voiceGender" value="male">
+            <span>Male</span>
+          </label>
+        </div>
+        <div class="setting-description">
+          The app will automatically select a matching system voice
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-label">
+          <i class="fa fa-gauge"></i>
+          <span>Speech Rate</span>
+        </div>
+        <select id="rate">
+          <option value="0.8">Slow</option>
+          <option value="1" selected>Normal</option>
+          <option value="1.3">Fast</option>
+        </select>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-label">
+          <i class="fa fa-volume-up"></i>
+          <span>Volume Level</span>
+        </div>
+        <div class="slider-container">
+          <div class="slider-header">
+            <span class="slider-value" id="volLabel">100%</span>
           </div>
-          <small>The app will try to pick a matching system voice.</small>
-        </div>
-
-        <div class="field">
-          <label for="rate">Speech rate</label>
-          <select id="rate">
-            <option value="0.8">Slow</option>
-            <option value="1" selected>Normal</option>
-            <option value="1.3">Fast</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="volume">Volume <span id="volLabel">(100%)</span></label>
           <input id="volume" type="range" min="0" max="1" step="0.1" value="1" />
         </div>
       </div>
 
-      <div class="actions">
-        <button id="previewTTS" class="btn ghost"><i class="fa fa-play"></i> Preview</button>
+      <div class="action-buttons">
+        <button id="previewTTS" class="btn btn-secondary">
+          <i class="fa fa-play"></i>
+          <span>Preview Voice</span>
+        </button>
       </div>
     </div>
 
-    <!-- Accessibility options -->
-    <div class="card">
-      <h2><i class="fa fa-universal-access"></i> Accessibility</h2>
-      <div class="row">
-        <div class="field">
-          <label for="textSize">Text size</label>
-          <select id="textSize">
-            <option value="0.9">Small</option>
-            <option value="1" selected>Normal</option>
-            <option value="1.15">Large</option>
-            <option value="1.3">Extra large</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="highContrast">High contrast</label>
-          <label><input id="highContrast" type="checkbox"> Enable high contrast</label>
-        </div>
-
-        <div class="field">
-          <label for="theme">Theme</label>
-          <select id="theme">
-            <option value="system" selected>System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </div>
+    <!-- Accessibility Section -->
+    <div class="settings-section">
+      <div class="section-header">
+        <i class="fa fa-universal-access"></i>
+        <h2>Accessibility</h2>
       </div>
 
-      <div class="actions">
-        <button id="saveBtn" class="btn primary"><i class="fa fa-save"></i> Save</button>
-        <button id="resetBtn" class="btn ghost"><i class="fa fa-rotate-left"></i> Reset</button>
+      <div class="setting-item">
+        <div class="setting-label">
+          <i class="fa fa-text-height"></i>
+          <span>Text Size</span>
+        </div>
+        <select id="textSize">
+          <option value="0.9">Small</option>
+          <option value="1" selected>Normal</option>
+          <option value="1.15">Large</option>
+          <option value="1.3">Extra Large</option>
+        </select>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-label">
+          <i class="fa fa-palette"></i>
+          <span>Theme</span>
+        </div>
+        <select id="theme">
+          <option value="system" selected>System Default</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+
+      <div class="action-buttons">
+        <button id="saveBtn" class="btn btn-primary">
+          <i class="fa fa-save"></i>
+          <span>Save Changes</span>
+        </button>
+        <button id="resetBtn" class="btn btn-ghost">
+          <i class="fa fa-rotate-left"></i>
+          <span>Reset to Defaults</span>
+        </button>
       </div>
     </div>
   </div>

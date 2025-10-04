@@ -1,21 +1,19 @@
-/* Styling for legal / document pages */
 .document-container {
   max-width: 900px;
-  margin: 2rem auto 6rem; 
-  background: #ffffff; 
+  margin: 2rem auto 6rem;
+  background: var(--c-surface-1);
   padding: 2rem 2.5rem;
-  border-radius: 12px;
-  border: 1px solid #e2e2e2;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-2);
   line-height: 1.55;
   font-size: 0.98rem;
-  color: #111;
+  color: var(--c-text);
 }
 
 .main-content {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 1rem; 
+  padding-bottom: 1rem;
 }
 
 .back-link {
@@ -24,24 +22,28 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 18px;
-  color: #111;
+  color: var(--c-text);
   font-weight: 600;
 }
-.back-link i { color: #111; }
-.back-link:hover { text-decoration: underline; }
+.back-link i {
+  color: var(--c-text);
+}
+.back-link:hover {
+  text-decoration: underline;
+}
 
 .document-container h1 {
   margin-top: 0;
   font-size: 2rem;
   letter-spacing: 0.5px;
-  color: #111;
+  color: var(--c-text);
 }
 
 .document-container h2 {
   margin-top: 2rem;
   font-size: 1.35rem;
-  color: #111;
-  border-bottom: 1px solid #eee;
+  color: var(--c-text);
+  border-bottom: 1px solid var(--c-border);
   padding-bottom: 0.4rem;
 }
 
@@ -50,38 +52,44 @@
   font-size: 1.05rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #222;
+  color: var(--c-text-muted);
 }
 
-.document-container p { 
-  color: #222; 
-  margin: 0.7rem 0; 
+.document-container p {
+  color: var(--c-text);
+  margin: 0.7rem 0;
 }
 
-.document-container ul { 
-  margin: 0.5rem 0 1rem 1.2rem; 
-  padding: 0; 
+.document-container ul {
+  margin: 0.5rem 0 1rem 1.2rem;
+  padding: 0;
 }
-.document-container ul li { 
-  margin: 0.35rem 0; 
-  color: #222; 
-  list-style: disc; 
-}
-
-.document-container hr { 
-  border: none; 
-  border-top: 1px solid #e3e3e3; 
-  margin: 2.5rem 0 1.5rem; 
+.document-container ul li {
+  margin: 0.35rem 0;
+  color: var(--c-text);
+  list-style: disc;
 }
 
-.document-container strong { color: #000; }
+.document-container hr {
+  border: none;
+  border-top: 1px solid var(--c-border);
+  margin: 2.5rem 0 1.5rem;
+}
+
+.document-container strong {
+  color: var(--c-text);
+}
 
 @media (max-width: 700px) {
-  .document-container { 
-    padding: 1.5rem 1.25rem; 
-    margin: 1rem 0 6rem; 
-    border-radius: 0; 
+  .document-container {
+    padding: 1.5rem 1.25rem;
+    margin: 1rem 0 6rem;
+    border-radius: 0;
   }
-  .document-container h1 { font-size: 1.75rem; }
-  .document-container h2 { font-size: 1.2rem; }
+  .document-container h1 {
+    font-size: 1.75rem;
+  }
+  .document-container h2 {
+    font-size: 1.2rem;
+  }
 }

@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Speak - AI | Detection</title>
-    <link rel="stylesheet" href="/css/style.css">
+        <title>Sign Speak - AI | Detection</title>
+        <%- include('partials/theme') %>
+        <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <div class="app-grid">
@@ -94,7 +95,7 @@
                         <span>Play audio</span>
                     </button>
                     <button class="star-btn" id="starBtn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polygon points="12,2 15.09,8.26 22,9.27 17,14.14
                                              18.18,21.02 12,17.77 5.82,21.02
                                              7,14.14 2,9.27 8.91,8.26"/>
@@ -144,6 +145,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
     <script src="/js/play-audio.js"></script>
     <script src="/js/camera-acess.js"></script>
+
     <!-- Custom Gesture recognition for user actions-->
     <script src="/js/custom-app-gestures.js"></script>
 </body>
