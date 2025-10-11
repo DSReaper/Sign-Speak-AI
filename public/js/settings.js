@@ -198,6 +198,11 @@ logoutBtn.addEventListener('click', async function (e) {
   } catch (err) {
     // handle error
   } finally {
+    // Clear localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    // Clear cookie
+    document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     window.location.href = '/';
   }
 });
