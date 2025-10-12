@@ -7,3 +7,5 @@ mediapipe
 numpy
 Pillow
 timm
+glob
+pyttsx3
