@@ -43,11 +43,11 @@ window.addEventListener('click', (event) => {
 });
 
 // ---------------- Camera Selection Logic ----------------
-// Persist key for selected camera
+// Persist keys for selected camera
 const CAMERA_PREF_KEY = 'ssai_preferred_camera_id';
+const CAMERA_PREF_LABEL_KEY = 'ssai_preferred_camera_label';
 const cameraSelect = document.getElementById('cameraSelect');
 const cameraSelectStatus = document.getElementById('cameraSelectStatus');
-const detectCamerasBtn = document.getElementById('detectCamerasBtn');
 
 function setStatus(text, type = 'info') {
   if (!cameraSelectStatus) return;
@@ -57,44 +57,36 @@ function setStatus(text, type = 'info') {
 
 async function ensureMediaPermission() {
   // Attempt light permission request to reveal device labels if not already granted
-  try {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-      throw new Error('Media devices API not supported in this browser');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+    throw new Error('Media devices API not supported in this browser');
+  }
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const hasLabels = devices.some(d => d.kind === 'videoinput' && d.label);
+  if (!hasLabels) {
+    if (ensureMediaPermission.userInitiated !== true) {
+      throw new Error('Permission required: interact with the dropdown to grant access');
     }
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const hasLabels = devices.some(d => d.kind === 'videoinput' && d.label);
-    if (!hasLabels) {
-      // Only request permission in response to user gesture (button click)
-      if (ensureMediaPermission.userInitiated !== true) {
-        // caller didn't mark as user-initiated; let populateCameras handle messaging
-        throw new Error('Permission required: please click Detect cameras');
-      }
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      stream.getTracks().forEach(t => t.stop());
-    }
-  } catch (err) {
-    // Permission might be denied; continue with limited info
-    console.warn('Camera permission not granted or unavailable:', err.message);
-    throw err;
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    stream.getTracks().forEach(t => t.stop());
   }
 }
 
 async function populateCameras() {
   if (!cameraSelect) return;
+  if (!window.isSecureContext) {
+    setStatus('Camera access requires HTTPS. Please use the secure site URL.', 'error');
+    return;
+  }
+  setStatus('Detecting cameras...');
+
   try {
-    if (!window.isSecureContext) {
-      setStatus('Camera access requires HTTPS. Please use the secure site URL.', 'error');
-      return;
-    }
-    setStatus('Detecting cameras...');
+    await ensureMediaPermission();
+  } catch (_) {
+    // Keep going; labels might be blank without permission
+    setStatus('Permission not yet granted. Listing devices without labels.', 'error');
+  }
 
-    try {
-      await ensureMediaPermission();
-    } catch (permErr) {
-      // Update status but still try enumerateDevices (labels may be empty)
-      setStatus('Permission not yet granted. Select from available devices or click Detect cameras.', 'error');
-    }
-
+  try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoInputs = devices.filter(d => d.kind === 'videoinput');
 
@@ -108,23 +100,37 @@ async function populateCameras() {
       setStatus('No video input devices detected.', 'error');
       return;
     }
-    cameraSelect.disabled = false;
 
+    cameraSelect.disabled = false;
     const preferredId = localStorage.getItem(CAMERA_PREF_KEY) || '';
+    let defaultSelected = false;
+
     videoInputs.forEach((d, idx) => {
       const opt = document.createElement('option');
       opt.value = d.deviceId;
       const label = d.label || `Camera ${idx + 1}`;
       opt.textContent = label;
-      if (preferredId && preferredId === d.deviceId) opt.selected = true;
+      if (!defaultSelected && preferredId && preferredId === d.deviceId) {
+        opt.selected = true;
+        defaultSelected = true;
+      }
       cameraSelect.appendChild(opt);
     });
 
-    if (!preferredId) {
-      // Store the first camera as default preference
-      localStorage.setItem(CAMERA_PREF_KEY, videoInputs[0].deviceId);
+    // If no preference, select first and persist
+    if (!defaultSelected) {
+      cameraSelect.selectedIndex = 0;
+      const first = videoInputs[0];
+      localStorage.setItem(CAMERA_PREF_KEY, first.deviceId);
+      localStorage.setItem(CAMERA_PREF_LABEL_KEY, first.label || 'Camera 1');
+      setStatus('Default camera selected and saved.');
+    } else {
+      const match = videoInputs.find(v => v.deviceId === preferredId);
+      if (match) {
+        localStorage.setItem(CAMERA_PREF_LABEL_KEY, match.label || 'Saved camera');
+        setStatus(`Using saved camera: ${match.label || 'Saved camera'}`);
+      }
     }
-    setStatus('Camera preference saved locally and applied in detection view.');
   } catch (err) {
     console.error('Failed to populate cameras:', err);
     setStatus('Error listing cameras (permission denied?)', 'error');
@@ -132,39 +138,76 @@ async function populateCameras() {
 }
 
 if (cameraSelect) {
+  // Prefill select from localStorage immediately (no detection yet)
+  (function prefillFromLocalStorage() {
+    const savedId = localStorage.getItem(CAMERA_PREF_KEY) || '';
+    const savedLabel = localStorage.getItem(CAMERA_PREF_LABEL_KEY) || '';
+    cameraSelect.innerHTML = '';
+    if (savedId) {
+      const opt = document.createElement('option');
+      opt.value = savedId;
+      opt.textContent = savedLabel || 'Saved camera';
+      opt.selected = true;
+      cameraSelect.appendChild(opt);
+      cameraSelect.disabled = false;
+      setStatus(savedLabel ? `Using saved camera: ${savedLabel}` : 'Using saved camera (name requires permission)');
+    } else {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'No camera selected — click to list cameras';
+      opt.disabled = true;
+      opt.selected = true;
+      cameraSelect.appendChild(opt);
+      cameraSelect.disabled = false; // allow interaction to trigger detection
+      setStatus('Click the dropdown to list available cameras.');
+    }
+  })();
+
   cameraSelect.addEventListener('change', (e) => {
     const val = e.target.value;
     if (val) {
       localStorage.setItem(CAMERA_PREF_KEY, val);
-      if (cameraSelectStatus) cameraSelectStatus.textContent = 'Preferred camera updated! Re-open the detection page to apply.';
+      const sel = cameraSelect.options[cameraSelect.selectedIndex];
+      if (sel && sel.textContent) {
+        localStorage.setItem(CAMERA_PREF_LABEL_KEY, sel.textContent);
+        setStatus(`Using saved camera: ${sel.textContent}`);
+      } else {
+        setStatus('Preferred camera updated!');
+      }
     }
   });
-  // Repopulate on device changes 
+
+  // Detect cameras when the user interacts with the dropdown
+  let cameraListEverPopulated = false;
+  async function populateOnInteract(userInitiated) {
+    try {
+      ensureMediaPermission.userInitiated = !!userInitiated;
+      await populateCameras();
+      cameraListEverPopulated = true;
+    } catch (_) {
+      // ignore
+    } finally {
+      ensureMediaPermission.userInitiated = false;
+    }
+  }
+
+  cameraSelect.addEventListener('mousedown', () => {
+    if (!cameraListEverPopulated) populateOnInteract(true);
+  });
+  cameraSelect.addEventListener('focus', () => {
+    if (!cameraListEverPopulated) populateOnInteract(false);
+  });
+  cameraSelect.addEventListener('keydown', (e) => {
+    if (!cameraListEverPopulated && (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ')) {
+      populateOnInteract(true);
+    }
+  });
+
+  // Repopulate on device changes
   if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
     navigator.mediaDevices.addEventListener('devicechange', () => {
       populateCameras();
     });
-  }
-  // Wire manual detect button to comply with permission gesture policies
-  if (detectCamerasBtn) {
-    detectCamerasBtn.addEventListener('click', async () => {
-      try {
-        ensureMediaPermission.userInitiated = true;
-        await ensureMediaPermission();
-      } catch (e) {
-        // If the user dismisses the prompt or blocks, we still try to list devices
-      } finally {
-        ensureMediaPermission.userInitiated = false;
-        await populateCameras();
-      }
-    });
-  }
-
-  // Attempt a best-effort populate (will not force permission prompt)
-  if (document.readyState === 'loading') {
-    window.addEventListener('DOMContentLoaded', () => setTimeout(populateCameras, 300));
-  } else {
-    setTimeout(populateCameras, 300);
   }
 }
 // ---------------------------------------------------------
