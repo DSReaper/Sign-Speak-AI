@@ -21,7 +21,7 @@ body {
   color: var(--c-text);
   height: 100%;
   margin: 0;
-  /* Allow natural page scrolling when content exceeds viewport */
+  /* Allow natural page scrolling when content exceeds viewport (overridden for camera page) */
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-font-smoothing: antialiased;
@@ -31,9 +31,15 @@ body {
 html {
   height: 100%;
   margin: 0;
-  /* Allow natural page scrolling */
+  /* Allow natural page scrolling (overridden for camera page) */
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+/* Disable page scroll specifically on the camera page */
+body.page-camera,
+body.page-camera html {
+  overflow: hidden !important;
 }
 
 .app-grid {

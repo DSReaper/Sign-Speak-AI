@@ -25,10 +25,10 @@
   position: relative;
   border-radius: 20px;
   padding: 20px;
-  margin: 0 0 10px 0;
+  margin: 0;
   width: 100%;
-  /* Let the section grow naturally; specific sizing handled by responsive rules */
-  min-height: 260px;
+  /* Allow shrinking within proportional layout */
+  min-height: 0;
   backdrop-filter: blur(10px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
@@ -38,13 +38,14 @@
 }
 
 .camera-container {
-  flex: 1;
+  flex: 1 1 auto;
   width: 100%;
   border-radius: 15px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 0;
 }
 
 /* Fullscreen mode */
@@ -177,10 +178,9 @@
   background: rgba(255, 255, 255, 0.95);
   border-radius: 20px;
   padding: 25px;
-  margin: 0 0 0 0;
+  margin: 0;
   width: 100%;
-  /* Natural height; mobile rules will adjust as needed */
-  min-height: 160px;
+  min-height: 0;
   backdrop-filter: blur(10px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   text-align: center;
@@ -189,6 +189,7 @@
   justify-content: center;
   box-sizing: border-box;
   position: relative;
+  overflow: hidden;
 }
 
 .results-title {
@@ -320,12 +321,12 @@
     padding: 12px 16px;
     flex: 1 1 auto;
     min-width: 0;
-    white-space: nowrap;
+    white-space: normal; /* allow text to be visible */
   }
 
-  /* Hide text labels on mobile for compact layout */
+  /* Show play text on mobile */
   .play-btn span {
-    display: none;
+    display: inline;
   }
 
   .star-btn {
@@ -672,6 +673,31 @@
   height: 100%;
   object-fit: cover;
   border-radius: 10px;
+}
+
+/* Camera page layout: fill viewport above fixed bottom nav and proportionally divide space */
+.page-camera .container.camera-page {
+  /* Fill exactly what's available above the fixed nav */
+  height: calc(100dvh - var(--nav-total-height));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 0 !important; /* override global padding for fixed nav */
+  overflow: hidden; /* page must not be scrollable */
+}
+
+/* Proportional heights: camera gets 65%, results 35% across all sizes */
+.page-camera .container.camera-page .camera-section {
+  flex: 0 0 65%;
+  min-height: 0; /* allow shrinking to avoid overflow */
+}
+.page-camera .container.camera-page .camera-container {
+  min-height: 0; /* ensure the video can shrink */
+}
+.page-camera .container.camera-page .results-section {
+  flex: 0 0 35%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Dark theme overrides (match 404: black bg, dark surfaces) */
