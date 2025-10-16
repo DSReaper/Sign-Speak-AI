@@ -527,6 +527,39 @@
   overflow-y: auto;
 }
 
+/* Full-viewport modal on mobile (used by both camera and storage screens) */
+@media (max-width: 768px) {
+  .camera-modal {
+    /* allow the content box to stretch to full viewport */
+    justify-content: stretch;
+    align-items: stretch;
+  }
+  .camera-modal-content {
+    width: 100vw;
+    height: 100dvh; /* account for dynamic mobile browser UI */
+    max-width: 100vw;
+    max-height: 100dvh;
+    border-radius: 0;
+    /* respect safe areas on notched devices */
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)) 16px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+  .camera-modal-content h2 {
+    text-align: center;
+  }
+  .camera-modal-content textarea {
+    flex: 1 1 auto;
+    min-height: 0; /* allow it to grow and shrink within viewport */
+  }
+  .camera-modal-content button {
+    align-self: center;
+    margin-top: 12px;
+  }
+}
+
 .camera-modal-content h2 {
   margin-bottom: 1rem;
   font-size: 1.4rem;

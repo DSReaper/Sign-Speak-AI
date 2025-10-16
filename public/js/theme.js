@@ -12,14 +12,10 @@
   function apply(settings) {
     if (!settings) return;
 
-    // Theme: 'light' | 'dark' | 'system'
-    const theme = settings.theme || 'system';
+    // Theme: 'light' | 'dark' (default light)
+    const theme = (settings.theme === 'dark') ? 'dark' : 'light';
     const root = document.documentElement;
-    if (theme === 'system') {
-      root.removeAttribute('data-theme');
-    } else {
-      root.setAttribute('data-theme', theme);
-    }
+    root.setAttribute('data-theme', theme);
     // Text size scaling removed; default font size is used
   }
 

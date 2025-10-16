@@ -5,9 +5,9 @@
       var raw = localStorage.getItem('appSettings');
       if (raw) {
         var s = JSON.parse(raw);
-        var root = document.documentElement;
-        if (s.theme && s.theme !== 'system') root.setAttribute('data-theme', s.theme);
-        else root.removeAttribute('data-theme');
+  var root = document.documentElement;
+  var theme = (s.theme === 'dark') ? 'dark' : 'light';
+  root.setAttribute('data-theme', theme);
   // Text size setting removed; keep default font sizing
       }
     } catch(_){/* noop */}

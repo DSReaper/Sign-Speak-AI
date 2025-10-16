@@ -22,13 +22,9 @@
   function apply(settings) {
     if (!settings) return;
 
-    // Theme
-    const theme = settings.theme || "system";
-    if (theme === "system") {
-      document.documentElement.removeAttribute("data-theme");
-    } else {
-      document.documentElement.setAttribute("data-theme", theme);
-    }
+    // Theme: default to light if not set; only 'light' or 'dark'
+    const theme = settings.theme || "light";
+    document.documentElement.setAttribute("data-theme", theme);
   }
 
   function populateUI(settings) {
@@ -38,14 +34,14 @@
     if (gEl) gEl.checked = true;
 
     els.rate.value = settings.rate || "1";
-    els.theme.value = settings.theme || "system";
+  els.theme.value = settings.theme || "light";
   }
 
   function save() {
     const settings = {
       voiceGender: els.voiceGender().value,
       rate: parseFloat(els.rate.value),
-      theme: els.theme.value,
+  theme: els.theme.value || "light",
     };
     localStorage.setItem(KEY, JSON.stringify(settings));
     apply(settings);
@@ -56,7 +52,7 @@
     const defaults = {
       voiceGender: "female",
       rate: 1,
-      theme: "system",
+  theme: "light",
     };
     localStorage.setItem(KEY, JSON.stringify(defaults));
     populateUI(defaults);
