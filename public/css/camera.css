@@ -1,32 +1,4 @@
-.detection-mode {
-  display: flex;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 25px;
-  padding: 4px;
-  backdrop-filter: blur(10px);
-}
-
-.mode-btn {
-  background: none;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  color: #666;
-}
-
-.mode-btn.active {
-  background: #000;
-  color: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-}
-
-.mode-btn:hover:not(.active) {
-  background: rgba(0, 0, 0, 0.05);
-}
+/* Removed detection-mode and mode-btn styles (unused) */
 
 .expand-btn {
   background: rgba(255, 255, 255, 0.9);
@@ -139,7 +111,6 @@
   padding: 0 10px;
 }
 
-.camera-controls .detection-mode,
 .camera-controls .expand-btn {
   pointer-events: auto;
 }
@@ -363,18 +334,17 @@
     align-items: stretch;
   }
 
-  .detection-mode {
-    justify-content: center;
-  }
-
-  .mode-btn {
-    flex: 1;
-    padding: 10px 16px;
-    font-size: 13px;
-  }
+  /* Removed detection-mode and mode-btn responsive styles (unused) */
 
   .expand-btn {
     align-self: center;
+    width: 56px;
+    height: 56px;
+  }
+
+  .expand-btn svg {
+    width: 28px;
+    height: 28px;
   }
 
   .camera-container {
@@ -418,13 +388,25 @@
 /* Fullscreen mode adjustments */
 @media (max-width: 480px) {
   .camera-section.expanded {
-    padding: 15px;
+    padding: 0;
   }
 
   .camera-section.expanded .camera-controls {
     top: 20px;
     left: 20px;
     right: 20px;
+  }
+
+  /* Maximize camera view on mobile when expanded */
+  .camera-section.expanded .camera-container {
+    padding: 0 !important;
+  }
+
+  .camera-section.expanded #aiCameraFeed {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    object-fit: contain !important;
   }
 }
 
@@ -621,20 +603,10 @@
   background: rgba(20, 20, 20, 0.95);
   box-shadow: var(--shadow-inset-top), var(--shadow-bottom-2);
 }
-[data-theme="dark"] .detection-mode,
 [data-theme="dark"] .expand-btn {
   background: rgba(30, 30, 30, 0.9);
 }
-[data-theme="dark"] .mode-btn {
-  color: #bbb;
-}
-[data-theme="dark"] .mode-btn.active {
-  background: #111;
-  color: #fff;
-}
-[data-theme="dark"] .mode-btn:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.06);
-}
+/* Removed dark theme overrides for mode-btn and detection-mode (unused) */
 [data-theme="dark"] .results-title,
 [data-theme="dark"] .detected-phrase {
   color: #e6e6e6;

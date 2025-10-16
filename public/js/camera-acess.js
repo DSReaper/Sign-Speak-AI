@@ -21,8 +21,7 @@ class AISignLanguageDetection {
         this.aiStatus = document.getElementById('aiStatus');
         
         this.isExpanded = false;
-        this.isAIActive = false;
-        this.currentMode = 'basic';
+    this.isAIActive = false;
         // performance presets
         this.performanceMode = 'balanced'; // 'quality' | 'balanced' | 'speed'
         this._perfSettings = {
@@ -49,14 +48,7 @@ class AISignLanguageDetection {
     }
 
     initializeEventListeners() {
-        // mode switching
-        document.getElementById('basicDetect').addEventListener('click', () => {
-            this.switchMode('basic');
-        });
-        
-        document.getElementById('advancedDetect').addEventListener('click', () => {
-            this.switchMode('advanced');
-        });
+        // Single detection mode in use; no mode-switching UI
         
         // AI controls
         document.getElementById('toggleHands').addEventListener('click', () => {
@@ -865,22 +857,7 @@ class AISignLanguageDetection {
         }
     }
 
-    switchMode(mode) {
-        this.currentMode = mode;
-        
-        // Update button states
-        document.querySelectorAll('.mode-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        if (mode === 'basic') {
-            document.getElementById('basicDetect').classList.add('active');
-        } else {
-            document.getElementById('advancedDetect').classList.add('active');
-        }
-        
-        console.log(`Switched to ${mode} detection mode`);
-    }
+    // Mode switching removed; always use the default detection pipeline
 
     toggleExpanded() {
         this.isExpanded = !this.isExpanded;
