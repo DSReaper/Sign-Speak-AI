@@ -1,52 +1,46 @@
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background-color: #dfdddd;
-    /* Use dynamic viewport units to avoid browser UI overlap on mobile */
-    min-height: 100dvh;
-    color: #333;
-
+  font-family: var(--font-sans);
+  background-color: var(--c-bg);
+  min-height: 100vh;
+  color: var(--c-text);
   height: 100%;
   margin: 0;
-  /* Allow scrolling on mobile so bottom nav isn't overlapped by system bars */
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-html{
+html {
   height: 100%;
   margin: 0;
-  /* Allow page to scroll under safe area with proper padding */
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .app-grid {
   display: grid;
-  /* Main content grows, nav auto height with safe area */
-  grid-template-rows: 1fr auto; 
-  height: 100dvh;
+  grid-template-rows: 90vh 10vh;
+  height: 100vh;
   max-width: 900px;
   margin: 0 auto;
-  gap: 0; 
+  gap: 0;
 }
 
 .main-content {
   width: 100%;
-  /* Ensure main content doesn't hide behind the bottom nav */
-  min-height: 0; 
+  height: 100%;
 }
 
 .container {
   width: 100%;
   padding: 0;
   box-sizing: border-box;
-  height: 100%; 
+  height: 100%;
 }
 
 .nav-wrapper {
@@ -54,16 +48,58 @@ html{
   max-width: 900px;
   margin: 0 auto;
   box-sizing: border-box;
-  position: relative; 
+  position: relative;
   z-index: 1000;
-  /* Prevent the nav wrapper from consuming full height */
-  height: auto; 
-  /* Provide extra breathing room at bottom for system UI */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  height: 100%;
 }
 
-/* Root-level safe area variables for broader use if needed */
-:root {
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-top: env(safe-area-inset-top, 0px);
+.section {
+  background: var(--c-surface-1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-1);
+}
+
+.card {
+  background: var(--c-surface-2);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-2);
+}
+
+.muted-surface {
+  background: var(--c-surface-3);
+}
+
+/* Links and buttons */
+a {
+  color: inherit;
+  text-underline-offset: 3px;
+}
+a:hover {
+  color: var(--c-text);
+  text-decoration-color: var(--c-border);
+}
+
+button {
+  background: var(--c-surface-2);
+  color: var(--c-text);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-1);
+  transition:
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    background-color 160ms ease;
+}
+button:hover {
+  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-2);
+  transform: translateY(-1px);
+}
+button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-1);
+}
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }

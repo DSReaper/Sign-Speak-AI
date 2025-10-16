@@ -1,39 +1,53 @@
-/* Prevent bottom nav from covering controls on small screens */
-@media (max-width: 600px) {
-  .container {
-    padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
-  }
-}
-.setting-link{
-text-decoration: none;
-
+.setting-link {
+  text-decoration: none;
 }
 
-.settings-list { list-style: none; flex: 1; }
+.settings-list {
+  list-style: none;
+  flex: 1;
+}
 
 .settings-list a {
-  text-decoration: none; 
-  color: black
+  text-decoration: none;
+  color: inherit;
 }
 
 .settings-list li {
-  display: flex; align-items: center;
-  padding: 14px 0; font-size: 15px; cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  padding: 14px 0;
+  font-size: 15px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--c-border);
 }
-.settings-list li i { margin-right: 12px; color: #222; }
+.settings-list li i {
+  margin-right: 12px;
+  color: var(--c-text);
+}
 
-.settings-list .danger { color: #d9534f; }
-.settings-list .danger i { color: #d9534f; }
+.settings-list .danger {
+  color: #d9534f;
+}
+.settings-list .danger i {
+  color: #d9534f;
+}
 
 .logout-section {
-  margin-top: 20px; padding-top: 10px; border-top: 1px solid #e5e5e5;
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid var(--c-border);
 }
 .logout-btn {
-  display: flex; align-items: center;
-  color: #d9534f; font-weight: 500; text-decoration: none; font-size: 15px;
+  display: flex;
+  align-items: center;
+  color: #d9534f;
+  font-weight: 500;
+  text-decoration: none;
+  font-size: 15px;
 }
-.logout-btn i { margin-right: 10px; }
+.logout-btn i {
+  margin-right: 10px;
+}
 
 /* Settings Modal styles */
 .settings-modal {
@@ -48,10 +62,10 @@ text-decoration: none;
 }
 
 .settings-modal-content {
-  background-color: #fff;
+  background-color: var(--c-surface-1);
   margin: 15% auto;
   padding: 20px;
-  border: 1px solid #888;
+  border: 1px solid var(--c-border);
   width: 80%;
   max-width: 400px;
   border-radius: 8px;
@@ -83,19 +97,48 @@ text-decoration: none;
 .settings-modal-content input {
   margin-bottom: 10px;
   padding: 10px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface-2);
+  color: var(--c-text);
   border-radius: 4px;
 }
 
 .settings-modal-content button {
   padding: 10px;
-  background-color: #007bff;
-  color: white;
+  background-color: #111;
+  color: #fff;
   border: none;
   border-radius: 4px;
   cursor: pointer;
 }
 
 .settings-modal-content button:hover {
-  background-color: #0056b3;
+  background-color: #222;
+}
+
+/* Dark theme overrides for page surfaces */
+[data-theme="dark"] .main-content .container {
+  background: transparent;
+  color: var(--c-text);
+}
+[data-theme="dark"] body {
+  background: #000;
+  color: var(--c-text);
+}
+[data-theme="dark"] .settings-list li {
+  border-bottom-color: #1f1f1f;
+}
+[data-theme="dark"] .settings-modal-content {
+  background-color: #141414;
+  border-color: #1f1f1f;
+}
+[data-theme="dark"] .settings-modal-content input {
+  background: #0f0f0f;
+  border-color: #2a2a2a;
+}
+[data-theme="dark"] .settings-modal-content button {
+  background: #111;
+}
+[data-theme="dark"] .settings-modal-content button:hover {
+  background: #222;
 }
