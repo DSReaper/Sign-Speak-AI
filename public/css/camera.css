@@ -221,6 +221,7 @@
 .play-btn {
   display: flex;
   align-items: center;
+  justify-content: center; /* center icon + text horizontally */
   gap: 10px;
   background: #000;
   color: white;
@@ -231,6 +232,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
+  text-align: center; /* center multi-line text inside span */
 }
 
 .play-btn:hover {
@@ -504,7 +506,7 @@
 .camera-modal {
   display: none;
   position: fixed;
-  z-index: 1000;
+  z-index: 4000; /* above fixed bottom nav and other UI */
   left: 0;
   top: 0;
   width: 100%;
@@ -584,6 +586,18 @@
   color: #fff;
   cursor: pointer;
   font-size: 1rem;
+}
+
+/* Make Close button always visible and red */
+#closeModal {
+  background: #e53935; /* red */
+  color: #fff;
+  position: sticky;
+  bottom: 0; /* sticks to the bottom of scrollable modal content */
+  z-index: 1;
+}
+#closeModal:hover {
+  background: #c62828;
 }
 
 /* AI Status Display */
