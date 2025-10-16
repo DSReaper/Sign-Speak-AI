@@ -3,8 +3,9 @@
   justify-content: center;
   align-items: center;
   background-color: var(--nav-bg);
-  height: 10vh;
-  min-height: 70px;
+  /* Use CSS variable for consistent height across devices */
+  min-height: var(--nav-height);
+  height: auto;
   border-top-left-radius: 25px;
   border-top-right-radius: 25px;
   position: relative;
@@ -15,6 +16,8 @@
   width: 100%;
   box-sizing: border-box;
   margin-top: 10px;
+  /* Ensure content inside has breathing room above device home bar */
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
 }
 
 .nav-item {
