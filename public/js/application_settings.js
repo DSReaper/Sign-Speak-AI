@@ -8,7 +8,6 @@
     volume: document.getElementById("volume"),
     volLabel: document.getElementById("volLabel"),
     textSize: document.getElementById("textSize"),
-    highContrast: document.getElementById("highContrast"),
     theme: document.getElementById("theme"),
     saveBtn: document.getElementById("saveBtn"),
     resetBtn: document.getElementById("resetBtn"),
@@ -30,9 +29,6 @@
     const scale = parseFloat(settings.textSize || 1);
     document.documentElement.style.fontSize = `${100 * scale}%`;
 
-    // High contrast
-    document.body.classList.toggle("high-contrast", !!settings.highContrast);
-
     // Theme
     const theme = settings.theme || "system";
     if (theme === "system") {
@@ -50,9 +46,8 @@
 
     els.rate.value = settings.rate || "1";
     els.volume.value = typeof settings.volume === "number" ? settings.volume : 1;
-    els.volLabel.textContent = `(${Math.round(els.volume.value * 100)}%)`;
+  els.volLabel.textContent = `${Math.round(els.volume.value * 100)}%`;
     els.textSize.value = settings.textSize || "1";
-    els.highContrast.checked = !!settings.highContrast;
     els.theme.value = settings.theme || "system";
   }
 
@@ -62,7 +57,6 @@
       rate: parseFloat(els.rate.value),
       volume: parseFloat(els.volume.value),
       textSize: els.textSize.value,
-      highContrast: els.highContrast.checked,
       theme: els.theme.value,
     };
     localStorage.setItem(KEY, JSON.stringify(settings));
@@ -76,7 +70,6 @@
       rate: 1,
       volume: 1,
       textSize: "1",
-      highContrast: false,
       theme: "system",
     };
     localStorage.setItem(KEY, JSON.stringify(defaults));
@@ -123,7 +116,7 @@
     apply(current || undefined);
 
     els.volume.addEventListener("input", () => {
-      els.volLabel.textContent = `(${Math.round(els.volume.value * 100)}%)`;
+      els.volLabel.textContent = `${Math.round(els.volume.value * 100)}%`;
     });
 
     els.saveBtn.addEventListener("click", save);
