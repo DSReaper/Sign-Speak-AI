@@ -27,8 +27,8 @@
   padding: 20px;
   margin: 0 0 10px 0;
   width: 100%;
-  height: 60vh;
-  min-height: 400px;
+  /* Let the section grow naturally; specific sizing handled by responsive rules */
+  min-height: 260px;
   backdrop-filter: blur(10px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
@@ -57,7 +57,7 @@
   width: 100vw;
   height: 100vh;
   max-width: 100%;
-  z-index: 1000;
+  z-index: 2000; /* ensure above fixed bottom nav */
   margin: 0;
   border-radius: 0;
   padding: 20px;
@@ -179,8 +179,8 @@
   padding: 25px;
   margin: 0 0 0 0;
   width: 100%;
-  height: 25vh;
-  min-height: 200px;
+  /* Natural height; mobile rules will adjust as needed */
+  min-height: 160px;
   backdrop-filter: blur(10px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   text-align: center;
@@ -354,6 +354,35 @@
 
 /* Responsive Design */
 @media (max-width: 480px) {
+  /* Camera page: fit everything above the fixed bottom nav */
+  .container.camera-page {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: auto; /* override global .container height:100% */
+    /* Fill the viewport height and subtract the nav height padding already applied on container */
+    min-height: calc(100dvh - var(--nav-total-height));
+    /* Override global container padding to avoid double-spacing under fixed nav */
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px) !important;
+  }
+
+  .container.camera-page .camera-section {
+    /* Allocate most of the space to the camera, but keep results visible */
+    flex: 1 1 auto;
+    min-height: 40vh; /* ensure a reasonable camera viewport but leave room for results */
+    margin-bottom: 8px;
+  }
+
+  .container.camera-page .camera-container {
+    height: auto;
+    min-height: 0;
+  }
+
+  .container.camera-page .results-section {
+    flex: 0 0 auto;
+    padding: 16px;
+  }
+
   .container {
     padding: 15px;
     /* Keep content above the fixed bottom nav on small screens */
@@ -379,8 +408,20 @@
     height: 28px;
   }
 
+  /* Avoid hard-coding container height on small screens; let it flex */
   .camera-container {
-    height: 250px;
+    height: auto;
+  }
+
+  /* Tighten spacing and fonts so results remain visible without overlap */
+  .results-title {
+    margin-bottom: 12px;
+    font-size: 15px;
+  }
+  .detected-phrase {
+    margin-bottom: 12px;
+    font-size: 14px;
+    padding: 10px;
   }
 
   .detection-box {
