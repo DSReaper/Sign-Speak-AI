@@ -17,7 +17,7 @@
   box-sizing: border-box;
   margin: 0; /* remove side/top margins so it touches edges */
   /* Ensure content inside has breathing room above device home bar */
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px));
 }
 
 /* On desktop, match the app content width (900px) and center */

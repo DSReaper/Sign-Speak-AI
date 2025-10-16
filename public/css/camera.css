@@ -681,23 +681,29 @@
   height: calc(100dvh - var(--nav-total-height));
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0; /* we'll manage spacing with margins on results */
   padding-bottom: 0 !important; /* override global padding for fixed nav */
   overflow: hidden; /* page must not be scrollable */
+  /* spacing token for vertical margin around results */
+  --camera-vgap: 10px;
 }
 
 /* Proportional heights: camera gets 65%, results 35% across all sizes */
 .page-camera .container.camera-page .camera-section {
-  flex: 0 0 65%;
+  /* Proportional layout: grow/shrink ratio 65 */
+  flex: 65 1 0%;
   min-height: 0; /* allow shrinking to avoid overflow */
 }
 .page-camera .container.camera-page .camera-container {
   min-height: 0; /* ensure the video can shrink */
 }
 .page-camera .container.camera-page .results-section {
-  flex: 0 0 35%;
+  /* Proportional layout: grow/shrink ratio 35 */
+  flex: 35 1 0%;
   min-height: 0;
   overflow: hidden;
+  /* Equal spacing above and below results */
+  margin: var(--camera-vgap) 0;
 }
 
 /* Dark theme overrides (match 404: black bg, dark surfaces) */

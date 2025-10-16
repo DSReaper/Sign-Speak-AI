@@ -5,9 +5,6 @@
   const els = {
     voiceGender: () => document.querySelector('input[name="voiceGender"]:checked'),
     rate: document.getElementById("rate"),
-    volume: document.getElementById("volume"),
-    volLabel: document.getElementById("volLabel"),
-    textSize: document.getElementById("textSize"),
     theme: document.getElementById("theme"),
     saveBtn: document.getElementById("saveBtn"),
     resetBtn: document.getElementById("resetBtn"),
@@ -25,10 +22,6 @@
   function apply(settings) {
     if (!settings) return;
 
-    // Text scaling
-    const scale = parseFloat(settings.textSize || 1);
-    document.documentElement.style.fontSize = `${100 * scale}%`;
-
     // Theme
     const theme = settings.theme || "system";
     if (theme === "system") {
@@ -45,9 +38,6 @@
     if (gEl) gEl.checked = true;
 
     els.rate.value = settings.rate || "1";
-    els.volume.value = typeof settings.volume === "number" ? settings.volume : 1;
-  els.volLabel.textContent = `${Math.round(els.volume.value * 100)}%`;
-    els.textSize.value = settings.textSize || "1";
     els.theme.value = settings.theme || "system";
   }
 
@@ -55,8 +45,6 @@
     const settings = {
       voiceGender: els.voiceGender().value,
       rate: parseFloat(els.rate.value),
-      volume: parseFloat(els.volume.value),
-      textSize: els.textSize.value,
       theme: els.theme.value,
     };
     localStorage.setItem(KEY, JSON.stringify(settings));
@@ -68,8 +56,6 @@
     const defaults = {
       voiceGender: "female",
       rate: 1,
-      volume: 1,
-      textSize: "1",
       theme: "system",
     };
     localStorage.setItem(KEY, JSON.stringify(defaults));
@@ -95,12 +81,10 @@
       return;
     }
     const gender = els.voiceGender().value;
-    const rate = parseFloat(els.rate.value);
-    const volume = parseFloat(els.volume.value);
+  const rate = parseFloat(els.rate.value);
 
     const utter = new SpeechSynthesisUtterance("This is a preview of your speech settings.");
     utter.rate = rate;
-    utter.volume = volume;
 
     const preferred = getVoicesByGender(gender);
     if (preferred.length) utter.voice = preferred[0];
@@ -114,10 +98,6 @@
     const current = load();
     populateUI(current || undefined);
     apply(current || undefined);
-
-    els.volume.addEventListener("input", () => {
-      els.volLabel.textContent = `${Math.round(els.volume.value * 100)}%`;
-    });
 
     els.saveBtn.addEventListener("click", save);
     els.resetBtn.addEventListener("click", reset);

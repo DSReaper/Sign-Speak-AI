@@ -20,10 +20,7 @@
     } else {
       root.setAttribute('data-theme', theme);
     }
-
-    // Text scaling
-    const scale = parseFloat(settings.textSize || '1');
-    root.style.fontSize = `${100 * (isFinite(scale) ? scale : 1)}%`;
+    // Text size scaling removed; default font size is used
   }
 
   // Apply on DOM ready
