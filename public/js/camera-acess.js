@@ -38,8 +38,8 @@ class AISignLanguageDetection {
         this._bufferedThreshold = 1e6; // 1 MB queued => drop frames
         this._pendingTimeout = null; // used to clear _pending if server stalls
         // WebSocket and HTTP endpoints
-        this.wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.hostname + ':5001/ai/ws';
-        this.flaskUrl = 'http://localhost:8001/ai';
+        this.wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.hostname + 'https://ssaiwb.belgiumcampus.ac.za';
+        this.flaskUrl = 'https://ssai.belgiumcampus.ac.za/ai';
         this.statusUpdateInterval = null;
         this._shouldReconnect = true;
         this._reconnectAttempts = 0;

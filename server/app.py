@@ -884,7 +884,7 @@ if __name__ == '__main__':
     print(f"Hand Detection: {'Available' if HAND_DETECTION_AVAILABLE else 'Disabled'}")
     print(f"AI Model: {'Loaded' if detector else 'Failed to load'}")
     print("\nStarting Flask AI server...")
-    print("Server will run on: http://localhost:5000")
+    print("Server will run on: https://flaskssai.belgiumcampus.ac.za")
     print("This server provides AI endpoints for the Node.js frontend")
     print("Press Ctrl+C to stop the server")
     
