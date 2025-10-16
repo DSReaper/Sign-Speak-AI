@@ -67,14 +67,10 @@ html {
   bottom: 0;
   z-index: 1000;
   height: auto;
-  padding: 0 16px calc(max(env(safe-area-inset-bottom, 0px), 8px));
+  /* No left/right padding so nav touches screen edges */
+  padding: 0 0 calc(max(env(safe-area-inset-bottom, 0px), 8px));
 }
 
-/* Center the nav content at large widths while letting wrapper span full width */
-.nav-wrapper > .bottom-nav {
-  max-width: 900px;
-  margin: 0 auto;
-}
 
 .section {
   background: var(--c-surface-1);

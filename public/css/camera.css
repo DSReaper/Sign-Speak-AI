@@ -313,7 +313,7 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    flex-wrap: nowrap;
+    flex-wrap: nowrap; /* keep on one line */
   }
 
   .play-btn {
@@ -321,6 +321,11 @@
     flex: 1 1 auto;
     min-width: 0;
     white-space: nowrap;
+  }
+
+  /* Hide text labels on mobile for compact layout */
+  .play-btn span {
+    display: none;
   }
 
   .star-btn {
@@ -402,13 +407,24 @@
     padding: 12px;
   }
 
+  /* Note: keep audio controls in a single row on mobile (see mobile block above) */
+}
+
+/* Desktop: two-line layout; clear output on its own line below */
+@media (min-width: 769px) {
   .audio-controls {
-    flex-direction: column;
-    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px 16px; /* row gap, column gap */
   }
 
-  .play-btn {
-    padding: 12px 24px;
+  /* Force clear-output to next line while keeping text visible */
+  .audio-controls .clear-output-btn {
+    order: 3;
+    flex-basis: 100%;
+    align-self: center;
+    justify-content: center;
+    text-align: center;
   }
 }
 

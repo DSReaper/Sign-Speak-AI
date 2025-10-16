@@ -13,11 +13,20 @@
     var(--shadow-inset-top),
     0 -1px 0 var(--c-border),
     0 -6px 12px rgba(0, 0, 0, 0.12);
-  width: 100%;
+  width: 100vw; /* ensure edge-to-edge */
   box-sizing: border-box;
-  margin-top: 10px;
+  margin: 0; /* remove side/top margins so it touches edges */
   /* Ensure content inside has breathing room above device home bar */
   padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+}
+
+/* On desktop, match the app content width (900px) and center */
+@media (min-width: 901px) {
+  .nav-wrapper > .bottom-nav {
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+  }
 }
 
 .nav-item {
