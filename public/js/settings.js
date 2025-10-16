@@ -1,4 +1,4 @@
-// Get modal elements
+// Get modal elements (guarded in case markup changes)
 const changePasswordModal = document.getElementById('change-password-modal');
 const changeEmailModal = document.getElementById('change-email-modal');
 
@@ -10,28 +10,34 @@ const changeEmailBtn = document.getElementById('change-email-btn');
 const closeButtons = document.querySelectorAll('.close');
 
 // Event listeners for opening modals
-changePasswordBtn.addEventListener('click', () => {
-  changePasswordModal.style.display = 'block';
-});
+if (changePasswordBtn && changePasswordModal) {
+  changePasswordBtn.addEventListener('click', () => {
+    changePasswordModal.style.display = 'block';
+  });
+}
 
-changeEmailBtn.addEventListener('click', () => {
-  changeEmailModal.style.display = 'block';
-});
+if (changeEmailBtn && changeEmailModal) {
+  changeEmailBtn.addEventListener('click', () => {
+    changeEmailModal.style.display = 'block';
+  });
+}
 
 // Event listeners for closing modals
-closeButtons.forEach(button => {
-  button.addEventListener('click', () => {
-    changePasswordModal.style.display = 'none';
-    changeEmailModal.style.display = 'none';
+if (closeButtons && (changePasswordModal || changeEmailModal)) {
+  closeButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      if (changePasswordModal) changePasswordModal.style.display = 'none';
+      if (changeEmailModal) changeEmailModal.style.display = 'none';
+    });
   });
-});
+}
 
 // Close modal when clicking outside
 window.addEventListener('click', (event) => {
-  if (event.target === changePasswordModal) {
+  if (event.target === changePasswordModal && changePasswordModal) {
     changePasswordModal.style.display = 'none';
   }
-  if (event.target === changeEmailModal) {
+  if (event.target === changeEmailModal && changeEmailModal) {
     changeEmailModal.style.display = 'none';
   }
 });
@@ -41,28 +47,54 @@ window.addEventListener('click', (event) => {
 const CAMERA_PREF_KEY = 'ssai_preferred_camera_id';
 const cameraSelect = document.getElementById('cameraSelect');
 const cameraSelectStatus = document.getElementById('cameraSelectStatus');
+const detectCamerasBtn = document.getElementById('detectCamerasBtn');
+
+function setStatus(text, type = 'info') {
+  if (!cameraSelectStatus) return;
+  cameraSelectStatus.textContent = text;
+  cameraSelectStatus.style.color = type === 'error' ? '#ff6b6b' : '#aaa';
+}
 
 async function ensureMediaPermission() {
   // Attempt light permission request to reveal device labels if not already granted
   try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+      throw new Error('Media devices API not supported in this browser');
+    }
     const devices = await navigator.mediaDevices.enumerateDevices();
     const hasLabels = devices.some(d => d.kind === 'videoinput' && d.label);
     if (!hasLabels) {
-      // Request temporary stream to unlock labels
+      // Only request permission in response to user gesture (button click)
+      if (ensureMediaPermission.userInitiated !== true) {
+        // caller didn't mark as user-initiated; let populateCameras handle messaging
+        throw new Error('Permission required: please click Detect cameras');
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       stream.getTracks().forEach(t => t.stop());
     }
   } catch (err) {
     // Permission might be denied; continue with limited info
     console.warn('Camera permission not granted or unavailable:', err.message);
+    throw err;
   }
 }
 
 async function populateCameras() {
   if (!cameraSelect) return;
   try {
-    if (cameraSelectStatus) cameraSelectStatus.textContent = 'Detecting cameras...';
-    await ensureMediaPermission();
+    if (!window.isSecureContext) {
+      setStatus('Camera access requires HTTPS. Please use the secure site URL.', 'error');
+      return;
+    }
+    setStatus('Detecting cameras...');
+
+    try {
+      await ensureMediaPermission();
+    } catch (permErr) {
+      // Update status but still try enumerateDevices (labels may be empty)
+      setStatus('Permission not yet granted. Select from available devices or click Detect cameras.', 'error');
+    }
+
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoInputs = devices.filter(d => d.kind === 'videoinput');
 
@@ -73,7 +105,7 @@ async function populateCameras() {
       opt.textContent = 'No cameras found';
       cameraSelect.appendChild(opt);
       cameraSelect.disabled = true;
-      if (cameraSelectStatus) cameraSelectStatus.textContent = 'No video input devices detected.';
+      setStatus('No video input devices detected.', 'error');
       return;
     }
     cameraSelect.disabled = false;
@@ -92,12 +124,10 @@ async function populateCameras() {
       // Store the first camera as default preference
       localStorage.setItem(CAMERA_PREF_KEY, videoInputs[0].deviceId);
     }
-    if (cameraSelectStatus) {
-      cameraSelectStatus.textContent = 'Camera preference saved locally and applied in detection view.';
-    }
+    setStatus('Camera preference saved locally and applied in detection view.');
   } catch (err) {
     console.error('Failed to populate cameras:', err);
-    if (cameraSelectStatus) cameraSelectStatus.textContent = 'Error listing cameras (permission denied?)';
+    setStatus('Error listing cameras (permission denied?)', 'error');
   }
 }
 
@@ -115,19 +145,33 @@ if (cameraSelect) {
       populateCameras();
     });
   }
-  // Initial population after DOM and short delay to allow any permission prompts
-  window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(populateCameras, 300);
-  });
-  // Fallback populate if script loaded after DOM
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  // Wire manual detect button to comply with permission gesture policies
+  if (detectCamerasBtn) {
+    detectCamerasBtn.addEventListener('click', async () => {
+      try {
+        ensureMediaPermission.userInitiated = true;
+        await ensureMediaPermission();
+      } catch (e) {
+        // If the user dismisses the prompt or blocks, we still try to list devices
+      } finally {
+        ensureMediaPermission.userInitiated = false;
+        await populateCameras();
+      }
+    });
+  }
+
+  // Attempt a best-effort populate (will not force permission prompt)
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', () => setTimeout(populateCameras, 300));
+  } else {
     setTimeout(populateCameras, 300);
   }
 }
 // ---------------------------------------------------------
 
 // Change password form submission
-document.getElementById('change-password-form').addEventListener('submit', async (e) => {
+const changePasswordForm = document.getElementById('change-password-form');
+if (changePasswordForm) changePasswordForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const currentPassword = document.getElementById('current-password').value;
   const newPassword = document.getElementById('new-password').value;
@@ -162,7 +206,8 @@ document.getElementById('change-password-form').addEventListener('submit', async
 });
 
 // Change email form submission
-document.getElementById('change-email-form').addEventListener('submit', async (e) => {
+const changeEmailForm = document.getElementById('change-email-form');
+if (changeEmailForm) changeEmailForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const newEmail = document.getElementById('new-email').value;
 
@@ -191,7 +236,7 @@ document.getElementById('change-email-form').addEventListener('submit', async (e
 
 // Logout button event listener
 const logoutBtn = document.getElementById('logoutBtn');
-logoutBtn.addEventListener('click', async function (e) {
+if (logoutBtn) logoutBtn.addEventListener('click', async function (e) {
   e.preventDefault();
   try {
     await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });

@@ -30,7 +30,12 @@
               <select id="cameraSelect" aria-label="Select camera" style="width:100%; padding:8px; border-radius:6px; border:1px solid #444; background:#1f1f1f; color:#fff;">
                 <option value="" disabled selected>Loading cameras...</option>
               </select>
-              <small id="cameraSelectStatus" style="color:#aaa; font-size:11px;">We'll list available video inputs once permission is granted.</small>
+              <div style="display:flex; gap:8px; align-items:center; margin-top:6px; width:100%;">
+                <button id="detectCamerasBtn" class="btn ghost" type="button" style="padding:6px 10px;">
+                  <i class="fa fa-search"></i> Detect cameras
+                </button>
+                <small id="cameraSelectStatus" style="color:#aaa; font-size:11px;">We'll list available video inputs once permission is granted.</small>
+              </div>
             </div>
           </li>
           <li>
