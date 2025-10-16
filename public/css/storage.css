@@ -1,3 +1,10 @@
+/* Prevent bottom nav overlap on small screens */
+@media (max-width: 600px) {
+	.container,
+	#storage-main-content {
+		padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+	}
+}
 #storage-phrases-container {
 display: flex;
 flex-direction: column;

@@ -1,3 +1,9 @@
+/* Prevent bottom nav from covering controls on small screens */
+@media (max-width: 600px) {
+  .container {
+    padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+  }
+}
 .setting-link{
 text-decoration: none;
 

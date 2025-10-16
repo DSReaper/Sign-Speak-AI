@@ -1,3 +1,11 @@
+/* Extra spacing at the bottom on mobile so the sticky bottom nav doesn't overlap document content */
+@media (max-width: 600px) {
+  .document-container,
+  .page,
+  .container {
+    padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+  }
+}
 /* Styling for legal / document pages */
 .document-container {
   max-width: 900px;
