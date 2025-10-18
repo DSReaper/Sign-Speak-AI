@@ -1,6 +1,5 @@
 
 /*import all the css files to this css file and load this file in the header element to make the import of css files simpler*/
-@import url("./theme.css");
 @import url('./application_settings.css');
 @import url('./camera.css');
 @import url('./common.css');

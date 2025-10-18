@@ -1,134 +1,53 @@
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-/* Global layout tokens for bottom navigation and safe areas */
-:root {
-  /* Base visual height of the bottom nav bar (without safe area) */
-  --nav-height: 70px;
-  /* Safe area inset for bottom on notch/home-indicator devices */
-  --nav-safe-area: env(safe-area-inset-bottom, 0px);
-  /* Total space occupied by nav including a minimum breathing room */
-  --nav-total-height: calc(var(--nav-height) + max(var(--nav-safe-area), 8px));
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
-  font-family: var(--font-sans);
-  background-color: var(--c-bg);
-  min-height: 100vh;
-  color: var(--c-text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #dfdddd;
+    min-height: 100vh;
+    color: #333;
+
   height: 100%;
   margin: 0;
-  /* Allow natural page scrolling when content exceeds viewport (overridden for camera page) */
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
 }
 
-html {
+html{
   height: 100%;
   margin: 0;
-  /* Allow natural page scrolling (overridden for camera page) */
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-/* Disable page scroll specifically on the camera page */
-body.page-camera,
-body.page-camera html {
-  overflow: hidden !important;
+  overflow: hidden;
 }
 
 .app-grid {
   display: grid;
-  /* Single-row layout; nav is fixed so we don't reserve an extra grid row */
-  min-height: 100dvh;
-  height: auto;
+  grid-template-rows: 90vh 10vh; 
+  height: 100vh;
   max-width: 900px;
   margin: 0 auto;
-  gap: 0;
+  gap: 0; 
 }
 
 .main-content {
   width: 100%;
-  height: 100%;
+  height: 100%; 
 }
 
 .container {
   width: 100%;
   padding: 0;
   box-sizing: border-box;
-  height: 100%;
-  /* Ensure content never sits under the fixed bottom nav */
-  padding-bottom: var(--nav-total-height);
+  height: 100%; 
 }
 
 .nav-wrapper {
   width: 100%;
+  max-width: 900px;
   margin: 0 auto;
   box-sizing: border-box;
-  /* Fix the nav to the bottom and respect safe areas */
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative; 
   z-index: 1000;
-  height: auto;
-  /* No left/right padding so nav touches screen edges */
-  padding: 0 0 calc(max(env(safe-area-inset-bottom, 0px), 8px));
-}
-
-
-.section {
-  background: var(--c-surface-1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-1);
-}
-
-.card {
-  background: var(--c-surface-2);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-2);
-}
-
-.muted-surface {
-  background: var(--c-surface-3);
-}
-
-/* Links and buttons */
-a {
-  color: inherit;
-  text-underline-offset: 3px;
-}
-a:hover {
-  color: var(--c-text);
-  text-decoration-color: var(--c-border);
-}
-
-button {
-  background: var(--c-surface-2);
-  color: var(--c-text);
-  border: none;
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-4);
-  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-1);
-  transition:
-    box-shadow 160ms ease,
-    transform 160ms ease,
-    background-color 160ms ease;
-}
-button:hover {
-  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-2);
-  transform: translateY(-1px);
-}
-button:active {
-  transform: translateY(0);
-  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-1);
-}
-button:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
+  height: 100%; 
 }

@@ -5,6 +5,10 @@
   const els = {
     voiceGender: () => document.querySelector('input[name="voiceGender"]:checked'),
     rate: document.getElementById("rate"),
+    volume: document.getElementById("volume"),
+    volLabel: document.getElementById("volLabel"),
+    textSize: document.getElementById("textSize"),
+    highContrast: document.getElementById("highContrast"),
     theme: document.getElementById("theme"),
     saveBtn: document.getElementById("saveBtn"),
     resetBtn: document.getElementById("resetBtn"),
@@ -22,9 +26,20 @@
   function apply(settings) {
     if (!settings) return;
 
-    // Theme: default to light if not set; only 'light' or 'dark'
-    const theme = settings.theme || "light";
-    document.documentElement.setAttribute("data-theme", theme);
+    // Text scaling
+    const scale = parseFloat(settings.textSize || 1);
+    document.documentElement.style.fontSize = `${100 * scale}%`;
+
+    // High contrast
+    document.body.classList.toggle("high-contrast", !!settings.highContrast);
+
+    // Theme
+    const theme = settings.theme || "system";
+    if (theme === "system") {
+      document.documentElement.removeAttribute("data-theme");
+    } else {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
   }
 
   function populateUI(settings) {
@@ -34,14 +49,21 @@
     if (gEl) gEl.checked = true;
 
     els.rate.value = settings.rate || "1";
-  els.theme.value = settings.theme || "light";
+    els.volume.value = typeof settings.volume === "number" ? settings.volume : 1;
+    els.volLabel.textContent = `(${Math.round(els.volume.value * 100)}%)`;
+    els.textSize.value = settings.textSize || "1";
+    els.highContrast.checked = !!settings.highContrast;
+    els.theme.value = settings.theme || "system";
   }
 
   function save() {
     const settings = {
       voiceGender: els.voiceGender().value,
       rate: parseFloat(els.rate.value),
-  theme: els.theme.value || "light",
+      volume: parseFloat(els.volume.value),
+      textSize: els.textSize.value,
+      highContrast: els.highContrast.checked,
+      theme: els.theme.value,
     };
     localStorage.setItem(KEY, JSON.stringify(settings));
     apply(settings);
@@ -52,7 +74,10 @@
     const defaults = {
       voiceGender: "female",
       rate: 1,
-  theme: "light",
+      volume: 1,
+      textSize: "1",
+      highContrast: false,
+      theme: "system",
     };
     localStorage.setItem(KEY, JSON.stringify(defaults));
     populateUI(defaults);
@@ -77,10 +102,12 @@
       return;
     }
     const gender = els.voiceGender().value;
-  const rate = parseFloat(els.rate.value);
+    const rate = parseFloat(els.rate.value);
+    const volume = parseFloat(els.volume.value);
 
     const utter = new SpeechSynthesisUtterance("This is a preview of your speech settings.");
     utter.rate = rate;
+    utter.volume = volume;
 
     const preferred = getVoicesByGender(gender);
     if (preferred.length) utter.voice = preferred[0];
@@ -94,6 +121,10 @@
     const current = load();
     populateUI(current || undefined);
     apply(current || undefined);
+
+    els.volume.addEventListener("input", () => {
+      els.volLabel.textContent = `(${Math.round(els.volume.value * 100)}%)`;
+    });
 
     els.saveBtn.addEventListener("click", save);
     els.resetBtn.addEventListener("click", reset);

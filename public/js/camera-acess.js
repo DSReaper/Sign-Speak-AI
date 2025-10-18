@@ -21,7 +21,8 @@ class AISignLanguageDetection {
         this.aiStatus = document.getElementById('aiStatus');
         
         this.isExpanded = false;
-    this.isAIActive = false;
+        this.isAIActive = false;
+        this.currentMode = 'basic';
         // performance presets
         this.performanceMode = 'balanced'; // 'quality' | 'balanced' | 'speed'
         this._perfSettings = {
@@ -37,8 +38,8 @@ class AISignLanguageDetection {
         this._bufferedThreshold = 1e6; // 1 MB queued => drop frames
         this._pendingTimeout = null; // used to clear _pending if server stalls
         // WebSocket and HTTP endpoints
-        this.wsUrl = 'wss://ssaiwb.belgiumcampus.ac.za';
-        this.flaskUrl = 'https://ssai.belgiumcampus.ac.za/ai';
+        this.wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.hostname + ':5001/ai/ws';
+        this.flaskUrl = 'http://localhost:8001/ai';
         this.statusUpdateInterval = null;
         this._shouldReconnect = true;
         this._reconnectAttempts = 0;
@@ -48,7 +49,14 @@ class AISignLanguageDetection {
     }
 
     initializeEventListeners() {
-        // Single detection mode in use; no mode-switching UI
+        // mode switching
+        document.getElementById('basicDetect').addEventListener('click', () => {
+            this.switchMode('basic');
+        });
+        
+        document.getElementById('advancedDetect').addEventListener('click', () => {
+            this.switchMode('advanced');
+        });
         
         // AI controls
         document.getElementById('toggleHands').addEventListener('click', () => {
@@ -857,7 +865,22 @@ class AISignLanguageDetection {
         }
     }
 
-    // Mode switching removed; always use the default detection pipeline
+    switchMode(mode) {
+        this.currentMode = mode;
+        
+        // Update button states
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        if (mode === 'basic') {
+            document.getElementById('basicDetect').classList.add('active');
+        } else {
+            document.getElementById('advancedDetect').classList.add('active');
+        }
+        
+        console.log(`Switched to ${mode} detection mode`);
+    }
 
     toggleExpanded() {
         this.isExpanded = !this.isExpanded;

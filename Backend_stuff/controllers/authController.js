@@ -114,7 +114,7 @@ exports.forgotPassword = async (req, res) => {
       from: 'SignSpeakAI3.0@gmail.com',
       to: email,
       subject: 'Password Reset',
-      text: `You requested a password reset. Click the link to reset: https://ssai.belgiumcampus.ac.za/reset-password?token=${resetToken}`
+      text: `You requested a password reset. Click the link to reset: http://localhost:8001/reset-password?token=${resetToken}`
     };
 
     await transporter.sendMail(mailOptions);
