@@ -2,18 +2,32 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #fff;
-  height: 10vh;
-  min-height: 70px;
+  background-color: var(--nav-bg);
+  /* Use CSS variable for consistent height across devices */
+  min-height: var(--nav-height);
+  height: auto;
   border-top-left-radius: 25px;
   border-top-right-radius: 25px;
   position: relative;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-  width: 100%;
+  box-shadow:
+    var(--shadow-inset-top),
+    0 -1px 0 var(--c-border),
+    0 -6px 12px rgba(0, 0, 0, 0.12);
+  width: 100vw; /* ensure edge-to-edge */
   box-sizing: border-box;
-  margin-top: 10px; 
+  margin: 0; /* remove side/top margins so it touches edges */
+  /* Ensure content inside has breathing room above device home bar */
+  padding-bottom: max(env(safe-area-inset-bottom, 0px));
 }
 
+/* On desktop, match the app content width (900px) and center */
+@media (min-width: 901px) {
+  .nav-wrapper > .bottom-nav {
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+  }
+}
 
 .nav-item {
   display: flex;
@@ -23,29 +37,38 @@
   height: 50px;
   margin: 0 40px;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  border-radius: 50%;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+  background: transparent;
 }
 
 .nav-item:hover {
-  transform: scale(1.1);
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-2);
+  background: var(--nav-item-hover-bg);
 }
 
 .nav-item.center-button {
   width: 65px;
   height: 65px;
   margin: 0 50px;
+  background: var(--nav-item-hover-bg);
+  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-2);
 }
 
 .nav-item img {
   width: 24px;
   height: 24px;
-  filter: brightness(0.4);
+  filter: var(--nav-icon-filter);
 }
 
 .nav-item.center-button img {
   width: 28px;
   height: 28px;
-  filter: brightness(0.4);
+  filter: var(--nav-icon-filter);
 }
 
 .nav-item.active {
@@ -54,7 +77,7 @@
 }
 
 .nav-item.active::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 50%;
   top: 50%;
@@ -62,13 +85,13 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: #000; 
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  background: var(--nav-active-bg);
+  box-shadow: var(--shadow-inset-top), var(--shadow-bottom-3);
   z-index: -1;
 }
 
 .nav-item.active img {
-  filter: brightness(0) invert(1);
+  filter: var(--nav-icon-active-filter);
 }
 
 .nav-item.center-button.active::after {
@@ -78,11 +101,10 @@
 
 @media (max-width: 390px) {
   .nav-item {
-  margin: 0 30px;
+    margin: 0 30px;
   }
 
   .nav-item.center-button {
-  margin: 0 35px;
+    margin: 0 35px;
   }
 }
-

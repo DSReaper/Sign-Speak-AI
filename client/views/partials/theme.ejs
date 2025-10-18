@@ -1,0 +1,17 @@
+<!-- Theme preloader: apply theme/text scale to avoid flash of other theme -->
+<script>
+  (function(){
+    try {
+      var raw = localStorage.getItem('appSettings');
+      if (raw) {
+        var s = JSON.parse(raw);
+  var root = document.documentElement;
+  var theme = (s.theme === 'dark') ? 'dark' : 'light';
+  root.setAttribute('data-theme', theme);
+  // Text size setting removed; keep default font sizing
+      }
+    } catch(_){/* noop */}
+  })();
+  // Note: theme.js re-applies on DOMContentLoaded and listens to storage events
+</script>
+<script src="/js/theme.js" defer></script>
