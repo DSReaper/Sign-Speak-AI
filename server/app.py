@@ -154,6 +154,139 @@ class CNNLSTMModel(nn.Module):
 
 
 # ============================================================================
+# MULTI-BRANCH FUSION MODEL (CNN + Hand Landmarks)
+# Matches the saved checkpoint structure in outputs/.../models
+# ============================================================================
+
+class CNNBranch(nn.Module):
+    """Visual CNN+Temporal model branch producing class logits"""
+
+    def __init__(self, num_classes, sequence_length=30, input_size=(224, 224)):
+        super().__init__()
+        self.sequence_length = sequence_length
+        self.input_size = input_size
+        self.num_classes = num_classes
+
+        # EfficientNet-B0 backbone (feature extractor)
+        self.backbone = timm.create_model('efficientnet_b0', pretrained=False, num_classes=0)
+        feature_dim = self.backbone.num_features  # expected 1280
+
+        # Temporal processing
+        self.temporal_conv = nn.Conv1d(feature_dim, 512, kernel_size=3, padding=1)
+        self.temporal_bn = nn.BatchNorm1d(512)
+
+        # LSTM layers (bidirectional)
+        self.lstm1 = nn.LSTM(512, 256, bidirectional=True, batch_first=True)
+        self.lstm2 = nn.LSTM(512, 128, bidirectional=True, batch_first=True)
+
+        # Classifier (shapes aligned to checkpoint: 256->256->128->num_classes)
+        self.classifier = nn.Sequential(
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(128, num_classes)
+        )
+
+    def forward(self, frames):
+        # frames: (B, T, C, H, W)
+        b, t, c, h, w = frames.size()
+        x = frames.view(b * t, c, h, w)
+        feats = self.backbone(x)  # (B*T, F)
+        feats = feats.view(b, t, -1)  # (B, T, F)
+        # Temporal conv expects (B, F, T)
+        x = feats.transpose(1, 2)
+        x = torch.relu(self.temporal_bn(self.temporal_conv(x)))
+        x = x.transpose(1, 2)  # (B, T, 512)
+        # LSTMs
+        x, _ = self.lstm1(x)  # (B, T, 512)
+        x, _ = self.lstm2(x)  # (B, T, 256)
+        # Global average over time
+        x = torch.mean(x, dim=1)  # (B, 256)
+        logits = self.classifier(x)  # (B, num_classes)
+        return logits
+
+
+class HandBranch(nn.Module):
+    """Hand landmark temporal branch producing class logits"""
+
+    def __init__(self, num_classes):
+        super().__init__()
+        # Input landmarks: 126 (2 hands * 21 * 3)
+        self.input_projection = nn.Linear(126, 256)
+        self.lstm1 = nn.LSTM(256, 128, bidirectional=True, batch_first=True)
+        self.lstm2 = nn.LSTM(256, 64, bidirectional=True, batch_first=True)
+        # After LSTM2: features are 128 (2*64)
+        self.classifier = nn.Sequential(
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(64, num_classes)
+        )
+
+    def forward(self, landmarks):
+        # landmarks: (B, T, 126)
+        x = self.input_projection(landmarks)  # (B, T, 256)
+        x, _ = self.lstm1(x)  # (B, T, 256)
+        x, _ = self.lstm2(x)  # (B, T, 128)
+        x = torch.mean(x, dim=1)  # (B, 128)
+        logits = self.classifier(x)
+        return logits
+
+
+class MultiBranchFusionModel(nn.Module):
+    """Fusion model combining CNN and Hand landmark branches.
+
+    Matches checkpoint keys: top-level 'cnn_weight', 'hand_weight', and submodules
+    'cnn_branch', 'hand_branch', and 'fusion' MLP with shapes 56->256->128->num_classes.
+    """
+
+    def __init__(self, num_classes, sequence_length=30, input_size=(224, 224)):
+        super().__init__()
+        self.sequence_length = sequence_length
+        self.input_size = input_size
+        self.num_classes = num_classes
+        self.expects_landmarks = True
+
+        # Branches
+        self.cnn_branch = CNNBranch(num_classes, sequence_length, input_size)
+        self.hand_branch = HandBranch(num_classes)
+
+        # Learnable scalar weights to balance branch logits (match ckpt names)
+        self.cnn_weight = nn.Parameter(torch.tensor(1.0))
+        self.hand_weight = nn.Parameter(torch.tensor(1.0))
+
+        # Fusion head (expects concatenated logits from both branches: 28+28 = 56)
+        self.fusion = nn.Sequential(
+            nn.Linear(56, 256),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(128, num_classes)
+        )
+
+    def forward(self, frames, landmarks=None):
+        # frames: (B, T, 3, 224, 224)
+        # landmarks: (B, T, 126) or None
+        logits_cnn = self.cnn_branch(frames)
+        if landmarks is None:
+            logits_hand = torch.zeros_like(logits_cnn)
+        else:
+            logits_hand = self.hand_branch(landmarks)
+        # Weighted concat then fusion
+        fused_in = torch.cat([self.cnn_weight * logits_cnn, self.hand_weight * logits_hand], dim=1)
+        logits = self.fusion(fused_in)
+        return logits
+
+
+# ============================================================================
 # HAND DETECTION SYSTEM 
 # ============================================================================
 
@@ -244,6 +377,7 @@ class WebGestureDetector:
         self.class_names = class_names
         self.buffer_size = buffer_size
         self.frame_buffer = deque(maxlen=buffer_size)
+        self.landmark_buffer = deque(maxlen=buffer_size)
         self.prediction_history = deque(maxlen=10)
         self.hand_detector = WebHandDetector()
         
@@ -256,8 +390,14 @@ class WebGestureDetector:
         ])
     
     def add_frame(self, frame):
-        """Add frame to buffer"""
+        """Add frame and landmarks to buffers"""
         self.frame_buffer.append(frame.copy())
+        try:
+            lm = self._extract_hand_landmarks(frame)
+            self.landmark_buffer.append(lm)
+        except Exception:
+            # In case of failure, append zeros to keep alignment
+            self.landmark_buffer.append(np.zeros(126, dtype=np.float32))
     
     def is_buffer_ready(self):
         """Check if buffer has enough frames for prediction"""
@@ -272,10 +412,22 @@ class WebGestureDetector:
             # Preprocess frames
             frames_tensor = self._preprocess_frames(list(self.frame_buffer))
             frames_tensor = frames_tensor.unsqueeze(0).to(self.device)
+            # Prepare landmarks if model expects them
+            landmarks_tensor = None
+            if hasattr(self.model, 'expects_landmarks') or hasattr(self.model, 'hand_branch'):
+                lm_seq = np.stack(list(self.landmark_buffer), axis=0).astype(np.float32)  # (T, 126)
+                landmarks_tensor = torch.from_numpy(lm_seq).unsqueeze(0).to(self.device)  # (1, T, 126)
             
             # Model prediction
             with torch.no_grad():
-                outputs = self.model(frames_tensor)
+                try:
+                    if landmarks_tensor is not None:
+                        outputs = self.model(frames_tensor, landmarks_tensor)
+                    else:
+                        outputs = self.model(frames_tensor)
+                except TypeError:
+                    # Backward compatibility: model might not accept landmarks
+                    outputs = self.model(frames_tensor)
                 
                 # Check for NaN outputs
                 if torch.isnan(outputs).any() or torch.isinf(outputs).any():
@@ -341,6 +493,50 @@ class WebGestureDetector:
         """Clean up resources"""
         self.hand_detector.close()
 
+    # --- Landmark extraction helpers ---
+    def _extract_hand_landmarks(self, frame):
+        """Return a flat 126-dim vector (2 hands * 21 * 3) using normalized coords.
+
+        If fewer than 2 hands are detected, remaining slots are zero-padded.
+        Hands are ordered by descending bbox area for stability.
+        """
+        try:
+            hands = self.hand_detector.detect_hands(frame)
+        except Exception:
+            hands = []
+
+        # Prepare two hands max
+        if not hands:
+            return np.zeros(126, dtype=np.float32)
+
+        # Sort by area desc
+        def _area(b):
+            bx = b.get('bbox', [0, 0, 0, 0])
+            return max(0, (bx[2] - bx[0])) * max(0, (bx[3] - bx[1]))
+
+        hands_sorted = sorted(hands, key=_area, reverse=True)[:2]
+        vecs = []
+        for h in hands_sorted:
+            lm_obj = h.get('landmarks', None)
+            coords = []
+            if lm_obj is not None and hasattr(lm_obj, 'landmark'):
+                try:
+                    for lm in lm_obj.landmark:
+                        coords.extend([float(lm.x), float(lm.y), float(getattr(lm, 'z', 0.0))])
+                except Exception:
+                    coords = []
+            # Ensure 63 values per hand
+            if len(coords) != 63:
+                coords = [0.0] * 63
+            vecs.append(coords)
+        # Pad to 2 hands
+        while len(vecs) < 2:
+            vecs.append([0.0] * 63)
+        flat = np.array(vecs, dtype=np.float32).reshape(-1)
+        if flat.shape[0] != 126:
+            flat = np.zeros(126, dtype=np.float32)
+        return flat
+
 # ============================================================================
 # MODEL LOADING
 # ============================================================================
@@ -381,9 +577,15 @@ def validate_model(model, device, class_names):
         seq_len = getattr(model, 'sequence_length', 16)
         # (batch_size=1, seq_len, C=3, H=224, W=224)
         dummy_input = torch.randn(1, seq_len, 3, 224, 224).to(device)
+        dummy_landmarks = None
+        if hasattr(model, 'expects_landmarks') or hasattr(model, 'hand_branch'):
+            dummy_landmarks = torch.zeros(1, seq_len, 126, device=device)
         
         with torch.no_grad():
-            output = model(dummy_input)
+            if dummy_landmarks is not None:
+                output = model(dummy_input, dummy_landmarks)
+            else:
+                output = model(dummy_input)
             
             # Check output shape
             if output.shape != (1, len(class_names)):
@@ -441,48 +643,43 @@ def load_model_and_classes():
         return None, None
     
     try:
-        # Create CNN+LSTM model architecture
-        model = CNNLSTMModel(
-            num_classes=len(class_names),
-            sequence_length=30,
-            input_size=(224, 224)
-        ).to(device)
-        
-        print(f"CNN+LSTM model architecture created")
-        
-        # Load weights
+        # Inspect checkpoint to determine architecture
         checkpoint = torch.load(model_path, map_location=device, weights_only=False)
-        
-        # Check if the checkpoint keys match our model
-        model_keys = set(model.state_dict().keys())
-        checkpoint_keys = set(checkpoint.keys())
-        
-        missing_keys = model_keys - checkpoint_keys
-        unexpected_keys = checkpoint_keys - model_keys
-        
-        if missing_keys:
-            print(f"ERROR: Missing keys in checkpoint: {len(missing_keys)} keys missing")
-            print("The model architecture may not match the saved checkpoint.")
-            return None, None
-        
-        if unexpected_keys:
-            print(f"WARNING: Unexpected keys in checkpoint: {len(unexpected_keys)} extra keys")
-            print("This may indicate a model version mismatch but loading will continue.")
-        
-        model.load_state_dict(checkpoint, strict=False)
+        ckpt_keys = list(checkpoint.keys()) if isinstance(checkpoint, dict) else []
+
+        use_fusion = any(k.startswith('cnn_branch.') for k in ckpt_keys) or any(k.startswith('hand_branch.') for k in ckpt_keys) or any(k.startswith('fusion') for k in ckpt_keys)
+
+        if use_fusion:
+            model = MultiBranchFusionModel(
+                num_classes=len(class_names),
+                sequence_length=30,
+                input_size=(224, 224)
+            ).to(device)
+            arch_name = "CNN+Hand Landmark Fusion"
+        else:
+            model = CNNLSTMModel(
+                num_classes=len(class_names),
+                sequence_length=30,
+                input_size=(224, 224)
+            ).to(device)
+            arch_name = "CNN+LSTM"
+
+        print(f"{arch_name} model architecture created")
+
+        # Load weights with strict matching
+        model.load_state_dict(checkpoint, strict=True)
         model.eval()
-        
-        print(f"Model weights loaded successfully")
-        
+        print("Model weights loaded successfully")
+
         # Validate the model
         if not validate_model(model, device, class_names):
-            print(f"ERROR: Model validation failed")
+            print("ERROR: Model validation failed")
             print("The loaded model does not produce valid outputs.")
             return None, None
-        
-        print(f"CNN+LSTM model loaded and validated on {device}")
+
+        print(f"{arch_name} model loaded and validated on {device}")
         return model, class_names
-        
+
     except Exception as e:
         print(f"ERROR: Failed to load model: {e}")
         import traceback
