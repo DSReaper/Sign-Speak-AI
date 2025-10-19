@@ -24,3 +24,6 @@ pathlib2
 
 # TTS (used by server/tts-transcript.py)
 pyttsx3
+
+# Auth
+PyJWT
