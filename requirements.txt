@@ -1,10 +1,33 @@
 Flask
 Flask-Cors
-mediapipe
-numpy
-opencv-contrib-python
+websockets
+
+# Core ML / DL
 torch
 torchvision
+torchaudio
+timm
+numpy
+scikit-learn
+
+# Computer Vision & media
+opencv-contrib-python
+mediapipe
 Pillow
-websockets
+
+# Data & SciPy stack
+pandas
+scipy
+
+# Utils / UX
+tqdm
+
+# Visualization
+matplotlib
+seaborn
+
+# Files / Paths
+pathlib2
+
+# TTS (used by server/tts-transcript.py)
 pyttsx3
