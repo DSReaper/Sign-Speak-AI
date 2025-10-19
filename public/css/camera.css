@@ -458,14 +458,26 @@
     justify-content: center;
     gap: 12px 16px; /* row gap, column gap */
   }
+  /* Force a line break between the first-row controls (Play/Star) and Clear button */
+  .audio-controls::after {
+    content: "";
+    order: 2;
+    flex-basis: 100%; /* creates a new row */
+    width: 0; /* no visual width, just a break */
+  }
 
-  /* Force clear-output to next line while keeping text visible */
+  /* Keep Clear on its own line below, centered, and same size as Play */
   .audio-controls .clear-output-btn {
-    order: 3;
-    flex-basis: 100%;
+    order: 3;              /* appear after the line-break */
+    flex: 0 0 auto;        /* don't stretch */
+    width: auto;           
     align-self: center;
     justify-content: center;
     text-align: center;
+    /* Match Play button sizing */
+    padding: 12px 20px;
+    font-size: 14px;
+    border-radius: 25px;
   }
 }
 
