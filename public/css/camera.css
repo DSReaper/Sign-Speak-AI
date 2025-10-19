@@ -11,7 +11,6 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
 }
 
 .expand-btn:hover {
@@ -29,7 +28,6 @@
   width: 100%;
   /* Allow shrinking within proportional layout */
   min-height: 0;
-  backdrop-filter: blur(10px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   display: flex;
@@ -181,7 +179,6 @@
   margin: 0;
   width: 100%;
   min-height: 0;
-  backdrop-filter: blur(10px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   text-align: center;
   display: flex;
@@ -751,6 +748,36 @@
   overflow: hidden;
   /* Equal spacing above and below results */
   margin: var(--camera-vgap) 0;
+}
+
+/* Make camera slightly larger on wider screens */
+@media (min-width: 1024px) {
+  .page-camera .container.camera-page {
+    /* a touch more vertical spacing between camera and results */
+    --camera-vgap: 14px;
+  }
+  .page-camera .container.camera-page .camera-section {
+    /* Increase camera share from 65% to 72% */
+    flex: 72 1 0%;
+  }
+  .page-camera .container.camera-page .results-section {
+    /* Decrease results share accordingly */
+    flex: 28 1 0%;
+  }
+}
+
+/* Even larger camera on very wide desktops */
+@media (min-width: 1440px) {
+  .page-camera .container.camera-page {
+    --camera-vgap: 16px;
+  }
+  .page-camera .container.camera-page .camera-section {
+    /* Nudge camera to 78% for big screens */
+    flex: 78 1 0%;
+  }
+  .page-camera .container.camera-page .results-section {
+    flex: 22 1 0%;
+  }
 }
 
 /* Dark theme overrides (match 404: black bg, dark surfaces) */
