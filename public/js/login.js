@@ -128,7 +128,7 @@
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('userId', data.userId);
                     // Set token in cookie for server-side authentication
-                    document.cookie = `token=${data.token}; path=/; max-age=3600`;
+                    document.cookie = `token=${data.token}; path=/; max-age=86400`; // 1 day expiry
                     console.log('Cookie set:', document.cookie);
                     // Redirect to camera page
                     window.location.href = '/camera';
