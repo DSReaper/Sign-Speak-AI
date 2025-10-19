@@ -9,8 +9,13 @@ class AISignLanguageDetection {
         // overlay canvas for landmarks
         this.overlayCanvas = document.getElementById('overlayCanvas');
         this.overlayCtx = this.overlayCanvas ? this.overlayCanvas.getContext('2d') : null;
-        // Enable local overlay by default
-        this._localHandsEnabled = true;
+        // Local hands detection/overlay flags
+        // - _canDetectHandsLocally: true if MediaPipe Hands initialized successfully
+        // - _handsPresent: updated every frame by local hands results
+        // - _overlayVisible: whether to draw the local overlay (does not affect detection)
+        this._canDetectHandsLocally = false;
+        this._handsPresent = false;
+        this._overlayVisible = true;
         if (this.overlayCanvas) {
             this.overlayCanvas.style.display = 'block';
             this.overlayCanvas.style.zIndex = '5';
@@ -60,12 +65,7 @@ class AISignLanguageDetection {
         
         // AI controls
         document.getElementById('toggleHands').addEventListener('click', () => {
-            // toggle local overlay and inform server
-            this._localHandsEnabled = !this._localHandsEnabled;
-            if (this.overlayCanvas) {
-                this.overlayCanvas.style.display = this._localHandsEnabled ? 'block' : 'none';
-            }
-            // Also inform server (preserve existing behavior)
+            // Ask backend to toggle hands overlay; local overlay will mirror server state
             this.toggleHandDetection();
         });
         
@@ -276,9 +276,8 @@ class AISignLanguageDetection {
             this._hiddenVideo.srcObject = this.captureStream;
         }
 
-        // Initialize local MediaPipe Hands for overlay
-        this._localHandsEnabled = true;
-        this._initLocalHands();
+    // Initialize local MediaPipe Hands for detection/overlay
+    this._initLocalHands();
 
         // Wait for hidden video to be playing (3s timeout)
         await new Promise((resolve, reject) => {
@@ -437,7 +436,7 @@ class AISignLanguageDetection {
     // Initialize MediaPipe Hands and start overlay
     _initLocalHands() {
         if (typeof window.Hands === 'undefined') {
-            console.warn('MediaPipe Hands not available - skipping local overlay');
+            console.warn('MediaPipe Hands not available - skipping local hand gating');
             return;
         }
 
@@ -452,12 +451,16 @@ class AISignLanguageDetection {
             minTrackingConfidence: 0.5
         });
 
+        // Mark that we can gate sending based on local hand detection
+        this._canDetectHandsLocally = true;
+
         this._localHandsFrames = 0;
         this._localHandsLastTime = performance.now();
         this._localHandsLastFps = 0;
 
         this._hands.onResults((results) => {
             // Existing overlay drawing
+            this._handsPresent = Array.isArray(results.multiHandLandmarks) && results.multiHandLandmarks.length > 0;
             this._drawHands(results);
             this._localHandsFrames += 1;
             const now = performance.now();
@@ -481,13 +484,11 @@ class AISignLanguageDetection {
         this._localHandsSkip = 0;
         const processFrame = async () => {
             try {
-                if (this._hiddenVideo && this._hiddenVideo.readyState >= 2 && this._localHandsEnabled) {
+                if (this._hiddenVideo && this._hiddenVideo.readyState >= 2) {
                     this._localHandsSkip = (this._localHandsSkip + 1) & 1;
                     if (this._localHandsSkip === 0) {
                         await this._hands.send({ image: this._hiddenVideo });
                     }
-                } else if (this.overlayCanvas && !this._localHandsEnabled) {
-                    this.overlayCtx && this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
                 }
             } catch (err) { }
             this._localHandsRaf = requestAnimationFrame(processFrame);
@@ -498,6 +499,12 @@ class AISignLanguageDetection {
 
     _drawHands(results) {
         if (!this.overlayCanvas || !this.overlayCtx) return;
+
+        // If overlay is hidden, don't draw but ensure canvas is cleared
+        if (!this._overlayVisible) {
+            try { this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height); } catch (_) {}
+            return;
+        }
 
     // Match overlay canvas size and position to the visible aiCameraFeed
         const imgEl = this.aiCameraFeed;
@@ -712,6 +719,11 @@ class AISignLanguageDetection {
             // a previous frame is still being processed.
             if (this._pending || this.ws.readyState !== WebSocket.OPEN) return;
 
+            // Gate sending by local hand presence when available
+            if (this._canDetectHandsLocally && !this._handsPresent) {
+                return;
+            }
+
             // Ensure the hidden video has data before drawing. readyState >= 2
             // means the element has some decoded frames available.
             if (!this._hiddenVideo || this._hiddenVideo.readyState < 2) {
@@ -821,6 +833,14 @@ class AISignLanguageDetection {
             btn.className = data.show_hands ? 'option-btn active' : 'option-btn';
             
             console.log('Hand detection toggled:', data.show_hands);
+            // Mirror server overlay visibility locally without affecting detection
+            this._overlayVisible = !!data.show_hands;
+            if (this.overlayCanvas) {
+                this.overlayCanvas.style.display = this._overlayVisible ? 'block' : 'none';
+                if (!this._overlayVisible && this.overlayCtx) {
+                    try { this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height); } catch (_) {}
+                }
+            }
         } catch (error) {
             console.error('Error toggling hand detection:', error);
         }

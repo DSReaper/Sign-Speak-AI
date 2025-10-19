@@ -999,7 +999,11 @@ def process_frame_bytes_sync(frame_bytes):
     Returns:
     - dict with keys: 'prediction' (str or None), 'confidence' (float)
     """
-  # The json object that will be sent back to the client
+    # The json object that will be sent back to the client
+    # Hoist globals to avoid late global declarations after assignment
+    global current_prediction, current_confidence
+    global last_display_word, last_display_start, last_committed_word
+    global recognized_words
     result = {
         'prediction': None,
         'confidence': 0.0,
@@ -1026,6 +1030,54 @@ def process_frame_bytes_sync(frame_bytes):
         if detector is None:
             return result
 
+        # SERVER-SIDE HAND-PRESENCE GATE
+        # Only proceed with buffering and model inference if at least one hand
+        # is detected. This avoids unnecessary processing when no hands are in
+        # view and mirrors the client-side gating behavior. If MediaPipe Hands
+        # is unavailable on the server, we skip this gate to avoid blocking.
+        try:
+            hands_detection_ready = (
+                hasattr(detector, 'hand_detector') and
+                detector.hand_detector is not None and
+                getattr(detector.hand_detector, 'hands', None) is not None
+            )
+        except Exception:
+            hands_detection_ready = False
+
+        if hands_detection_ready:
+            try:
+                with detector_lock:
+                    _hands_data = detector.get_hand_overlay_info(img)
+            except Exception:
+                _hands_data = []
+
+            if not _hands_data:
+                # No hands detected: clear frame/prediction buffers so the next
+                # detection cycle starts fresh when hands appear. Preserve any
+                # already-committed words/sentence.
+                try:
+                    with detector_lock:
+                        detector.frame_buffer.clear()
+                        detector.prediction_history.clear()
+                except Exception:
+                    pass
+                try:
+                    # Reset transient UI state but keep committed history
+                    current_prediction = "Waiting for hands..."
+                    current_confidence = 0.0
+                    last_display_word = None
+                    last_display_start = None
+                except Exception:
+                    pass
+                # Return current sentence without triggering inference
+                try:
+                    committed = [w['text'] for w in recognized_words]
+                    result['committed_words'] = committed
+                    result['sentence'] = grammar_fix(committed)
+                except Exception:
+                    pass
+                return result
+
         try:
             with detector_lock:
                 detector.add_frame(img)
@@ -1033,9 +1085,6 @@ def process_frame_bytes_sync(frame_bytes):
                     pred, conf = detector.predict_gesture()
                     if pred:
                         # update shared state
-                        global current_prediction, current_confidence
-                        global last_display_word, last_display_start, last_committed_word
-                        global recognized_words
                         current_prediction = pred
                         current_confidence = conf
                         result['prediction'] = pred
