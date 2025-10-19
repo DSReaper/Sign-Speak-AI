@@ -29,7 +29,7 @@ class AISignLanguageDetection {
             balanced: { fps: 8, sendWidth: 320, jpegQuality: 0.6 },
             speed: { fps: 10, sendWidth: 224, jpegQuality: 0.5 }
         };
-        // reusable send canvas
+    // reusable send canvas
         this._sendCanvas = null;
         this._sendCtx = null;
         // backpressure helpers
@@ -42,6 +42,10 @@ class AISignLanguageDetection {
         this.statusUpdateInterval = null;
         this._shouldReconnect = true;
         this._reconnectAttempts = 0;
+    // Hand-gating state (client-side). We only send frames when hands are detected.
+    this._hasHands = false;
+    this._lastHandsSeenAt = 0;
+    this._handsGraceMs = 400; // small grace window to avoid flicker
         
         this.initializeEventListeners();
         this.startAICamera();
@@ -468,6 +472,21 @@ class AISignLanguageDetection {
             } catch (e) {
                 // Swallow errors to avoid breaking main loop
             }
+
+            // Update local hand-gating flags
+            try {
+                const count = (results && Array.isArray(results.multiHandLandmarks)) ? results.multiHandLandmarks.length : 0;
+                if (count > 0) {
+                    this._hasHands = true;
+                    this._lastHandsSeenAt = performance.now();
+                } else {
+                    // don't immediately flip to false; use grace to avoid rapid toggling
+                    const t = performance.now();
+                    if (t - this._lastHandsSeenAt > this._handsGraceMs) {
+                        this._hasHands = false;
+                    }
+                }
+            } catch (_) { /* ignore */ }
         });
 
         this._localHandsSkip = 0;
@@ -707,6 +726,21 @@ class AISignLanguageDetection {
             // Ensure the hidden video has data before drawing. readyState >= 2
             // means the element has some decoded frames available.
             if (!this._hiddenVideo || this._hiddenVideo.readyState < 2) {
+                return;
+            }
+
+            // Hand-gating: only send frames if at least one hand is detected locally
+            // within the grace window. This prevents sending and translating when
+            // no hands are present in view.
+            const nowTs = performance.now();
+            const recentlySawHands = this._hasHands || (nowTs - this._lastHandsSeenAt) <= this._handsGraceMs;
+            if (!recentlySawHands) {
+                // Optionally, update UI hint
+                try {
+                    if (this.detectedPhrase && (!this.detectedPhrase.textContent || this.detectedPhrase.textContent === 'Loading AI detection model...')) {
+                        this.detectedPhrase.textContent = 'Show your hand(s) to start detection...';
+                    }
+                } catch (_) { }
                 return;
             }
 

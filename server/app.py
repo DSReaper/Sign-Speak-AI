@@ -831,6 +831,25 @@ def process_frame_bytes_sync(frame_bytes):
 
         try:
             with detector_lock:
+                # Server-side hand gate: skip buffering/prediction if no hands are present
+                try:
+                    hands_present = False
+                    try:
+                        hands_info = detector.get_hand_overlay_info(img)
+                        hands_present = bool(hands_info)
+                    except Exception:
+                        hands_present = False
+                    if not hands_present:
+                        # No hands detected; do not add frame to buffer or attempt prediction
+                        # Still return current committed sentence if any.
+                        committed = [w['text'] for w in recognized_words]
+                        result['committed_words'] = committed
+                        result['sentence'] = grammar_fix(committed)
+                        return result
+                except Exception:
+                    # If hand detection fails for any reason, fall back to processing
+                    pass
+
                 detector.add_frame(img)
                 if detector.is_buffer_ready():
                     pred, conf = detector.predict_gesture()
