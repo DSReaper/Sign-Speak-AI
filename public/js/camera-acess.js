@@ -15,11 +15,11 @@ class AISignLanguageDetection {
             this.overlayCanvas.style.display = 'block';
             this.overlayCanvas.style.zIndex = '5';
         }
-        // other UI elements 
+        // other UI elements
     this.bufferStatus = document.getElementById('bufferStatus');
     this.confidenceStatus = document.getElementById('confidenceStatus');
         this.aiStatus = document.getElementById('aiStatus');
-        
+
         this.isExpanded = false;
     this.isAIActive = false;
         // performance presets
@@ -46,7 +46,11 @@ class AISignLanguageDetection {
     this._hasHands = false;
     this._lastHandsSeenAt = 0;
     this._handsGraceMs = 400; // small grace window to avoid flicker
-        
+
+        // User-specific configuration
+        this.userId = window.userConfig?.userId || null;
+        this.userToken = window.userConfig?.userToken || null;
+
         this.initializeEventListeners();
         this.startAICamera();
     }
