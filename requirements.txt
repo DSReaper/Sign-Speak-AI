@@ -19,13 +19,6 @@ Pillow
 pandas
 scipy
 
-# Utils / UX
-tqdm
-
-# Visualization
-matplotlib
-seaborn
-
 # Files / Paths
 pathlib2
 
