@@ -802,6 +802,10 @@ def process_frame_bytes_sync(frame_bytes):
     Returns:
     - dict with keys: 'prediction' (str or None), 'confidence' (float)
     """
+    # Ensure globals are declared before any reference within this function
+    global current_prediction, current_confidence
+    global last_display_word, last_display_start, last_committed_word
+    global recognized_words
   # The json object that will be sent back to the client
     result = {
         'prediction': None,
@@ -855,9 +859,6 @@ def process_frame_bytes_sync(frame_bytes):
                     pred, conf = detector.predict_gesture()
                     if pred:
                         # update shared state
-                        global current_prediction, current_confidence
-                        global last_display_word, last_display_start, last_committed_word
-                        global recognized_words
                         current_prediction = pred
                         current_confidence = conf
                         result['prediction'] = pred
