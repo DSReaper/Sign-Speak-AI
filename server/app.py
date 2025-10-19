@@ -26,6 +26,9 @@ from queue import Queue, Empty
 from datetime import datetime
 import timm
 import glob
+from uuid import uuid4
+from http.cookies import SimpleCookie
+import jwt
 
 # Suppress MediaPipe verbose logging
 os.environ['GLOG_minloglevel'] = '2'
@@ -44,11 +47,10 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for Node.js integration
 
 # Global variables
-detector = None
 current_prediction = "Loading the AI detection model..."
 current_confidence = 0.0
 # Grammar / sentence construction session state
-recognized_words = []  # list of dicts: {text, confidence, t_utc}
+recognized_words = []  # Deprecated for WS: retained for HTTP compatibility only
 last_display_word = None
 last_display_start = None
 last_committed_word = None
@@ -61,6 +63,14 @@ show_server_overlays = False
 
 frame_count = 0
 detector_lock = threading.Lock()
+
+# Per-connection context map for WebSockets (Approach 1)
+# websocket -> {
+#   'user_id', 'session_id', 'detector',
+#   'recognized_words', 'last_display_word', 'last_display_start', 'last_committed_word',
+#   'current_prediction', 'current_confidence'
+# }
+CONNECTIONS = {}
 
 # Import grammar utilities (rule-based grammar)
 try:  # packaged execution
@@ -496,10 +506,8 @@ print("Loading SASL AI Model...")
 model, class_names = load_model_and_classes()
 if model is None or class_names is None:
     print("Failed to load model or class names. AI features will be disabled.")
-    detector = None
 else:
-    # Use a 30-frame buffer to align with typical training sequence length
-    detector = WebGestureDetector(model, device, class_names, buffer_size=30)
+    print("Model loaded. Per-connection detectors will be created for WebSocket clients.")
 
 # ============================================================================
 # VIDEO STREAMING
@@ -508,18 +516,25 @@ else:
 # The application now treats web client frames (sent over WebSocket) as the input source. 
 # See ws_handler and FrameProcessorWorker below.
 
-def draw_overlays(frame):
+def draw_overlays(frame, local_detector=None, pred_text=None, pred_conf=None):
     """Draw all overlays on frame"""
     global show_hands
     global show_server_overlays
+    # Prefer provided detector/prediction; fall back to legacy globals
+    detector_to_use = local_detector
+    try:
+        if detector_to_use is None:
+            detector_to_use = None  # no global detector in per-connection mode
+    except NameError:
+        detector_to_use = None
     
     # Hand detection overlay (use lock when interacting with detector)
-    if show_hands and detector:
+    if show_hands and detector_to_use:
         with detector_lock:
-            hands_data = detector.get_hand_overlay_info(frame)
+            hands_data = detector_to_use.get_hand_overlay_info(frame)
             if hands_data:
                 # Draw hands with slightly thicker visuals for visibility
-                frame = detector.hand_detector.draw_hands(frame, hands_data)
+                frame = detector_to_use.hand_detector.draw_hands(frame, hands_data)
                 try:
                     # Also draw bounding boxes more prominently
                     for hand_data in hands_data:
@@ -538,10 +553,10 @@ def draw_overlays(frame):
 
         # Buffer status
         try:
-            if detector:
-                buffer_text = f"Frames: {len(detector.frame_buffer)}/{detector.buffer_size}"
+            if detector_to_use:
+                buffer_text = f"Frames: {len(detector_to_use.frame_buffer)}/{detector_to_use.buffer_size}"
             else:
-                buffer_text = "Detector: not loaded"
+                buffer_text = "Detector: per-connection"
             # Draw a background for readability
             (tx, ty), _ = cv2.getTextSize(buffer_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
             cv2.rectangle(frame, (10, 10), (10 + tx + 12, 10 + ty + 12), (0, 0, 0), -1)
@@ -551,24 +566,25 @@ def draw_overlays(frame):
 
         # Prediction
         try:
-            pred_text = None
-            if current_prediction and current_prediction not in ["Waiting...", "Loading the AI detection model..."]:
+            display_prediction = pred_text if pred_text is not None else current_prediction
+            display_conf = pred_conf if pred_conf is not None else current_confidence
+            if display_prediction and display_prediction not in ["Waiting...", "Loading the AI detection model..."]:
                 # Confidence color coding
-                if current_confidence > 0.7:
+                if display_conf > 0.7:
                     color = (0, 220, 0)  # Green
-                elif current_confidence > 0.3:
+                elif display_conf > 0.3:
                     color = (0, 165, 255)  # Orange
                 else:
                     color = (0, 0, 255)  # Red
-                pred_text = f"{current_prediction} ({current_confidence:.3f})"
+                display_text = f"{display_prediction} ({display_conf:.3f})"
             else:
-                pred_text = "Waiting for prediction..."
+                display_text = "Waiting for prediction..."
 
             # Draw prediction box centered near bottom
             font = cv2.FONT_HERSHEY_SIMPLEX
             font_scale = 0.9
             thickness = 2
-            (pw, ph), _ = cv2.getTextSize(pred_text, font, font_scale, thickness)
+            (pw, ph), _ = cv2.getTextSize(display_text, font, font_scale, thickness)
             box_w = pw + 24
             box_h = ph + 18
             box_x = max(10, (w - box_w) // 2)
@@ -581,12 +597,12 @@ def draw_overlays(frame):
             # Text
             text_x = box_x + 12
             text_y = box_y + box_h - 8
-            cv2.putText(frame, pred_text, (text_x, text_y), font, font_scale, color, thickness, cv2.LINE_AA)
+            cv2.putText(frame, display_text, (text_x, text_y), font, font_scale, color, thickness, cv2.LINE_AA)
         except Exception:
             pass
 
         # Model info
-        if detector:
+        if detector_to_use:
             try:
                 cv2.putText(frame, "Model: Hand-Focused SASL", (10, h-70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
                 cv2.putText(frame, "Hand-focused attention active", (10, h-45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 1)
@@ -630,11 +646,8 @@ def reset_detector():
     """Reset the gesture detector"""
     global current_prediction, current_confidence, frame_count
     global recognized_words, last_display_word, last_display_start, last_committed_word
-    
-    if detector:
-        detector.frame_buffer.clear()
-        detector.prediction_history.clear()
-    
+
+    # Global reset only affects legacy HTTP snapshot, not per-connection WS state
     current_prediction = "Buffer reset - collecting frames..."
     current_confidence = 0.0
     frame_count = 0
@@ -647,16 +660,16 @@ def reset_detector():
 @app.route('/status')
 def status():
     """Get current status"""
-    committed = [w['text'] for w in recognized_words]
-    sentence = grammar_fix(committed)
+    committed = [w['text'] for w in recognized_words]  # legacy server-level snapshot (empty in WS mode)
+    sentence = grammar_fix(committed) if committed else ""
     return jsonify({
-        'prediction': current_prediction,
-        'confidence': current_confidence,
+        'prediction': 'Use WebSocket status per-connection',
+        'confidence': 0.0,
         'show_hands': show_hands,
         'show_server_overlays': show_server_overlays,
-        'buffer_ready': detector.is_buffer_ready() if detector else False,
-        'buffer_size': len(detector.frame_buffer) if detector else 0,
-        'model_loaded': detector is not None,
+        'buffer_ready': False,
+        'buffer_size': 0,
+        'model_loaded': model is not None,
         'committed_words': committed,
         'sentence': sentence,
     })
@@ -674,7 +687,7 @@ def health():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'ai_model': 'loaded' if detector else 'not_loaded',
+        'ai_model': 'loaded' if model is not None else 'not_loaded',
         'input_source': 'web_client_frames',
         'device': str(device)
     })
@@ -686,17 +699,63 @@ def health():
 # messages containing prediction metadata (prediction + confidence). 
 # ============================================================================
 
+async def _verify_user(request_headers):
+    """Extract and verify JWT from Authorization Bearer token or 'token' cookie.
+
+    Returns a trusted user_id from the verified JWT or raises an Exception if invalid.
+    Uses HS256 with secret from environment variable JWT_SECRET (default 'secret')
+    to match the Node.js backend configuration.
+    """
+    secret = os.environ.get('JWT_SECRET', 'secret')
+
+    def _get_token_from_headers(hdrs):
+        token = None
+        try:
+            auth = hdrs.get('Authorization') or hdrs.get('authorization')
+            if auth and isinstance(auth, str) and auth.lower().startswith('bearer '):
+                token = auth[7:].strip()
+        except Exception:
+            pass
+        if not token:
+            try:
+                cookie_header = hdrs.get('Cookie') or hdrs.get('cookie')
+                if cookie_header:
+                    c = SimpleCookie()
+                    c.load(cookie_header)
+                    if 'token' in c:
+                        token = c['token'].value
+            except Exception:
+                pass
+        return token
+
+    token = _get_token_from_headers(request_headers or {})
+    if not token:
+        raise PermissionError('Missing JWT token')
+
+    try:
+        payload = jwt.decode(token, secret, algorithms=['HS256'])
+        user_id = payload.get('userId')
+        if not user_id:
+            raise PermissionError('JWT missing userId claim')
+        return user_id
+    except jwt.ExpiredSignatureError:
+        raise PermissionError('JWT expired')
+    except jwt.InvalidTokenError as e:
+        raise PermissionError(f'Invalid JWT: {e}')
+
+
 async def ws_handler(websocket):
     class FrameProcessorWorker:
-        def __init__(self, ws, loop, queue_maxsize=1):
+        def __init__(self, ws, loop, ctx, queue_maxsize=1):
             self.ws = ws
             self.loop = loop
+            self.ctx = ctx
             self.queue = Queue(maxsize=queue_maxsize)
             self._stop_event = threading.Event()
             self.thread = threading.Thread(target=self._run, daemon=True)
             self.thread.start()
 
-        def push_frame(self, frame_bytes):
+        def push_frame(self, frame_bytes, corr_id):
             # Non-blocking: drop older frame when queue full to keep latest only
             try:
                 if self.queue.full():
@@ -704,7 +763,7 @@ async def ws_handler(websocket):
                         self.queue.get_nowait()
                     except Empty:
                         pass
-                self.queue.put_nowait(frame_bytes)
+                self.queue.put_nowait((frame_bytes, corr_id))
             except Exception as e:
                 # If anything goes wrong, just drop the frame
                 print(f"FrameProcessorWorker: push_frame drop due to {e}")
@@ -727,12 +786,19 @@ async def ws_handler(websocket):
                 if item is None:
                     break
                 try:
+                    frame_bytes, corr_id = item
                     # Run CPU-bound processing synchronously in this thread
-                    result = process_frame_bytes_sync(item)
+                    result = process_frame_bytes_sync_ctx(frame_bytes, self.ctx)
                     if result:
                         # result is a dict containing prediction metadata
                         try:
-                            fut = asyncio.run_coroutine_threadsafe(self.ws.send(json.dumps(result)), self.loop)
+                            enriched = {
+                                **result,
+                                'type': 'detection',
+                                'correlationId': corr_id,
+                                'sessionId': self.ctx.get('session_id'),
+                            }
+                            fut = asyncio.run_coroutine_threadsafe(self.ws.send(json.dumps(enriched)), self.loop)
                             try:
                                 fut.result(timeout=3.0)
                             except Exception as send_exc:
@@ -747,20 +813,87 @@ async def ws_handler(websocket):
         ws_path = getattr(websocket, 'path', None)
         print(f"WS client connected: {websocket.remote_address} path={ws_path}")
 
+        # Authenticate and set up per-connection context
+        try:
+            user_id = await _verify_user(getattr(websocket, 'request_headers', {}))
+        except Exception as auth_exc:
+            # Reject unauthorized connection
+            try:
+                await websocket.close(code=1008, reason=str(auth_exc))
+            except Exception:
+                pass
+            print(f"WS auth failed: {auth_exc}")
+            return
+        session_id = str(uuid4())
+        ctx = {
+            'user_id': user_id,
+            'session_id': session_id,
+            'recognized_words': [],
+            'last_display_word': None,
+            'last_display_start': None,
+            'last_committed_word': None,
+            'current_prediction': None,
+            'current_confidence': 0.0,
+            'detector': None,
+        }
+
+        # Instantiate per-connection detector if model loaded
+        if model is not None and class_names is not None:
+            try:
+                ctx['detector'] = WebGestureDetector(model, device, class_names, buffer_size=30)
+            except Exception as _e:
+                print(f"Failed to init per-connection detector: {_e}")
+                ctx['detector'] = None
+
+        CONNECTIONS[websocket] = ctx
+
         # Create a per-connection worker and tie it to this websocket's loop
         loop = asyncio.get_event_loop()
-        worker = FrameProcessorWorker(websocket, loop, queue_maxsize=1)
+        worker = FrameProcessorWorker(websocket, loop, ctx, queue_maxsize=1)
 
         async for message in websocket:
             try:
                 if isinstance(message, bytes):
                     # Enqueue the frame for background processing; return quickly
-                    worker.push_frame(message)
+                    worker.push_frame(message, str(uuid4()))
                 else:
-                    # Text messages (log content up to 200 chars)
-                    text_preview = str(message)[:200]
-                    print(f"WS: received text message: {text_preview}")
-                    await websocket.send('OK')
+                    # Text messages: try to parse JSON control/frame messages
+                    try:
+                        msg = json.loads(message)
+                        mtype = msg.get('type')
+                        corr_id = msg.get('correlationId') or str(uuid4())
+                        if mtype == 'frame':
+                            # Expect base64-encoded JPEG in msg['data']['frame']
+                            data = msg.get('data') or {}
+                            b64 = data.get('frame')
+                            if isinstance(b64, str):
+                                try:
+                                    frame_bytes = base64.b64decode(b64)
+                                    worker.push_frame(frame_bytes, corr_id)
+                                except Exception as _dec_e:
+                                    print(f"WS: base64 decode failed: {_dec_e}")
+                            continue
+                        elif mtype == 'reset':
+                            # Reset per-connection state
+                            ctx['recognized_words'].clear()
+                            ctx['last_display_word'] = None
+                            ctx['last_display_start'] = None
+                            ctx['last_committed_word'] = None
+                            if ctx.get('detector'):
+                                try:
+                                    ctx['detector'].frame_buffer.clear()
+                                    ctx['detector'].prediction_history.clear()
+                                except Exception:
+                                    pass
+                            await websocket.send(json.dumps({'type': 'ack', 'correlationId': corr_id, 'ok': True}))
+                        else:
+                            # Unknown command; echo OK
+                            await websocket.send(json.dumps({'type': 'ack', 'correlationId': corr_id, 'ok': True}))
+                    except Exception:
+                        # Fallback: echo OK for non-JSON text
+                        text_preview = str(message)[:200]
+                        print(f"WS: received text message: {text_preview}")
+                        await websocket.send('OK')
             except websockets.exceptions.ConnectionClosed:
                 print(f"WS loop connection closed while handling message from {websocket.remote_address}")
                 break
@@ -784,6 +917,16 @@ async def ws_handler(websocket):
             # Stop worker and drain resources
             try:
                 worker.stop()
+            except Exception:
+                pass
+            # Cleanup per-connection context
+            try:
+                ctx = CONNECTIONS.pop(websocket, None)
+                if ctx and ctx.get('detector'):
+                    try:
+                        ctx['detector'].cleanup()
+                    except Exception:
+                        pass
             except Exception:
                 pass
             ws_path = getattr(websocket, 'path', None)
@@ -829,89 +972,112 @@ def process_frame_bytes_sync(frame_bytes):
         except Exception:
             mean_brightness = -1.0
 
-        # Interact with the detector under a lock to ensure thread-safety
-        if detector is None:
-            return result
-
-        try:
-            with detector_lock:
-                # Server-side hand gate: skip buffering/prediction if no hands are present
-                try:
-                    hands_present = False
-                    try:
-                        hands_info = detector.get_hand_overlay_info(img)
-                        hands_present = bool(hands_info)
-                    except Exception:
-                        hands_present = False
-                    if not hands_present:
-                        # No hands detected; do not add frame to buffer or attempt prediction
-                        # Still return current committed sentence if any.
-                        committed = [w['text'] for w in recognized_words]
-                        result['committed_words'] = committed
-                        result['sentence'] = grammar_fix(committed)
-                        return result
-                except Exception:
-                    # If hand detection fails for any reason, fall back to processing
-                    pass
-
-                detector.add_frame(img)
-                if detector.is_buffer_ready():
-                    pred, conf = detector.predict_gesture()
-                    if pred:
-                        # update shared state
-                        current_prediction = pred
-                        current_confidence = conf
-                        result['prediction'] = pred
-                        result['confidence'] = float(conf)
-                        # Hold-to-commit logic (time based)
-                        now = time.monotonic()
-                        if pred != last_display_word:
-                            last_display_word = pred
-                            last_display_start = now
-                        shown_for = 0.0 if last_display_start is None else (now - last_display_start)
-                        if shown_for >= COMMIT_SECONDS and pred != last_committed_word:
-                            recognized_words.append({
-                                'text': pred,
-                                'confidence': float(conf),
-                                't_utc': datetime.utcnow().isoformat() + 'Z'
-                            })
-                            last_committed_word = pred
-                            # Persist session JSON snapshot on each new committed word
-                        committed = [w['text'] for w in recognized_words]
-                        sentence = grammar_fix(committed)
-                        result['committed_words'] = committed
-                        result['sentence'] = sentence
-                # Even if no commit, still compute up-to-date sentence for UI (non-invasive)
-                if not result['sentence']:
-                    try:
-                        committed = [w['text'] for w in recognized_words]
-                        result['committed_words'] = committed
-                        result['sentence'] = grammar_fix(committed)
-                    except Exception:
-                        pass
-        except Exception as det_e:
-            print(f"Detector processing error: {det_e}")
-            import traceback as _tb
-            _tb.print_exc()
-
-        # Draw overlays (kept for internal use / logs) but not returned
-        try:
-            _ = draw_overlays(img)
-        except Exception:
-            pass
-
+        # Legacy path: no per-request processing here; WS uses ctx function.
         # Provide sentence even if no new prediction (reuse existing committed list)
         if not result['sentence']:
             try:
                 committed = [w['text'] for w in recognized_words]
                 result['committed_words'] = committed
-                result['sentence'] = grammar_fix(committed)
+                result['sentence'] = grammar_fix(committed) if committed else ''
             except Exception:
                 pass
+
+        # Draw overlays skipped in legacy path
         return result
 
     except Exception as e:
         print(f"process_frame_bytes_sync error: {e}")
+        import traceback as _tb
+        _tb.print_exc()
+        return result
+
+
+def process_frame_bytes_sync_ctx(frame_bytes, ctx):
+    """Per-connection processing for incoming JPEG bytes based on context.
+
+    Uses ctx['detector'] and stores prediction/commit state in ctx to avoid
+    cross-user mixing. Returns a JSON-serializable dict with prediction data.
+    """
+    result = {
+        'prediction': None,
+        'confidence': 0.0,
+        'committed_words': [],
+        'sentence': '',
+    }
+
+    try:
+        nparr = np.frombuffer(frame_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img is None:
+            print("process_frame_bytes_sync_ctx: cv2.imdecode failed for incoming frame")
+            return result
+
+        # Per-connection detector
+        local_detector = ctx.get('detector')
+        if local_detector is None:
+            return result
+
+        # optional debug
+        try:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            _ = float(np.mean(gray))
+        except Exception:
+            pass
+
+        with detector_lock:
+            # Optional gate on hands present
+            try:
+                hands_info = local_detector.get_hand_overlay_info(img)
+                if not hands_info:
+                    committed = [w['text'] for w in ctx.get('recognized_words', [])]
+                    result['committed_words'] = committed
+                    result['sentence'] = grammar_fix(committed) if committed else ''
+                    return result
+            except Exception:
+                pass
+
+            local_detector.add_frame(img)
+            if local_detector.is_buffer_ready():
+                pred, conf = local_detector.predict_gesture()
+                if pred:
+                    ctx['current_prediction'] = pred
+                    ctx['current_confidence'] = float(conf)
+                    result['prediction'] = pred
+                    result['confidence'] = float(conf)
+
+                    now = time.monotonic()
+                    if pred != ctx.get('last_display_word'):
+                        ctx['last_display_word'] = pred
+                        ctx['last_display_start'] = now
+                    shown_for = 0.0 if ctx.get('last_display_start') is None else (now - ctx['last_display_start'])
+                    if shown_for >= COMMIT_SECONDS and pred != ctx.get('last_committed_word'):
+                        ctx['recognized_words'].append({
+                            'text': pred,
+                            'confidence': float(conf),
+                            't_utc': datetime.utcnow().isoformat() + 'Z'
+                        })
+                        ctx['last_committed_word'] = pred
+
+                    committed = [w['text'] for w in ctx['recognized_words']]
+                    result['committed_words'] = committed
+                    result['sentence'] = grammar_fix(committed)
+
+        # Draw overlays (server-side only)
+        try:
+            _ = draw_overlays(img, local_detector=local_detector, pred_text=ctx.get('current_prediction'), pred_conf=ctx.get('current_confidence'))
+        except Exception:
+            pass
+
+        if not result['sentence']:
+            try:
+                committed = [w['text'] for w in ctx['recognized_words']]
+                result['committed_words'] = committed
+                result['sentence'] = grammar_fix(committed)
+            except Exception:
+                pass
+        return result
+    except Exception as e:
+        print(f"process_frame_bytes_sync_ctx error: {e}")
         import traceback as _tb
         _tb.print_exc()
         return result
@@ -954,7 +1120,7 @@ if __name__ == '__main__':
     print(f"Device: {device}")
     print(f"Classes: {len(class_names) if class_names else 'Not loaded'}")
     print(f"Hand Detection: {'Available' if HAND_DETECTION_AVAILABLE else 'Disabled'}")
-    print(f"AI Model: {'Loaded' if detector else 'Failed to load'}")
+    print(f"AI Model: {'Loaded' if model is not None else 'Failed to load'}")
     print("\nStarting Flask AI server...")
     print("Server will run on: http://localhost:5000")
     print("This server provides AI endpoints for the Node.js frontend")
@@ -975,6 +1141,15 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:
-        if detector:
-            detector.cleanup()
+        # Cleanup all per-connection detectors
+        try:
+            for _, ctx in list(CONNECTIONS.items()):
+                try:
+                    det = ctx.get('detector')
+                    if det:
+                        det.cleanup()
+                except Exception:
+                    pass
+        except Exception:
+            pass
         cv2.destroyAllWindows()
