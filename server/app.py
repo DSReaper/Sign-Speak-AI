@@ -24,6 +24,8 @@ import websockets
 from io import BytesIO
 from queue import Queue, Empty
 from datetime import datetime
+import timm
+import glob
 
 # Suppress MediaPipe verbose logging
 os.environ['GLOG_minloglevel'] = '2'
@@ -79,72 +81,77 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 # MODEL ARCHITECTURES 
 # ============================================================================
 
-class HandFocusedCNN_LSTM(nn.Module):
-    """Hand-focused CNN-LSTM model for SASL gesture recognition"""
+class CNNLSTMModel(nn.Module):
+    """CNN+LSTM model for video classification using PyTorch"""
     
-    def __init__(self, cnn, hidden_size=256, num_classes=41, num_layers=2, dropout=0.3):
-        super(HandFocusedCNN_LSTM, self).__init__()
-        self.cnn = cnn
-        self.lstm = nn.LSTM(
-            input_size=512, 
-            hidden_size=hidden_size,
-            num_layers=num_layers, 
-            batch_first=True,
-            dropout=dropout if num_layers > 1 else 0,
-            bidirectional=True
-        )
-        self.dropout = nn.Dropout(dropout)
+    def __init__(self, num_classes, sequence_length=30, input_size=(224, 224)):
+        super(CNNLSTMModel, self).__init__()
         
-        # Hand attention mechanism
-        self.attention = nn.MultiheadAttention(
-            embed_dim=hidden_size * 2,  # 512 for bidirectional
-            num_heads=8,
-            dropout=dropout,
-            batch_first=True
-        )
+        self.sequence_length = sequence_length
+        self.input_size = input_size
+        self.num_classes = num_classes
         
-        # Classifier module (matches the saved model structure exactly)
+        # Pre-trained CNN backbone (EfficientNet)
+        self.backbone = timm.create_model('efficientnet_b0', pretrained=True, num_classes=0)
+        
+        # Freeze backbone for transfer learning
+        for param in self.backbone.parameters():
+            param.requires_grad = False
+        
+        # Get feature dimension from backbone
+        feature_dim = self.backbone.num_features
+        
+        # Temporal processing layers
+        self.temporal_conv = nn.Conv1d(feature_dim, 512, kernel_size=3, padding=1)
+        self.temporal_bn = nn.BatchNorm1d(512)
+        self.dropout1 = nn.Dropout(0.3)
+        
+        # LSTM layers
+        self.lstm1 = nn.LSTM(512, 256, bidirectional=True, batch_first=True)
+        self.lstm2 = nn.LSTM(512, 128, bidirectional=True, batch_first=True)
+        self.dropout_lstm = nn.Dropout(0.3)
+        
+        # Classification layers
         self.classifier = nn.Sequential(
-            nn.Linear(hidden_size * 2, 256),  # classifier.0: [256, 512]
+            nn.Linear(256, 256),
             nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(256, 128),              # classifier.3: [128, 256] 
-            nn.ReLU(), 
-            nn.Dropout(dropout),
-            nn.Linear(128, num_classes)       # classifier.6: [num_classes, 128]
+            nn.Dropout(0.5),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(128, num_classes)
         )
+    
+    def forward(self, x):
+        batch_size, seq_len, c, h, w = x.size()
+        
+        # Process each frame through CNN
+        x = x.view(-1, c, h, w)  # (batch*seq, c, h, w)
+        features = self.backbone(x)  # (batch*seq, feature_dim)
+        
+        # Reshape back to sequence
+        features = features.view(batch_size, seq_len, -1)  # (batch, seq, feature_dim)
+        
+        # Temporal convolution
+        x = features.transpose(1, 2)  # (batch, feature_dim, seq)
+        x = torch.relu(self.temporal_bn(self.temporal_conv(x)))
+        x = self.dropout1(x)
+        x = x.transpose(1, 2)  # (batch, seq, 512)
+        
+        # LSTM layers
+        x, _ = self.lstm1(x)  # (batch, seq, 512)
+        x = self.dropout_lstm(x)
+        x, _ = self.lstm2(x)  # (batch, seq, 256)
+        
+        # Global average pooling over sequence
+        x = torch.mean(x, dim=1)  # (batch, 256)
+        
+        # Classification
+        x = self.classifier(x)
+        
+        return x
 
-    def forward(self, x):  # x: (batch, seq_len, C, H, W)
-        batch_size, seq_len, C, H, W = x.size()
-        x = x.view(batch_size * seq_len, C, H, W)
-        features = self.cnn(x)
-        features = features.view(batch_size, seq_len, -1)
-        
-        # LSTM processing
-        lstm_out, _ = self.lstm(features)
-        
-        # Hand attention
-        attn_out, _ = self.attention(lstm_out, lstm_out, lstm_out)
-        combined = lstm_out + attn_out
-        
-        # Final prediction through classifier
-        combined = self.dropout(combined)
-        out = self.classifier(combined[:, -1, :])
-        return out
 
-def create_cnn_base():
-    """Create CNN base network"""
-    import torchvision.models as models
-    
-    # Use ResNet18 as base
-    resnet = models.resnet18(weights='IMAGENET1K_V1')
-    
-    # Remove final layers and add custom ones
-    layers = list(resnet.children())[:-2]  # Remove avgpool and fc
-    layers.append(nn.AdaptiveAvgPool2d((1, 1)))
-    layers.append(nn.Flatten())
-    
-    return nn.Sequential(*layers)
 
 # ============================================================================
 # HAND DETECTION SYSTEM 
@@ -338,13 +345,42 @@ class WebGestureDetector:
 # MODEL LOADING
 # ============================================================================
 
+def find_latest_training_folder():
+    """Find the latest training folder, preferring outputs/ over models/.
+
+    Search order (both relative to this file's directory):
+      1) outputs/training_*
+      2) models/training_*
+    """
+    outputs_dir = os.path.join(current_dir, "outputs")
+    models_dir = os.path.join(current_dir, "models")
+
+    # Prefer outputs directory first
+    outputs_training = glob.glob(os.path.join(outputs_dir, "training_*"))
+    models_training = glob.glob(os.path.join(models_dir, "training_*"))
+
+    candidates = []
+    if outputs_training:
+        candidates.extend(outputs_training)
+    if models_training:
+        candidates.extend(models_training)
+
+    if not candidates:
+        return None
+
+    # Choose the lexicographically latest (timestamp in name)
+    latest_folder = max(candidates)
+    return latest_folder
+
 def validate_model(model, device, class_names):
     """Validate that the model produces valid outputs"""
     try:
         model.eval()
         
-        # Create dummy input (batch_size=1, seq_len=16, C=3, H=224, W=224)
-        dummy_input = torch.randn(1, 16, 3, 224, 224).to(device)
+        # Create dummy input using model's preferred sequence length if available
+        seq_len = getattr(model, 'sequence_length', 16)
+        # (batch_size=1, seq_len, C=3, H=224, W=224)
+        dummy_input = torch.randn(1, seq_len, 3, 224, 224).to(device)
         
         with torch.no_grad():
             output = model(dummy_input)
@@ -365,7 +401,7 @@ def validate_model(model, device, class_names):
                 print("Softmax produces NaN or infinite values")
                 return False
             
-            print("✓ Model validation passed")
+            print("Model validation passed")
             return True
             
     except Exception as e:
@@ -373,36 +409,46 @@ def validate_model(model, device, class_names):
         return False
 
 def load_model_and_classes():
-    """Load the SASL model and class names"""
-    # Load class names
-    class_names_path = os.path.join(current_dir, "models", "class_names.json")
+    """Load the SASL model and class names from training folder"""
+    
+    # Find the latest training folder (prefer outputs/ over models/)
+    training_folder = find_latest_training_folder()
+    if not training_folder:
+        print("ERROR: No training folder found in outputs/ or models/ directory.")
+        print("Please ensure you have a training folder (e.g., training_20251011_163502) with:")
+        print("  - models/best_sasl_cnn_lstm_model.pth")
+        print("  - results/class_names.json")
+        return None, None
+    
+    print(f"Using training folder: {os.path.basename(training_folder)}")
+    
+    # Load class names from results folder
+    class_names_path = os.path.join(training_folder, "results", "class_names.json")
     try:
-        with open(class_names_path, 'r') as f:
+        with open(class_names_path, 'r', encoding='utf-8') as f:
             class_names = json.load(f)
-        print(f"✓ Loaded {len(class_names)} classes")
+        print(f"Loaded {len(class_names)} classes from results folder")
     except Exception as e:
-        print(f"Error loading class names: {e}")
+        print(f"ERROR: Failed to load class names from: {class_names_path}")
+        print(f"Error: {e}")
         return None, None
     
-    # Load model
-    model_path = os.path.join(current_dir, "models", "hand_focused_sasl_model.pth")
+    # Load model from models folder within training directory
+    model_path = os.path.join(training_folder, "models", "best_sasl_cnn_lstm_model.pth")
     if not os.path.exists(model_path):
-        print(f"Model file not found: {model_path}")
-        print("Please ensure 'hand_focused_sasl_model.pth' is in the models/ directory")
+        print(f"ERROR: Model file not found: {model_path}")
+        print("Please ensure the model file exists in the training folder.")
         return None, None
     
     try:
-        # Create model architecture
-        cnn_base = create_cnn_base()
-        model = HandFocusedCNN_LSTM(
-            cnn=cnn_base,
+        # Create CNN+LSTM model architecture
+        model = CNNLSTMModel(
             num_classes=len(class_names),
-            hidden_size=256,
-            num_layers=2,
-            dropout=0.3
+            sequence_length=30,
+            input_size=(224, 224)
         ).to(device)
         
-        print(f"✓ Model architecture created")
+        print(f"CNN+LSTM model architecture created")
         
         # Load weights
         checkpoint = torch.load(model_path, map_location=device, weights_only=False)
@@ -415,30 +461,35 @@ def load_model_and_classes():
         unexpected_keys = checkpoint_keys - model_keys
         
         if missing_keys:
-            print(f"Missing keys in checkpoint: {missing_keys}")
+            print(f"ERROR: Missing keys in checkpoint: {len(missing_keys)} keys missing")
+            print("The model architecture may not match the saved checkpoint.")
             return None, None
         
         if unexpected_keys:
-            print(f"! Unexpected keys in checkpoint: {unexpected_keys}")
+            print(f"WARNING: Unexpected keys in checkpoint: {len(unexpected_keys)} extra keys")
+            print("This may indicate a model version mismatch but loading will continue.")
         
         model.load_state_dict(checkpoint, strict=False)
         model.eval()
         
-        print(f"✓ Model weights loaded successfully")
+        print(f"Model weights loaded successfully")
         
         # Validate the model
         if not validate_model(model, device, class_names):
-            print(f"Model validation failed")
+            print(f"ERROR: Model validation failed")
+            print("The loaded model does not produce valid outputs.")
             return None, None
         
-        print(f"✓ Model loaded and validated on {device}")
+        print(f"CNN+LSTM model loaded and validated on {device}")
         return model, class_names
         
     except Exception as e:
-        print(f"Error loading model: {e}")
+        print(f"ERROR: Failed to load model: {e}")
         import traceback
         traceback.print_exc()
         return None, None
+
+
 
 # Initialize model and detector
 print("Loading SASL AI Model...")
@@ -447,7 +498,8 @@ if model is None or class_names is None:
     print("Failed to load model or class names. AI features will be disabled.")
     detector = None
 else:
-    detector = WebGestureDetector(model, device, class_names)
+    # Use a 30-frame buffer to align with typical training sequence length
+    detector = WebGestureDetector(model, device, class_names, buffer_size=30)
 
 # ============================================================================
 # VIDEO STREAMING
@@ -779,6 +831,25 @@ def process_frame_bytes_sync(frame_bytes):
 
         try:
             with detector_lock:
+                # Server-side hand gate: skip buffering/prediction if no hands are present
+                try:
+                    hands_present = False
+                    try:
+                        hands_info = detector.get_hand_overlay_info(img)
+                        hands_present = bool(hands_info)
+                    except Exception:
+                        hands_present = False
+                    if not hands_present:
+                        # No hands detected; do not add frame to buffer or attempt prediction
+                        # Still return current committed sentence if any.
+                        committed = [w['text'] for w in recognized_words]
+                        result['committed_words'] = committed
+                        result['sentence'] = grammar_fix(committed)
+                        return result
+                except Exception:
+                    # If hand detection fails for any reason, fall back to processing
+                    pass
+
                 detector.add_frame(img)
                 if detector.is_buffer_ready():
                     pred, conf = detector.predict_gesture()
@@ -877,14 +948,14 @@ def internal_error(error):
 # ============================================================================
 
 if __name__ == '__main__':
-    print("🤟 SASL Flask AI Backend 🤟")
+    print("SASL Flask AI Backend")
     print("=" * 50)
     print(f"Device: {device}")
     print(f"Classes: {len(class_names) if class_names else 'Not loaded'}")
     print(f"Hand Detection: {'Available' if HAND_DETECTION_AVAILABLE else 'Disabled'}")
     print(f"AI Model: {'Loaded' if detector else 'Failed to load'}")
     print("\nStarting Flask AI server...")
-    print("Server will run on: https://flaskssai.belgiumcampus.ac.za")
+    print("Server will run on: http://localhost:5000")
     print("This server provides AI endpoints for the Node.js frontend")
     print("Press Ctrl+C to stop the server")
     
