@@ -37,7 +37,7 @@ class AISignLanguageDetection {
         this._bufferedThreshold = 1e6; // 1 MB queued => drop frames
         this._pendingTimeout = null; // used to clear _pending if server stalls
         // WebSocket and HTTP endpoints
-        this.wsUrl = 'wss://ssaiwb.belgiumcampus.ac.za';
+        this.wsUrl = `wss://ssaiwb.belgiumcampus.ac.za?userId=${encodeURIComponent(this.userId || '')}&token=${encodeURIComponent(this.userToken || '')}`;
         this.flaskUrl = 'https://ssai.belgiumcampus.ac.za/ai';
         this.statusUpdateInterval = null;
         this._shouldReconnect = true;
@@ -811,7 +811,11 @@ class AISignLanguageDetection {
         
         this.statusUpdateInterval = setInterval(async () => {
             try {
-                const response = await fetch(`${this.flaskUrl}/status`);
+                const headers = {};
+                if (this.userToken) {
+                    headers['Authorization'] = `Bearer ${this.userToken}`;
+                }
+                const response = await fetch(`${this.flaskUrl}/status`, { headers });
                 
                 if (response.ok) {
                     const data = await response.json();
