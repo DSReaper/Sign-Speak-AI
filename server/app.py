@@ -346,15 +346,30 @@ class WebGestureDetector:
 # ============================================================================
 
 def find_latest_training_folder():
-    """Find the latest training folder in models directory"""
+    """Find the latest training folder, preferring outputs/ over models/.
+
+    Search order (both relative to this file's directory):
+      1) outputs/training_*
+      2) models/training_*
+    """
+    outputs_dir = os.path.join(current_dir, "outputs")
     models_dir = os.path.join(current_dir, "models")
-    training_folders = glob.glob(os.path.join(models_dir, "training_*"))
-    
-    if not training_folders:
+
+    # Prefer outputs directory first
+    outputs_training = glob.glob(os.path.join(outputs_dir, "training_*"))
+    models_training = glob.glob(os.path.join(models_dir, "training_*"))
+
+    candidates = []
+    if outputs_training:
+        candidates.extend(outputs_training)
+    if models_training:
+        candidates.extend(models_training)
+
+    if not candidates:
         return None
-    
-    # Sort by folder name (which contains timestamp)
-    latest_folder = max(training_folders)
+
+    # Choose the lexicographically latest (timestamp in name)
+    latest_folder = max(candidates)
     return latest_folder
 
 def validate_model(model, device, class_names):
@@ -362,8 +377,10 @@ def validate_model(model, device, class_names):
     try:
         model.eval()
         
-        # Create dummy input (batch_size=1, seq_len=16, C=3, H=224, W=224)
-        dummy_input = torch.randn(1, 16, 3, 224, 224).to(device)
+        # Create dummy input using model's preferred sequence length if available
+        seq_len = getattr(model, 'sequence_length', 16)
+        # (batch_size=1, seq_len, C=3, H=224, W=224)
+        dummy_input = torch.randn(1, seq_len, 3, 224, 224).to(device)
         
         with torch.no_grad():
             output = model(dummy_input)
@@ -394,10 +411,10 @@ def validate_model(model, device, class_names):
 def load_model_and_classes():
     """Load the SASL model and class names from training folder"""
     
-    # Find the latest training folder
+    # Find the latest training folder (prefer outputs/ over models/)
     training_folder = find_latest_training_folder()
     if not training_folder:
-        print("ERROR: No training folder found in models directory.")
+        print("ERROR: No training folder found in outputs/ or models/ directory.")
         print("Please ensure you have a training folder (e.g., training_20251011_163502) with:")
         print("  - models/best_sasl_cnn_lstm_model.pth")
         print("  - results/class_names.json")
@@ -481,7 +498,8 @@ if model is None or class_names is None:
     print("Failed to load model or class names. AI features will be disabled.")
     detector = None
 else:
-    detector = WebGestureDetector(model, device, class_names)
+    # Use a 30-frame buffer to align with typical training sequence length
+    detector = WebGestureDetector(model, device, class_names, buffer_size=30)
 
 # ============================================================================
 # VIDEO STREAMING
@@ -784,6 +802,10 @@ def process_frame_bytes_sync(frame_bytes):
     Returns:
     - dict with keys: 'prediction' (str or None), 'confidence' (float)
     """
+    # Ensure globals are declared before any reference within this function
+    global current_prediction, current_confidence
+    global last_display_word, last_display_start, last_committed_word
+    global recognized_words
   # The json object that will be sent back to the client
     result = {
         'prediction': None,
@@ -813,14 +835,30 @@ def process_frame_bytes_sync(frame_bytes):
 
         try:
             with detector_lock:
+                # Server-side hand gate: skip buffering/prediction if no hands are present
+                try:
+                    hands_present = False
+                    try:
+                        hands_info = detector.get_hand_overlay_info(img)
+                        hands_present = bool(hands_info)
+                    except Exception:
+                        hands_present = False
+                    if not hands_present:
+                        # No hands detected; do not add frame to buffer or attempt prediction
+                        # Still return current committed sentence if any.
+                        committed = [w['text'] for w in recognized_words]
+                        result['committed_words'] = committed
+                        result['sentence'] = grammar_fix(committed)
+                        return result
+                except Exception:
+                    # If hand detection fails for any reason, fall back to processing
+                    pass
+
                 detector.add_frame(img)
                 if detector.is_buffer_ready():
                     pred, conf = detector.predict_gesture()
                     if pred:
                         # update shared state
-                        global current_prediction, current_confidence
-                        global last_display_word, last_display_start, last_committed_word
-                        global recognized_words
                         current_prediction = pred
                         current_confidence = conf
                         result['prediction'] = pred
