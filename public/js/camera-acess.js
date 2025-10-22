@@ -986,6 +986,8 @@ class AISignLanguageDetection {
     }
 
     toggleStar() {
+        if (this._savingPhrase) return; // Prevent duplicate saves
+
         const starBtn = document.getElementById('starBtn');
         const detectedPhraseEl = document.getElementById('detectedPhrase');
         const phrase = detectedPhraseEl ? detectedPhraseEl.textContent.trim() : '';
@@ -1001,6 +1003,7 @@ class AISignLanguageDetection {
             starBtn.classList.remove('active');
             console.log('Removed from favorites');
         } else {
+            this._savingPhrase = true; // Set flag to prevent further saves
             try {
                 fetch('/translate/phrase', {
                     method: 'POST',
@@ -1010,6 +1013,7 @@ class AISignLanguageDetection {
                     if (response.ok) {
                         starBtn.classList.add('active');
                         console.log('Added to favorites');
+                        alert('Phrase saved successfully.');
                         // Animation after the star is clicked
                         starBtn.style.transform = 'scale(1.2)';
                         setTimeout(() => {
@@ -1022,9 +1026,12 @@ class AISignLanguageDetection {
                     }
                 }).catch(error => {
                     alert('Network error: ' + error.message);
+                }).finally(() => {
+                    this._savingPhrase = false; // Reset flag after save attempt
                 });
             } catch (error) {
                 alert('Error: ' + error.message);
+                this._savingPhrase = false; // Reset flag on error
             }
         }
     }
