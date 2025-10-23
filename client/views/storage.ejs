@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>Sign Speak - AI | Stored Phrases</title>
   <%- include('partials/theme') %>
   <link rel="stylesheet" href="/css/style.css" />
@@ -104,6 +104,32 @@
     </div>
   </div>
 
+  <!-- Toggle Star Script -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".storage-star-btn").forEach(button => {
+        button.addEventListener("click", () => {
+          const isStarred = button.getAttribute("data-starred") === "true";
+          button.setAttribute("data-starred", !isStarred);
+
+          // Replace SVG based on state
+          if (isStarred) {
+            button.innerHTML = `
+              <!-- Outline Star SVG -->
+              <svg class="storage-star-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>`;
+          } else {
+            button.innerHTML = `
+              <!-- Filled Star SVG -->
+              <svg class="storage-star-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>`;
+          }
+        });
+      });
+    });
+  </script>
   <script src="/js/play-audio.js"></script>
   <script src="/js/storage.js"></script>
 </body>

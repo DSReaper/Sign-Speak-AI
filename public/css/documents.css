@@ -13,7 +13,7 @@
 .main-content {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 1rem;
+  padding-bottom: var(--nav-total-height);
 }
 
 .back-link {

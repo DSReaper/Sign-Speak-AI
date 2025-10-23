@@ -4,6 +4,16 @@
   box-sizing: border-box;
 }
 
+/* Global layout tokens for bottom navigation and safe areas */
+:root {
+  /* Base visual height of the bottom nav bar (without safe area) */
+  --nav-height: 70px;
+  /* Safe area inset for bottom on notch/home-indicator devices */
+  --nav-safe-area: env(safe-area-inset-bottom, 0px);
+  /* Total space occupied by nav including a minimum breathing room */
+  --nav-total-height: calc(var(--nav-height) + max(var(--nav-safe-area), 8px));
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--c-bg);
@@ -11,7 +21,9 @@ body {
   color: var(--c-text);
   height: 100%;
   margin: 0;
-  overflow: hidden;
+  /* Allow natural page scrolling when content exceeds viewport (overridden for camera page) */
+  overflow-x: hidden;
+  overflow-y: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -19,13 +31,22 @@ body {
 html {
   height: 100%;
   margin: 0;
-  overflow: hidden;
+  /* Allow natural page scrolling (overridden for camera page) */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Disable page scroll specifically on the camera page */
+body.page-camera,
+body.page-camera html {
+  overflow: hidden !important;
 }
 
 .app-grid {
   display: grid;
-  grid-template-rows: 90vh 10vh;
-  height: 100vh;
+  /* Single-row layout; nav is fixed so we don't reserve an extra grid row */
+  min-height: 100dvh;
+  height: auto;
   max-width: 900px;
   margin: 0 auto;
   gap: 0;
@@ -41,17 +62,25 @@ html {
   padding: 0;
   box-sizing: border-box;
   height: 100%;
+  /* Ensure content never sits under the fixed bottom nav */
+  padding-bottom: var(--nav-total-height);
 }
 
 .nav-wrapper {
   width: 100%;
-  max-width: 900px;
   margin: 0 auto;
   box-sizing: border-box;
-  position: relative;
+  /* Fix the nav to the bottom and respect safe areas */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 1000;
-  height: 100%;
+  height: auto;
+  /* No left/right padding so nav touches screen edges */
+  padding: 0 0 calc(max(env(safe-area-inset-bottom, 0px), 8px));
 }
+
 
 .section {
   background: var(--c-surface-1);

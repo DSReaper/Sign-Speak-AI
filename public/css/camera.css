@@ -1,32 +1,4 @@
-.detection-mode {
-  display: flex;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 25px;
-  padding: 4px;
-  backdrop-filter: blur(10px);
-}
-
-.mode-btn {
-  background: none;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  color: #666;
-}
-
-.mode-btn.active {
-  background: #000;
-  color: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-}
-
-.mode-btn:hover:not(.active) {
-  background: rgba(0, 0, 0, 0.05);
-}
+/* Removed detection-mode and mode-btn styles (unused) */
 
 .expand-btn {
   background: rgba(255, 255, 255, 0.9);
@@ -39,7 +11,6 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
 }
 
 .expand-btn:hover {
@@ -53,11 +24,10 @@
   position: relative;
   border-radius: 20px;
   padding: 20px;
-  margin: 0 0 10px 0;
+  margin: 0;
   width: 100%;
-  height: 60vh;
-  min-height: 400px;
-  backdrop-filter: blur(10px);
+  /* Allow shrinking within proportional layout */
+  min-height: 0;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   display: flex;
@@ -66,13 +36,14 @@
 }
 
 .camera-container {
-  flex: 1;
+  flex: 1 1 auto;
   width: 100%;
   border-radius: 15px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 0;
 }
 
 /* Fullscreen mode */
@@ -85,7 +56,7 @@
   width: 100vw;
   height: 100vh;
   max-width: 100%;
-  z-index: 1000;
+  z-index: 2000; /* ensure above fixed bottom nav */
   margin: 0;
   border-radius: 0;
   padding: 20px;
@@ -139,7 +110,6 @@
   padding: 0 10px;
 }
 
-.camera-controls .detection-mode,
 .camera-controls .expand-btn {
   pointer-events: auto;
 }
@@ -206,11 +176,9 @@
   background: rgba(255, 255, 255, 0.95);
   border-radius: 20px;
   padding: 25px;
-  margin: 0 0 0 0;
+  margin: 0;
   width: 100%;
-  height: 25vh;
-  min-height: 200px;
-  backdrop-filter: blur(10px);
+  min-height: 0;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   text-align: center;
   display: flex;
@@ -218,6 +186,7 @@
   justify-content: center;
   box-sizing: border-box;
   position: relative;
+  overflow: hidden;
 }
 
 .results-title {
@@ -249,6 +218,7 @@
 .play-btn {
   display: flex;
   align-items: center;
+  justify-content: center; /* center icon + text horizontally */
   gap: 10px;
   background: #000;
   color: white;
@@ -259,6 +229,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
+  text-align: center; /* center multi-line text inside span */
 }
 
 .play-btn:hover {
@@ -298,11 +269,8 @@
   color: white;
 }
 
-/* Clear Output Button */
+/* Clear Output Button (inline by default) */
 .clear-output-btn {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -337,24 +305,88 @@
   outline-offset: 2px;
 }
 
+/* Mobile: controls on a single line; clear as icon-only */
 @media (max-width: 480px) {
+  .audio-controls {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    flex-wrap: nowrap; /* keep on one line */
+  }
+
+  .play-btn {
+    padding: 12px 16px;
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal; /* allow text to be visible */
+  }
+
+  /* Show play text on mobile */
+  .play-btn span {
+    display: inline;
+  }
+
+  .star-btn {
+    flex: 0 0 auto;
+    width: 48px;
+    height: 48px;
+  }
+
+  .clear-output-btn span {
+    display: none;
+  }
   .clear-output-btn {
-    bottom: 10px;
-    right: 10px;
-    padding: 8px 14px;
-    font-size: 11px;
+    padding: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
   .clear-output-btn svg {
-    width: 14px;
-    height: 14px;
+    width: 20px;
+    height: 20px;
   }
 }
 
 /* Responsive Design */
 @media (max-width: 480px) {
+  /* Camera page: fit everything above the fixed bottom nav */
+  .container.camera-page {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: auto; /* override global .container height:100% */
+    /* Fill the viewport height and subtract the nav height padding already applied on container */
+    min-height: calc(100dvh - var(--nav-total-height));
+    /* Override global container padding to avoid double-spacing under fixed nav */
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px) !important;
+  }
+
+  .container.camera-page .camera-section {
+    /* Allocate most of the space to the camera, but keep results visible */
+    flex: 1 1 auto;
+    min-height: 40vh; /* ensure a reasonable camera viewport but leave room for results */
+    margin-bottom: 8px;
+  }
+
+  .container.camera-page .camera-container {
+    height: auto;
+    min-height: 0;
+  }
+
+  .container.camera-page .results-section {
+    flex: 0 0 auto;
+    padding: 16px;
+  }
+
   .container {
     padding: 15px;
-    padding-bottom: 120px;
+    /* Keep content above the fixed bottom nav on small screens */
+    padding-bottom: var(--nav-total-height);
   }
 
   .header-controls {
@@ -363,22 +395,33 @@
     align-items: stretch;
   }
 
-  .detection-mode {
-    justify-content: center;
-  }
-
-  .mode-btn {
-    flex: 1;
-    padding: 10px 16px;
-    font-size: 13px;
-  }
+  /* Removed detection-mode and mode-btn responsive styles (unused) */
 
   .expand-btn {
     align-self: center;
+    width: 56px;
+    height: 56px;
   }
 
+  .expand-btn svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* Avoid hard-coding container height on small screens; let it flex */
   .camera-container {
-    height: 250px;
+    height: auto;
+  }
+
+  /* Tighten spacing and fonts so results remain visible without overlap */
+  .results-title {
+    margin-bottom: 12px;
+    font-size: 15px;
+  }
+  .detected-phrase {
+    margin-bottom: 12px;
+    font-size: 14px;
+    padding: 10px;
   }
 
   .detection-box {
@@ -405,26 +448,61 @@
     padding: 12px;
   }
 
+  /* Note: keep audio controls in a single row on mobile (see mobile block above) */
+}
+
+/* Desktop: two-line layout; clear output on its own line below */
+@media (min-width: 769px) {
   .audio-controls {
-    flex-direction: column;
-    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px 16px; /* row gap, column gap */
+  }
+  /* Force a line break between the first-row controls (Play/Star) and Clear button */
+  .audio-controls::after {
+    content: "";
+    order: 2;
+    flex-basis: 100%; /* creates a new row */
+    width: 0; /* no visual width, just a break */
   }
 
-  .play-btn {
-    padding: 12px 24px;
+  /* Keep Clear on its own line below, centered, and same size as Play */
+  .audio-controls .clear-output-btn {
+    order: 3;              /* appear after the line-break */
+    flex: 0 0 auto;        /* don't stretch */
+    width: auto;           
+    align-self: center;
+    justify-content: center;
+    text-align: center;
+    /* Match Play button sizing */
+    padding: 12px 20px;
+    font-size: 14px;
+    border-radius: 25px;
   }
 }
 
 /* Fullscreen mode adjustments */
 @media (max-width: 480px) {
   .camera-section.expanded {
-    padding: 15px;
+    padding: 0;
   }
 
   .camera-section.expanded .camera-controls {
     top: 20px;
     left: 20px;
     right: 20px;
+  }
+
+  /* Maximize camera view on mobile when expanded */
+  .camera-section.expanded .camera-container {
+    padding: 0 !important;
+  }
+
+  .camera-section.expanded #aiCameraFeed {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    object-fit: contain !important;
   }
 }
 
@@ -437,7 +515,7 @@
 .camera-modal {
   display: none;
   position: fixed;
-  z-index: 1000;
+  z-index: 4000; /* above fixed bottom nav and other UI */
   left: 0;
   top: 0;
   width: 100%;
@@ -458,6 +536,39 @@
   text-align: center;
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.3);
   overflow-y: auto;
+}
+
+/* Full-viewport modal on mobile (used by both camera and storage screens) */
+@media (max-width: 768px) {
+  .camera-modal {
+    /* allow the content box to stretch to full viewport */
+    justify-content: stretch;
+    align-items: stretch;
+  }
+  .camera-modal-content {
+    width: 100vw;
+    height: 100dvh; /* account for dynamic mobile browser UI */
+    max-width: 100vw;
+    max-height: 100dvh;
+    border-radius: 0;
+    /* respect safe areas on notched devices */
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)) 16px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+  .camera-modal-content h2 {
+    text-align: center;
+  }
+  .camera-modal-content textarea {
+    flex: 1 1 auto;
+    min-height: 0; /* allow it to grow and shrink within viewport */
+  }
+  .camera-modal-content button {
+    align-self: center;
+    margin-top: 12px;
+  }
 }
 
 .camera-modal-content h2 {
@@ -484,6 +595,18 @@
   color: #fff;
   cursor: pointer;
   font-size: 1rem;
+}
+
+/* Make Close button always visible and red */
+#closeModal {
+  background: #e53935; /* red */
+  color: #fff;
+  position: sticky;
+  bottom: 0; /* sticks to the bottom of scrollable modal content */
+  z-index: 1;
+}
+#closeModal:hover {
+  background: #c62828;
 }
 
 /* AI Status Display */
@@ -608,6 +731,67 @@
   border-radius: 10px;
 }
 
+/* Camera page layout: fill viewport above fixed bottom nav and proportionally divide space */
+.page-camera .container.camera-page {
+  /* Fill exactly what's available above the fixed nav */
+  height: calc(100dvh - var(--nav-total-height));
+  display: flex;
+  flex-direction: column;
+  gap: 0; /* we'll manage spacing with margins on results */
+  padding-bottom: 0 !important; /* override global padding for fixed nav */
+  overflow: hidden; /* page must not be scrollable */
+  /* spacing token for vertical margin around results */
+  --camera-vgap: 10px;
+}
+
+/* Proportional heights: camera gets 65%, results 35% across all sizes */
+.page-camera .container.camera-page .camera-section {
+  /* Proportional layout: grow/shrink ratio 65 */
+  flex: 65 1 0%;
+  min-height: 0; /* allow shrinking to avoid overflow */
+}
+.page-camera .container.camera-page .camera-container {
+  min-height: 0; /* ensure the video can shrink */
+}
+.page-camera .container.camera-page .results-section {
+  /* Proportional layout: grow/shrink ratio 35 */
+  flex: 35 1 0%;
+  min-height: 0;
+  overflow: hidden;
+  /* Equal spacing above and below results */
+  margin: var(--camera-vgap) 0;
+}
+
+/* Make camera slightly larger on wider screens */
+@media (min-width: 1024px) {
+  .page-camera .container.camera-page {
+    /* a touch more vertical spacing between camera and results */
+    --camera-vgap: 14px;
+  }
+  .page-camera .container.camera-page .camera-section {
+    /* Increase camera share from 65% to 72% */
+    flex: 72 1 0%;
+  }
+  .page-camera .container.camera-page .results-section {
+    /* Decrease results share accordingly */
+    flex: 28 1 0%;
+  }
+}
+
+/* Even larger camera on very wide desktops */
+@media (min-width: 1440px) {
+  .page-camera .container.camera-page {
+    --camera-vgap: 16px;
+  }
+  .page-camera .container.camera-page .camera-section {
+    /* Nudge camera to 78% for big screens */
+    flex: 78 1 0%;
+  }
+  .page-camera .container.camera-page .results-section {
+    flex: 22 1 0%;
+  }
+}
+
 /* Dark theme overrides (match 404: black bg, dark surfaces) */
 [data-theme="dark"] .app-grid {
   background: #000;
@@ -621,20 +805,10 @@
   background: rgba(20, 20, 20, 0.95);
   box-shadow: var(--shadow-inset-top), var(--shadow-bottom-2);
 }
-[data-theme="dark"] .detection-mode,
 [data-theme="dark"] .expand-btn {
   background: rgba(30, 30, 30, 0.9);
 }
-[data-theme="dark"] .mode-btn {
-  color: #bbb;
-}
-[data-theme="dark"] .mode-btn.active {
-  background: #111;
-  color: #fff;
-}
-[data-theme="dark"] .mode-btn:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.06);
-}
+/* Removed dark theme overrides for mode-btn and detection-mode (unused) */
 [data-theme="dark"] .results-title,
 [data-theme="dark"] .detected-phrase {
   color: #e6e6e6;

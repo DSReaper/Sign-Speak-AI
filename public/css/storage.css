@@ -3,8 +3,13 @@
   flex-direction: column;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   width: 100%;
-  height: 100%;
+  /* Fill the viewport and keep header visible while list scrolls */
+  height: 100dvh;
+  min-height: 0; /* allow flex children to shrink/scroll */
+  overflow: hidden; /* confine scroll to main content */
   margin-bottom: 10px;
+  /* padding-bottom handled on scrollable area */
+  padding-bottom: 0;
 }
 
 .storage-search-bar {
@@ -37,8 +42,6 @@
     box-shadow 180ms ease,
     border-color 180ms ease,
     transform 120ms ease;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
 }
 
 .storage-search-input::placeholder {
@@ -106,11 +109,14 @@
   padding: 8px 12px;
 }
 
-/* Main Content */
+/* Main Content (scrollable list area) */
 #storage-main-content {
   padding: 0;
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0; /* required for overflow to work inside flex parent */
   overflow-y: auto;
+  /* Ensure content isn't hidden behind fixed bottom nav */
+  padding-bottom: var(--nav-total-height);
 }
 .storage-page-title {
   padding: 20px 20px 16px 20px;

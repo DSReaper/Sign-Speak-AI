@@ -127,56 +127,7 @@ select:focus {
   box-shadow: var(--focus-ring);
 }
 
-.slider-container {
-  padding-left: 28px;
-}
-.slider-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-.slider-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--c-text);
-}
-
-input[type="range"] {
-  width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--c-border);
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-}
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--c-text);
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-}
-input[type="range"]::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--c-text);
-  cursor: pointer;
-  border: none;
-  transition: transform 0.2s ease;
-}
-input[type="range"]::-moz-range-thumb:hover {
-  transform: scale(1.2);
-}
+/* Removed volume slider styles */
 
 .checkbox-container {
   display: flex;

@@ -49,6 +49,11 @@
   margin-right: 10px;
 }
 
+/* Ensure content doesn't sit under the fixed bottom nav */
+.main-content .container {
+  padding-bottom: var(--nav-total-height);
+}
+
 /* Settings Modal styles */
 .settings-modal {
   display: none;
