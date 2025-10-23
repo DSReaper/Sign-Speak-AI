@@ -351,6 +351,23 @@ class AISignLanguageDetection {
             console.log('WebSocket connected to AI detection service');
             this._reconnectAttempts = 0;
             try { this.hideError(); this.setConnectionState('connected'); } catch (e) { }
+            
+            // Set initial message when model has finished loading and is ready
+            // Always update to ready state when WebSocket connects successfully
+            try {
+                if (this.detectedPhrase) {
+                    const currentText = this.detectedPhrase.textContent || '';
+                    // Update if showing loading message, detecting message, or if the message looks like a status message
+                    if (!currentText || 
+                        currentText === 'Loading AI detection model...' ||
+                        currentText === 'Detecting phrase...' ||
+                        currentText === 'Waiting for AI detection...' ||
+                        !currentText.startsWith('"')) { // If it's not a quoted phrase, it's likely a status message
+                        this.detectedPhrase.textContent = 'Show your hand(s) to start detection...';
+                    }
+                }
+            } catch (e) { }
+            
             this._startCaptureInterval();
         };
 
@@ -383,7 +400,10 @@ class AISignLanguageDetection {
                     const obj = JSON.parse(data);
                     // Example server response: { prediction, confidence, committed_words, sentence }
                     if (obj.sentence && obj.sentence.trim().length > 0) {
-                        this.updateDetectedPhrase(obj.sentence, obj.committed_words || []);
+                        // Ensure sentences are wrapped in quotes if they don't already have them
+                        const sentence = obj.sentence.trim();
+                        const formattedSentence = sentence.startsWith('"') && sentence.endsWith('"') ? sentence : `"${sentence}"`;
+                        this.updateDetectedPhrase(formattedSentence, obj.committed_words || []);
                         if (obj.prediction && this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
                     } else if (obj.prediction) {
                         this.updateDetectedPhrase(`"${obj.prediction}"`, obj.committed_words || []);
@@ -404,7 +424,10 @@ class AISignLanguageDetection {
             try {
                 const obj = JSON.parse(data);
                 if (obj.sentence && obj.sentence.trim().length > 0) {
-                    this.updateDetectedPhrase(obj.sentence, obj.committed_words || []);
+                    // Ensure sentences are wrapped in quotes if they don't already have them
+                    const sentence = obj.sentence.trim();
+                    const formattedSentence = sentence.startsWith('"') && sentence.endsWith('"') ? sentence : `"${sentence}"`;
+                    this.updateDetectedPhrase(formattedSentence, obj.committed_words || []);
                     if (obj.prediction && this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
                 } else if (obj.prediction) {
                     this.updateDetectedPhrase(`"${obj.prediction}"`, obj.committed_words || []);
@@ -479,8 +502,21 @@ class AISignLanguageDetection {
             try {
                 const count = (results && Array.isArray(results.multiHandLandmarks)) ? results.multiHandLandmarks.length : 0;
                 if (count > 0) {
+                    const wasHandsDetected = this._hasHands;
                     this._hasHands = true;
                     this._lastHandsSeenAt = performance.now();
+                    
+                    // Update status to "Detecting phrase..." when hands are first detected
+                    if (!wasHandsDetected && this.detectedPhrase) {
+                        try {
+                            const currentText = this.detectedPhrase.textContent;
+                            if (currentText === 'Show your hand(s) to start detection...' || 
+                                currentText === 'Loading AI detection model...' || 
+                                !currentText.trim()) {
+                                this.detectedPhrase.textContent = 'Detecting phrase...';
+                            }
+                        } catch (_) { }
+                    }
                 } else {
                     // don't immediately flip to false; use grace to avoid rapid toggling
                     const t = performance.now();
@@ -745,7 +781,9 @@ class AISignLanguageDetection {
             if (!recentlySawHands) {
                 // Optionally, update UI hint
                 try {
-                    if (this.detectedPhrase && (!this.detectedPhrase.textContent || this.detectedPhrase.textContent === 'Loading AI detection model...')) {
+                    if (this.detectedPhrase && (!this.detectedPhrase.textContent || 
+                        this.detectedPhrase.textContent === 'Loading AI detection model...' ||
+                        this.detectedPhrase.textContent === 'Detecting phrase...')) {
                         this.detectedPhrase.textContent = 'Show your hand(s) to start detection...';
                     }
                 } catch (_) { }
@@ -841,7 +879,7 @@ class AISignLanguageDetection {
         if (data.prediction && data.prediction !== "Waiting...") {
             this.updateDetectedPhrase(`"${data.prediction}"`);
         } else {
-            this.detectedPhrase.textContent = 'Waiting for AI detection...';
+            this.detectedPhrase.textContent = 'Show your hand(s) to start detection...';
         }
     }
 
