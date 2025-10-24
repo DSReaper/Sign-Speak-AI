@@ -15,14 +15,13 @@ class AISignLanguageDetection {
             this.overlayCanvas.style.display = 'block';
             this.overlayCanvas.style.zIndex = '5';
         }
-        // other UI elements 
+        // other UI elements
     this.bufferStatus = document.getElementById('bufferStatus');
     this.confidenceStatus = document.getElementById('confidenceStatus');
         this.aiStatus = document.getElementById('aiStatus');
-        
+
         this.isExpanded = false;
-        this.isAIActive = false;
-        this.currentMode = 'basic';
+    this.isAIActive = false;
         // performance presets
         this.performanceMode = 'balanced'; // 'quality' | 'balanced' | 'speed'
         this._perfSettings = {
@@ -38,8 +37,8 @@ class AISignLanguageDetection {
         this._bufferedThreshold = 1e6; // 1 MB queued => drop frames
         this._pendingTimeout = null; // used to clear _pending if server stalls
         // WebSocket and HTTP endpoints
-        this.wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.hostname + ':5001/ai/ws';
-        this.flaskUrl = 'http://localhost:8001/ai';
+        this.wsUrl = `wss://ssaiwb.belgiumcampus.ac.za?userId=${encodeURIComponent(this.userId || '')}&token=${encodeURIComponent(this.userToken || '')}`;
+        this.flaskUrl = 'https://ssai.belgiumcampus.ac.za/ai';
         this.statusUpdateInterval = null;
         this._shouldReconnect = true;
         this._reconnectAttempts = 0;
@@ -47,20 +46,17 @@ class AISignLanguageDetection {
     this._hasHands = false;
     this._lastHandsSeenAt = 0;
     this._handsGraceMs = 400; // small grace window to avoid flicker
-        
+
+        // User-specific configuration
+        this.userId = window.userConfig?.userId || null;
+        this.userToken = window.userConfig?.userToken || null;
+
         this.initializeEventListeners();
         this.startAICamera();
     }
 
     initializeEventListeners() {
-        // mode switching
-        document.getElementById('basicDetect').addEventListener('click', () => {
-            this.switchMode('basic');
-        });
-        
-        document.getElementById('advancedDetect').addEventListener('click', () => {
-            this.switchMode('advanced');
-        });
+        // Single detection mode in use; no mode-switching UI
         
         // AI controls
         document.getElementById('toggleHands').addEventListener('click', () => {
@@ -815,7 +811,11 @@ class AISignLanguageDetection {
         
         this.statusUpdateInterval = setInterval(async () => {
             try {
-                const response = await fetch(`${this.flaskUrl}/status`);
+                const headers = {};
+                if (this.userToken) {
+                    headers['Authorization'] = `Bearer ${this.userToken}`;
+                }
+                const response = await fetch(`${this.flaskUrl}/status`, { headers });
                 
                 if (response.ok) {
                     const data = await response.json();
@@ -899,22 +899,7 @@ class AISignLanguageDetection {
         }
     }
 
-    switchMode(mode) {
-        this.currentMode = mode;
-        
-        // Update button states
-        document.querySelectorAll('.mode-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        if (mode === 'basic') {
-            document.getElementById('basicDetect').classList.add('active');
-        } else {
-            document.getElementById('advancedDetect').classList.add('active');
-        }
-        
-        console.log(`Switched to ${mode} detection mode`);
-    }
+    // Mode switching removed; always use the default detection pipeline
 
     toggleExpanded() {
         this.isExpanded = !this.isExpanded;
@@ -1001,6 +986,8 @@ class AISignLanguageDetection {
     }
 
     toggleStar() {
+        if (this._savingPhrase) return; // Prevent duplicate saves
+
         const starBtn = document.getElementById('starBtn');
         const detectedPhraseEl = document.getElementById('detectedPhrase');
         const phrase = detectedPhraseEl ? detectedPhraseEl.textContent.trim() : '';
@@ -1016,6 +1003,7 @@ class AISignLanguageDetection {
             starBtn.classList.remove('active');
             console.log('Removed from favorites');
         } else {
+            this._savingPhrase = true; // Set flag to prevent further saves
             try {
                 fetch('/translate/phrase', {
                     method: 'POST',
@@ -1025,6 +1013,7 @@ class AISignLanguageDetection {
                     if (response.ok) {
                         starBtn.classList.add('active');
                         console.log('Added to favorites');
+                        alert('Phrase saved successfully.');
                         // Animation after the star is clicked
                         starBtn.style.transform = 'scale(1.2)';
                         setTimeout(() => {
@@ -1037,9 +1026,12 @@ class AISignLanguageDetection {
                     }
                 }).catch(error => {
                     alert('Network error: ' + error.message);
+                }).finally(() => {
+                    this._savingPhrase = false; // Reset flag after save attempt
                 });
             } catch (error) {
                 alert('Error: ' + error.message);
+                this._savingPhrase = false; // Reset flag on error
             }
         }
     }

@@ -57,17 +57,23 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Proxy Flask AI endpoints to avoid CORS issues
 const flaskProxyOptions = {
-    target: 'http://localhost:5000',
+    target: 'https://flaskssai.belgiumcampus.ac.za',//flaskssai.belgiumcampus.ac.za
     changeOrigin: true,
     onError: (err, req, res) => {
         console.error('Flask proxy error:', err.message);
-        res.status(503).json({ 
-            status: 'error', 
-            message: 'AI service unavailable. Please ensure Flask server is running on port 5000.' 
+        res.status(503).json({
+            status: 'error',
+            message: 'AI service unavailable. Please ensure Flask server is running on port 5000.'
         });
     },
     onProxyReq: (proxyReq, req, res) => {
         console.log(`Proxying ${req.method} ${req.url} to Flask`);
+
+        // Add user-specific headers for personalization
+        if (req.user && req.user.userId) {
+            proxyReq.setHeader('X-User-ID', req.user.userId);
+            proxyReq.setHeader('X-User-Token', req.cookies.token || req.headers.authorization?.split(' ')[1]);
+        }
     }
 };
 
@@ -81,7 +87,7 @@ app.use('/ai', createProxyMiddleware({
 // Health check for Flask service
 app.get('/ai/health', async (req, res) => {
     try {
-        const response = await fetch('http://localhost:5000/status');
+        const response = await fetch('https://flaskssai.belgiumcampus.ac.za/status');
         if (response.ok) {
             res.json({ status: 'healthy', message: 'Flask AI service is running' });
         } else {
@@ -110,23 +116,27 @@ app.get('/', (req, res) => { // This is the login page
 app.get('/camera', authenticateToken, async (req, res) => {
     // Check if Flask AI service is running
     try {
-        const healthCheck = await fetch('http://localhost:5000/status');
+        const healthCheck = await fetch('https://flaskssai.belgiumcampus.ac.za/status');
         if (healthCheck.ok) {
-            res.render('camera', { 
+            res.render('camera', {
                 aiServiceStatus: 'available',
-                flaskUrl: 'http://localhost:5000',
-                currentPath: '/camera'
+                flaskUrl: 'https://flaskssai.belgiumcampus.ac.za',
+                currentPath: '/camera',
+                userId: req.user.userId, // Pass user ID for personalization
+                userToken: req.cookies.token // Pass token for WebSocket auth
             });
         } else {
             throw new Error('Flask service not responding');
         }
     } catch (error) {
         console.warn('Flask AI service not available:', error.message);
-        res.render('camera', { 
+        res.render('camera', {
             aiServiceStatus: 'unavailable',
-            flaskUrl: 'http://localhost:5000',
+            flaskUrl: 'https://flaskssai.belgiumcampus.ac.za',
             errorMessage: 'AI service is not available. Please start the Flask server on port 5000.',
-            currentPath: '/camera'
+            currentPath: '/camera',
+            userId: req.user.userId,
+            userToken: req.cookies.token
         });
     }
 });
@@ -160,7 +170,7 @@ app.get('/terms-and-conditions', authenticateToken, (req, res) => {
 // API endpoint to check Flask service status
 app.get('/api/flask-status', async (req, res) => {
     try {
-        const response = await fetch('http://localhost:5000/status');
+        const response = await fetch('https://flaskssai.belgiumcampus.ac.za/status');
         if (response.ok) {
             const data = await response.json();
             res.json({ 
@@ -273,7 +283,7 @@ const PORT = 8001; // The Express server port
 
 app.listen(PORT, () => {
     console.log(`Express server running on http://localhost:${PORT}`);
-    console.log('Flask AI service proxied to http://localhost:5000');
+    console.log('Flask AI service proxied to http://flaskssai.belgiumcampus.ac.za');
     console.log('Database: MongoDB connected');
 });
 

@@ -17,14 +17,12 @@ exports.savePhrase = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Find phrase document for user or create new
-    let phraseDoc = await Phrase.findOne({ userId });
-    if (!phraseDoc) {
-      phraseDoc = new Phrase({ userId, phrases: [] });
-    }
-
-    phraseDoc.phrases.push({ text: text.trim(), timestamp: new Date() });
-    await phraseDoc.save();
+    // Use updateOne with $push to avoid conflicting update operators
+    await Phrase.updateOne(
+      { userId },
+      { $push: { phrases: { text: text.trim(), timestamp: new Date() } } },
+      { upsert: true }
+    );
 
     res.status(200).json({ message: 'Phrase saved successfully' });
   } catch (error) {
