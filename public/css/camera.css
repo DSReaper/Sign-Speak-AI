@@ -62,11 +62,8 @@
   padding: 20px;
 }
 
-/* Desktop fullscreen container height */
-@media (min-width: 481px) {
-  .camera-section.expanded .camera-container {
-    height: calc(100% - 40px);
-  }
+.camera-section.expanded .camera-container {
+  height: calc(100% - 40px);
 }
 
 /* In expanded/fullscreen mode show the whole frame instead of cropping/zooming */
@@ -74,25 +71,22 @@
   overflow: hidden; /* ensure scaled image doesn't create scrollbars */
 }
 
-/* Desktop fullscreen feed sizing */
-@media (min-width: 481px) {
-  .camera-section.expanded #aiCameraFeed {
-    width: auto !important;
-    height: calc(100% - 140px) !important;
-    max-width: 100% !important;
-    object-fit: contain !important;
-    object-position: center center !important;
-    display: block;
-    transform: none;
-    transition:
-      transform 260ms ease,
-      opacity 180ms ease;
-  }
+.camera-section.expanded #aiCameraFeed {
+  width: auto !important;
+  height: calc(100% - 140px) !important;
+  max-width: calc(100% - 160px) !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  display: block;
+  transform: none;
+  transition:
+    transform 260ms ease,
+    opacity 180ms ease;
+}
 
-  .camera-section.expanded .camera-container {
-    padding: 40px !important; /* reduce padding for more space */
-    box-sizing: border-box;
-  }
+.camera-section.expanded .camera-container {
+  padding: 64px !important; /* increase breathing room further */
+  box-sizing: border-box;
 }
 
 /* Adjust controls position in expanded mode */
@@ -181,6 +175,7 @@
 .results-section {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 20px;
+  padding: 25px;
   margin: 0;
   width: 100%;
   min-height: 0;
@@ -192,22 +187,20 @@
   box-sizing: border-box;
   position: relative;
   overflow: hidden;
-  padding: 1em 1.5em;
-  gap: 0.5em;
 }
 
 .results-title {
-  font-size: 1.125em;
+  font-size: 18px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 0.25em;
+  margin-bottom: 20px;
 }
 
 .detected-phrase {
-  font-size: 1em;
+  font-size: 16px;
   color: #333;
-  margin-bottom: 0.5em;
-  padding: 0.75em;
+  margin-bottom: 25px;
+  padding: 15px;
   background: rgba(0, 0, 0, 0.05);
   border-radius: 15px;
   font-style: italic;
@@ -219,21 +212,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75em;
-  margin-top: 0;
+  gap: 20px;
 }
 
 .play-btn {
   display: flex;
   align-items: center;
   justify-content: center; /* center icon + text horizontally */
-  gap: 0.625em;
+  gap: 10px;
   background: #000;
   color: white;
   border: none;
-  padding: 0.75em 1.25em;
+  padding: 12px 20px;
   border-radius: 25px;
-  font-size: 0.875em;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -248,8 +240,8 @@
 .star-btn {
   background: none;
   border: 2px solid #ddd;
-  width: 3em;
-  height: 3em;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -261,8 +253,8 @@
 
 .results-section .audio-controls .star-btn svg,
 .star-btn .star-icon {
-  width: 2.25em !important;
-  height: 2.25em !important;
+  width: 36px !important;
+  height: 36px !important;
 }
 
 .star-btn:hover {
@@ -281,13 +273,13 @@
 .clear-output-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.375em;
+  gap: 6px;
   background: #000; 
   color: #fff;
   border: none;
-  padding: 0.625em 1em;
+  padding: 10px 16px;
   border-radius: 20px;
-  font-size: 0.75em;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   line-height: 1;
@@ -319,14 +311,13 @@
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    gap: 0.5em;
+    gap: 8px;
     width: 100%;
     flex-wrap: nowrap; /* keep on one line */
-    margin-top: 0.5em;
   }
 
   .play-btn {
-    padding: 0.75em 1em;
+    padding: 12px 16px;
     flex: 1 1 auto;
     min-width: 0;
     white-space: normal; /* allow text to be visible */
@@ -339,8 +330,8 @@
 
   .star-btn {
     flex: 0 0 auto;
-    width: 3em;
-    height: 3em;
+    width: 48px;
+    height: 48px;
   }
 
   .clear-output-btn span {
@@ -348,23 +339,23 @@
   }
   .clear-output-btn {
     padding: 0;
-    width: 3em;
-    height: 3em;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
   }
   .clear-output-btn svg {
-    width: 1.25em;
-    height: 1.25em;
+    width: 20px;
+    height: 20px;
   }
 }
 
 /* Responsive Design */
 @media (max-width: 480px) {
   /* Camera page: fit everything above the fixed bottom nav */
-  .camera-results-container {
+  .container.camera-page {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -375,18 +366,21 @@
     padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px) !important;
   }
 
-  /* Mobile uses the same proportional system as desktop, just with min-height for safety */
-  .page-camera .camera-results-container .camera-section {
-    min-height: 40vh; /* ensure a reasonable camera viewport but allow flex growth */
+  .container.camera-page .camera-section {
+    /* Allocate most of the space to the camera, but keep results visible */
+    flex: 1 1 auto;
+    min-height: 40vh; /* ensure a reasonable camera viewport but leave room for results */
+    margin-bottom: 8px;
   }
 
-  .camera-results-container .camera-container {
+  .container.camera-page .camera-container {
     height: auto;
     min-height: 0;
   }
 
-  .camera-results-container .results-section {
-    padding: 1em;
+  .container.camera-page .results-section {
+    flex: 0 0 auto;
+    padding: 16px;
   }
 
   .container {
@@ -421,13 +415,13 @@
 
   /* Tighten spacing and fonts so results remain visible without overlap */
   .results-title {
-    margin-bottom: 0.5em;
-    font-size: 0.9375em;
+    margin-bottom: 12px;
+    font-size: 15px;
   }
   .detected-phrase {
-    margin-bottom: 0.5em;
-    font-size: 0.875em;
-    padding: 0.5em;
+    margin-bottom: 12px;
+    font-size: 14px;
+    padding: 10px;
   }
 
   .detection-box {
@@ -442,52 +436,55 @@
   }
 
   .results-section {
-    padding: 0.75em;
+    padding: 20px;
   }
 
   .results-title {
-    font-size: 1em;
+    font-size: 16px;
   }
 
   .detected-phrase {
-    font-size: 0.9375em;
-    padding: 0.5em;
+    font-size: 15px;
+    padding: 12px;
   }
 
   /* Note: keep audio controls in a single row on mobile (see mobile block above) */
 }
 
-/* Desktop: single-line layout; clear output next to save button */
+/* Desktop: two-line layout; clear output on its own line below */
 @media (min-width: 769px) {
   .audio-controls {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: center;
-    gap: 1.25em; /* consistent gap between all buttons */
+    gap: 12px 16px; /* row gap, column gap */
+  }
+  /* Force a line break between the first-row controls (Play/Star) and Clear button */
+  .audio-controls::after {
+    content: "";
+    order: 2;
+    flex-basis: 100%; /* creates a new row */
+    width: 0; /* no visual width, just a break */
   }
 
-  /* Keep Clear button on same line as other controls */
+  /* Keep Clear on its own line below, centered, and same size as Play */
   .audio-controls .clear-output-btn {
+    order: 3;              /* appear after the line-break */
     flex: 0 0 auto;        /* don't stretch */
     width: auto;           
     align-self: center;
     justify-content: center;
     text-align: center;
     /* Match Play button sizing */
-    padding: 0.75em 1.25em;
-    font-size: 0.875em;
+    padding: 12px 20px;
+    font-size: 14px;
     border-radius: 25px;
   }
-
 }
 
 /* Fullscreen mode adjustments */
 @media (max-width: 480px) {
   .camera-section.expanded {
-    padding: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: 100vw !important;
-    max-height: 100vh !important;
+    padding: 0;
   }
 
   .camera-section.expanded .camera-controls {
@@ -499,22 +496,13 @@
   /* Maximize camera view on mobile when expanded */
   .camera-section.expanded .camera-container {
     padding: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
   }
 
   .camera-section.expanded #aiCameraFeed {
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: 100vw !important;
-    max-height: 100vh !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
     object-fit: contain !important;
-    object-position: center center !important;
-  }
-  
-  /* Override desktop fullscreen height restrictions on mobile */
-  .camera-section.expanded .camera-container {
-    height: 100vh !important;
   }
 }
 
@@ -744,7 +732,7 @@
 }
 
 /* Camera page layout: fill viewport above fixed bottom nav and proportionally divide space */
-.page-camera .camera-results-container {
+.page-camera .container.camera-page {
   /* Fill exactly what's available above the fixed nav */
   height: calc(100dvh - var(--nav-total-height));
   display: flex;
@@ -756,23 +744,53 @@
   --camera-vgap: 10px;
 }
 
-/* Proportional heights: camera gets 85%, results 15% across all sizes */
-.page-camera .camera-results-container .camera-section {
-  /* Proportional layout: grow/shrink ratio 85 */
-  flex: 75 1 0%;
+/* Proportional heights: camera gets 65%, results 35% across all sizes */
+.page-camera .container.camera-page .camera-section {
+  /* Proportional layout: grow/shrink ratio 65 */
+  flex: 65 1 0%;
   min-height: 0; /* allow shrinking to avoid overflow */
 }
-.page-camera .camera-results-container .camera-container {
+.page-camera .container.camera-page .camera-container {
   min-height: 0; /* ensure the video can shrink */
 }
-.page-camera .camera-results-container .results-section {
-  flex: 25 1 0%;
+.page-camera .container.camera-page .results-section {
+  /* Proportional layout: grow/shrink ratio 35 */
+  flex: 35 1 0%;
   min-height: 0;
   overflow: hidden;
-  /* Reduced spacing above and below results */
-  margin: 5px 0;
+  /* Equal spacing above and below results */
+  margin: var(--camera-vgap) 0;
 }
 
+/* Make camera slightly larger on wider screens */
+@media (min-width: 1024px) {
+  .page-camera .container.camera-page {
+    /* a touch more vertical spacing between camera and results */
+    --camera-vgap: 14px;
+  }
+  .page-camera .container.camera-page .camera-section {
+    /* Increase camera share from 65% to 72% */
+    flex: 72 1 0%;
+  }
+  .page-camera .container.camera-page .results-section {
+    /* Decrease results share accordingly */
+    flex: 28 1 0%;
+  }
+}
+
+/* Even larger camera on very wide desktops */
+@media (min-width: 1440px) {
+  .page-camera .container.camera-page {
+    --camera-vgap: 16px;
+  }
+  .page-camera .container.camera-page .camera-section {
+    /* Nudge camera to 78% for big screens */
+    flex: 78 1 0%;
+  }
+  .page-camera .container.camera-page .results-section {
+    flex: 22 1 0%;
+  }
+}
 
 /* Dark theme overrides (match 404: black bg, dark surfaces) */
 [data-theme="dark"] .app-grid {

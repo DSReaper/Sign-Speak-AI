@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Speak - AI | Detection</title>
-    <%- include('partials/theme') %>
     <link rel="stylesheet" href="/css/style.css">
     <script>
         // Pass user-specific data to JavaScript
@@ -14,11 +13,11 @@
         };
     </script>
 </head>
-<body class="page-camera">
+<body>
     <div class="app-grid">
         <!-- Main Content (90%) -->
         <div class="main-content">
-            <div class="camera-results-container">
+            <div class="container">
                 <!-- Camera Response Modal -->
                 <div id="responseModal" class="camera-modal">
                     <div class="camera-modal-content">
@@ -32,6 +31,10 @@
                 <div class="camera-section" id="cameraSection">
                     <div class="camera-container" style="position: relative;">
                         <div class="camera-controls">
+                            <div class="detection-mode">
+                                <button class="mode-btn active" id="motionMode">Motion</button>
+                                <button class="mode-btn" id="alphabetMode">Alphabet</button>
+                            </div>
                             <div class="camera-options">
                                 <button class="option-btn" id="toggleHands" style="visibility: hidden;"></button>
                                 <button class="option-btn" id="resetBuffer" style="visibility: hidden;"></button>
@@ -74,6 +77,16 @@
 
                 <!-- Detection Results -->
                 <div class="results-section">
+                    <button id="clearOutputBtn" class="clear-output-btn" title="Clear output" aria-label="Clear detected output">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                            <path d="M10 11v6" />
+                            <path d="M14 11v6" />
+                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                        </svg>
+                        <span>Clear output</span>
+                    </button>
                     <h2 class="results-title">Detected sign(s):</h2>
                     <div class="detected-phrase" id="detectedPhrase">
                         Loading AI detection model...
@@ -93,16 +106,6 @@
                                              18.18,21.02 12,17.77 5.82,21.02
                                              7,14.14 2,9.27 8.91,8.26"/>
                         </svg>
-                    </button>
-                    <button id="clearOutputBtn" class="clear-output-btn" title="Clear output" aria-label="Clear detected output">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                            <path d="M10 11v6" />
-                            <path d="M14 11v6" />
-                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                        </svg>
-                        <span>Clear output</span>
                     </button>
                 </div>
             </div>

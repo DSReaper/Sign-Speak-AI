@@ -71,7 +71,7 @@
     let raw = '';
 
     // 1. Storage page context: inside a .storage-phrase-item
-  const storageItem = btn.closest('.storage-phrase-item');
+    const storageItem = btn.closest('.storage-phrase-item');
     if (storageItem){
       const textSpan = storageItem.querySelector('.storage-phrase-text');
       if (textSpan){
@@ -88,53 +88,23 @@
     }
 
     if (!raw || PLACEHOLDER_TEXTS.includes(raw)){
-      try { console.warn('[TTS] No phrase available or placeholder text:', raw); } catch(_) {}
       alert('No phrase available to speak yet.');
       return;
     }
 
     setButtonPlayingState(btn);
     try {
-      // Load user TTS settings from localStorage
-      let settings = {};
-      try {
-        const savedSettings = localStorage.getItem('appSettings');
-        settings = savedSettings ? JSON.parse(savedSettings) : {};
-      } catch (e) {
-        // ignore
-      }
-      
-      // Validate and prepare TTS request with user preferences
-      const voiceGender = (settings.voiceGender === 'male') ? 'male' : 'female';
-      const rate = (typeof settings.rate === 'number' && settings.rate >= 0.5 && settings.rate <= 2.0) 
-                   ? settings.rate : 1.0;
-      
-      const requestBody = {
-        text: raw,
-        voiceGender: voiceGender,
-        rate: rate
-      };
-      
-      // Include auth if available to ensure server accepts and applies settings
-      let headers = { 'Content-Type': 'application/json' };
-      try {
-        const token = localStorage.getItem('token');
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-      } catch(_) {}
-
       const resp = await fetch('/tts', {
         method: 'POST',
-        headers,
-        credentials: 'same-origin',
-        body: JSON.stringify(requestBody)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: raw })
       });
       if (!resp.ok){
         let errText = 'TTS request failed';
-        try { const j = await resp.json(); errText = j.error || errText; } catch (e) {}
+        try { const j = await resp.json(); errText = j.error || errText; } catch {}
         throw new Error(errText);
       }
       const blob = await resp.blob();
-      // Client-side debug logs removed by request
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       audio.addEventListener('ended', () => {

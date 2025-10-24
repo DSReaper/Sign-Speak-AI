@@ -63,23 +63,10 @@ def choose_sentence(sessions: List[Dict[str, Any]]) -> str:
 # ----------------------------------------------------------------------
 # Speech
 # ----------------------------------------------------------------------
-def configure_engine(engine, voice_pref: str, rate: int, volume: float, debug: bool = False):
+def configure_engine(engine, voice_pref: str, rate: int, volume: float):
     engine.setProperty("rate", rate)
     engine.setProperty("volume", volume)
 
-    selected_voice = None
-    available_voices = []
-    try:
-        for v in engine.getProperty('voices'):
-            available_voices.append({
-                'id': getattr(v, 'id', ''),
-                'name': getattr(v, 'name', ''),
-                'gender': getattr(v, 'gender', ''),
-                'age': getattr(v, 'age', ''),
-                'languages': getattr(v, 'languages', [])
-            })
-    except Exception:
-        pass
     if voice_pref:
         pref = voice_pref.lower()
         female_keywords = {"female", "zira", "aria", "samantha", "ava", "jenny"}
@@ -88,41 +75,26 @@ def configure_engine(engine, voice_pref: str, rate: int, volume: float, debug: b
             name_lower = v.name.lower()
             gender = getattr(v, 'gender', '').lower()
             if pref.startswith('f'):
-                if any(k in name_lower for k in female_keywords) or gender == 'female':
+                if any(k in name_lower for k in female_keywords) or 'female' in gender:
                     engine.setProperty('voice', v.id)
-                    selected_voice = v
                     break
             elif pref.startswith('m'):
-                if any(k in name_lower for k in male_keywords) or gender == 'male':
+                if any(k in name_lower for k in male_keywords) or 'male' in gender:
                     engine.setProperty('voice', v.id)
-                    selected_voice = v
                     break
-    # Fallback to current default if nothing selected
-    if debug:
-        try:
-            v = selected_voice or engine.getProperty('voice')
-            # engine.getProperty('voice') may return ID not object
-            sys.stderr.write(f"[py][TTS] rate={rate} vol={volume} pref={voice_pref} selected={getattr(selected_voice,'name',str(v))}\n")
-            # Print a brief voice inventory to help diagnose gender selection
-            if available_voices:
-                sys.stderr.write("[py][TTS] voices available (showing up to 10):\n")
-                for i, info in enumerate(available_voices[:10]):
-                    sys.stderr.write(f"  - name='{info['name']}' gender='{info['gender']}' id='{info['id']}'\n")
-        except Exception as e:
-            sys.stderr.write(f"[py][TTS] voice log error: {e}\n")
 
-def speak(text: str, debug: bool = False):
+def speak(text: str):
     import pyttsx3
     engine = pyttsx3.init()
-    configure_engine(engine, 'female', 160, 0.9, debug)
+    configure_engine(engine, 'female', 160, 0.9)
     engine.say(text)
     engine.runAndWait()
 
-def synth_to_file(text: str, out_path: Path, voice: str, rate: int, volume: float, debug: bool = False) -> Path:
+def synth_to_file(text: str, out_path: Path, voice: str, rate: int, volume: float) -> Path:
     import pyttsx3
     out_path.parent.mkdir(parents=True, exist_ok=True)
     engine = pyttsx3.init()
-    configure_engine(engine, voice, rate, volume, debug)
+    configure_engine(engine, voice, rate, volume)
     engine.save_to_file(text, str(out_path))
     engine.runAndWait()  # ensure file is written
     return out_path
@@ -154,7 +126,6 @@ if __name__ == "__main__":
     parser.add_argument('--rate', type=int, default=160, help='Speech rate (default 160).')
     parser.add_argument('--volume', type=float, default=0.9, help='Volume 0..1 (default 0.9).')
     parser.add_argument('--hash-name', action='store_true', help='Derive filename from SHA256(text). Overrides --out basename.')
-    parser.add_argument('--debug', action='store_true', help='Enable verbose debug logging to stderr.')
     args = parser.parse_args()
 
     if not args.text:
@@ -182,16 +153,9 @@ if __name__ == "__main__":
 
     start = time.time()
     try:
-        if args.debug:
-            sys.stderr.write('[py][TTS] args ' + json.dumps({
-                'text_len': len(text), 'out': str(out_path), 'voice': args.voice,
-                'rate': args.rate, 'volume': args.volume
-            }) + "\n")
-        synth_to_file(text, out_path, args.voice, args.rate, args.volume, args.debug)
+        synth_to_file(text, out_path, args.voice, args.rate, args.volume)
         size = out_path.stat().st_size if out_path.exists() else 0
         elapsed = int((time.time() - start) * 1000)
-        if args.debug:
-            sys.stderr.write(f"[py][TTS] wrote file bytes={size} in {elapsed}ms\n")
         print(json.dumps({
             "ok": True,
             "path": str(out_path),
@@ -200,6 +164,5 @@ if __name__ == "__main__":
         }))
         sys.exit(0)
     except Exception as e:
-        sys.stderr.write(f"[py][TTS] error: {e}\n")
         print(json.dumps({"ok": False, "error": str(e)}))
         sys.exit(2)
