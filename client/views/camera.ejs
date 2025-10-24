@@ -6,6 +6,13 @@
     <title>Sign Speak - AI | Detection</title>
     <%- include('partials/theme') %>
     <link rel="stylesheet" href="/css/style.css">
+    <script>
+        // Pass user-specific data to JavaScript
+        window.userConfig = {
+            userId: '<%= userId %>',
+            userToken: '<%= userToken %>'
+        };
+    </script>
 </head>
 <body class="page-camera">
     <div class="app-grid">
@@ -101,34 +108,7 @@
             </div>
         </div>
 
-        <script>
-          document.getElementById('starBtn').addEventListener('click', async () => {
-            const phrase = document.getElementById('detectedPhrase').textContent.trim();
-            if (!phrase || phrase === 'Loading AI detection model...') {
-              alert('No phrase detected to save.');
-              return;
-            }
 
-            try {
-              const response = await fetch('/translate/phrase', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ text: phrase })
-              });
-
-              if (response.ok) {
-                alert('Phrase saved successfully.');
-              } else {
-                const data = await response.json();
-                alert('Error saving phrase: ' + (data.message || 'Unknown error'));
-              }
-            } catch (error) {
-              alert('Network error: ' + error.message);
-            }
-          });
-        </script>
 
         <!-- Navigation Footer (10%) -->
         <div class="nav-wrapper">

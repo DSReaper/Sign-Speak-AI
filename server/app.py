@@ -26,7 +26,6 @@ from queue import Queue, Empty
 from datetime import datetime
 import timm
 import glob
-import joblib
 
 # Suppress MediaPipe verbose logging
 os.environ['GLOG_minloglevel'] = '2'
@@ -46,9 +45,6 @@ CORS(app)  # Enable CORS for Node.js integration
 
 # Global variables
 detector = None
-alphabet_detector = None  # Hand landmark model for alphabet mode
-current_model_mode = 'motion'  # 'motion' or 'alphabet'
-model_mode_lock = threading.Lock()
 current_prediction = "Loading the AI detection model..."
 current_confidence = 0.0
 # Grammar / sentence construction session state
@@ -155,120 +151,6 @@ class CNNLSTMModel(nn.Module):
         
         return x
 
-
-
-# ============================================================================
-# HAND LANDMARK MODEL (ALPHABET MODE)
-# ============================================================================
-
-class HandGestureRecognizer:
-    """Hand landmark-based gesture recognition for alphabet mode (single-frame)."""
-    
-    def __init__(self, model_dir):
-        """
-        Initialize the recognizer with a trained hand landmark model.
-        
-        Args:
-            model_dir: Directory containing the trained model files
-        """
-        print(f"Loading alphabet model from: {model_dir}")
-        
-        # Load model components
-        self.model = joblib.load(f"{model_dir}/random_forest_model.joblib")
-        self.scaler = joblib.load(f"{model_dir}/scaler.joblib")
-        self.label_encoder = joblib.load(f"{model_dir}/label_encoder.joblib")
-        
-        print(f"Alphabet model loaded successfully!")
-        print(f"Recognizing {len(self.label_encoder.classes_)} gestures: {', '.join(self.label_encoder.classes_)}")
-        
-        # Initialize MediaPipe Hands
-        self.mp_hands = mp.solutions.hands
-        self.hands = self.mp_hands.Hands(
-            static_image_mode=False,
-            max_num_hands=2,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
-        )
-        
-        # For smoothing predictions
-        self.prediction_history = deque(maxlen=5)
-        
-        # Check model input size
-        expected_features = self.scaler.n_features_in_
-        self.two_hand_mode = (expected_features == 126)
-        
-        if self.two_hand_mode:
-            print("✓ Alphabet model supports TWO-HAND gestures (left + right)")
-        else:
-            print("✓ Alphabet model uses SINGLE-HAND format")
-        
-    def extract_landmarks(self, hand_landmarks):
-        """Extract landmark coordinates from MediaPipe hand landmarks."""
-        landmarks = []
-        for landmark in hand_landmarks.landmark:
-            landmarks.extend([landmark.x, landmark.y, landmark.z])
-        return np.array(landmarks)
-    
-    def predict_from_frame(self, frame):
-        """
-        Predict gesture from a single frame (no buffering).
-        
-        Args:
-            frame: OpenCV BGR image
-            
-        Returns:
-            predicted_class: Predicted gesture class (or None)
-            confidence: Prediction confidence
-        """
-        # Convert to RGB for MediaPipe
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.hands.process(rgb_frame)
-        
-        if not results.multi_hand_landmarks:
-            return None, 0.0
-        
-        # Collect hand data
-        hands_data = {}
-        for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
-            hand_label = handedness.classification[0].label.lower()
-            hands_data[hand_label] = self.extract_landmarks(hand_landmarks)
-        
-        # Prepare feature vector
-        if self.two_hand_mode:
-            left_landmarks = hands_data.get('left', np.zeros(63))
-            right_landmarks = hands_data.get('right', np.zeros(63))
-            features = np.concatenate([left_landmarks, right_landmarks]).reshape(1, -1)
-        else:
-            if 'left' in hands_data:
-                features = hands_data['left'].reshape(1, -1)
-            elif 'right' in hands_data:
-                features = hands_data['right'].reshape(1, -1)
-            else:
-                return None, 0.0
-        
-        # Scale and predict
-        features_scaled = self.scaler.transform(features)
-        prediction = self.model.predict(features_scaled)
-        probabilities = self.model.predict_proba(features_scaled)[0]
-        
-        predicted_class = self.label_encoder.inverse_transform(prediction)[0]
-        confidence = np.max(probabilities)
-        
-        # Add to history for smoothing
-        self.prediction_history.append(predicted_class)
-        
-        # Use most common prediction in recent history
-        if len(self.prediction_history) >= 3:
-            from collections import Counter
-            smoothed_prediction = Counter(self.prediction_history).most_common(1)[0][0]
-            return smoothed_prediction, confidence
-        
-        return predicted_class, confidence
-    
-    def cleanup(self):
-        """Clean up resources"""
-        if hasattr(self, 'hands') and self.hands:
-            self.hands.close()
 
 
 # ============================================================================
@@ -608,90 +490,16 @@ def load_model_and_classes():
         return None, None
 
 
-def find_latest_hand_landmark_model(base_dir="models"):
-    """
-    Find the most recent hand landmark model directory for alphabet mode.
-    
-    Args:
-        base_dir: Base directory to search for models
-        
-    Returns:
-        Path to the latest hand landmark model directory, or None if not found
-    """
-    pattern = os.path.join(current_dir, base_dir, "hand_landmark_model_*")
-    model_dirs = glob.glob(pattern)
-    
-    if not model_dirs:
-        return None
-    
-    # Sort by directory name (which includes timestamp) and get the latest
-    model_dirs.sort(reverse=True)
-    return model_dirs[0]
 
-
-def load_alphabet_model():
-    """Load the hand landmark model for alphabet mode"""
-    
-    # Find the latest hand landmark model
-    model_path = find_latest_hand_landmark_model()
-    if model_path is None:
-        print("Warning: No hand landmark model found for alphabet mode")
-        print("Alphabet mode will be disabled")
-        return None
-    
-    print(f"Using alphabet model: {os.path.basename(model_path)}")
-    
-    try:
-        # Check if required files exist
-        required_files = ['random_forest_model.joblib', 'scaler.joblib', 'label_encoder.joblib']
-        for fname in required_files:
-            fpath = os.path.join(model_path, fname)
-            if not os.path.exists(fpath):
-                print(f"Error: Required file not found: {fname}")
-                return None
-        
-        # Initialize the recognizer
-        recognizer = HandGestureRecognizer(model_path)
-        print("Alphabet model loaded and ready")
-        return recognizer
-        
-    except Exception as e:
-        print(f"ERROR: Failed to load alphabet model: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
-
-
-
-# Initialize models and detectors
-print("="*60)
-print("Loading SASL AI Models...")
-print("="*60)
-
-# Load motion model (CNN-LSTM)
-print("\n[1/2] Loading Motion Model (CNN-LSTM)...")
+# Initialize model and detector
+print("Loading SASL AI Model...")
 model, class_names = load_model_and_classes()
 if model is None or class_names is None:
-    print("Failed to load motion model. Motion mode will be disabled.")
+    print("Failed to load model or class names. AI features will be disabled.")
     detector = None
 else:
     # Use a 30-frame buffer to align with typical training sequence length
     detector = WebGestureDetector(model, device, class_names, buffer_size=30)
-    print("✓ Motion model loaded successfully")
-
-# Load alphabet model (Hand Landmarks)
-print("\n[2/2] Loading Alphabet Model (Hand Landmarks)...")
-alphabet_detector = load_alphabet_model()
-if alphabet_detector:
-    print("✓ Alphabet model loaded successfully")
-else:
-    print("⚠ Alphabet model not available")
-
-print("\n" + "="*60)
-print("Model Loading Complete")
-print(f"Motion Mode: {'Available' if detector else 'Disabled'}")
-print(f"Alphabet Mode: {'Available' if alphabet_detector else 'Disabled'}")
-print("="*60 + "\n")
 
 # ============================================================================
 # VIDEO STREAMING
@@ -808,55 +616,6 @@ def draw_overlays(frame):
 
 # Clients send frames over the WebSocket for detection and receive JSON responses.
 
-@app.route('/switch_mode', methods=['POST'])
-def switch_mode():
-    """Switch between motion and alphabet detection modes"""
-    global current_model_mode, detector, alphabet_detector
-    global recognized_words, last_display_word, last_display_start, last_committed_word
-    
-    try:
-        data = request.get_json()
-        mode = data.get('mode', 'motion')
-        
-        if mode not in ['motion', 'alphabet']:
-            return jsonify({'status': 'error', 'message': 'Invalid mode. Use "motion" or "alphabet"'}), 400
-        
-        with model_mode_lock:
-            # Check if requested model is available
-            if mode == 'motion' and detector is None:
-                return jsonify({'status': 'error', 'message': 'Motion model not available'}), 503
-            if mode == 'alphabet' and alphabet_detector is None:
-                return jsonify({'status': 'error', 'message': 'Alphabet model not available'}), 503
-            
-            # Clear any buffered state when switching modes
-            if mode == 'motion' and detector:
-                with detector_lock:
-                    detector.frame_buffer.clear()
-                    detector.prediction_history.clear()
-            elif mode == 'alphabet' and alphabet_detector:
-                alphabet_detector.prediction_history.clear()
-            
-            # Reset sentence construction state
-            recognized_words = []
-            last_display_word = None
-            last_display_start = None
-            last_committed_word = None
-            
-            # Switch mode
-            old_mode = current_model_mode
-            current_model_mode = mode
-            
-            print(f"Switched from {old_mode} mode to {mode} mode")
-            
-            return jsonify({
-                'status': 'success',
-                'mode': current_model_mode,
-                'message': f'Switched to {mode} mode'
-            })
-    except Exception as e:
-        print(f"Error switching mode: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
 # The frontend captures frames and sends them to the WebSocket server.
 
 @app.route('/toggle_hands', methods=['POST'])
@@ -893,9 +652,6 @@ def status():
     return jsonify({
         'prediction': current_prediction,
         'confidence': current_confidence,
-        'mode': current_model_mode,
-        'motion_available': detector is not None,
-        'alphabet_available': alphabet_detector is not None,
         'show_hands': show_hands,
         'show_server_overlays': show_server_overlays,
         'buffer_ready': detector.is_buffer_ready() if detector else False,
@@ -1001,64 +757,10 @@ async def ws_handler(websocket):
                     # Enqueue the frame for background processing; return quickly
                     worker.push_frame(message)
                 else:
-                    # Text messages for mode switching or commands
-                    try:
-                        cmd = json.loads(message)
-                        print(f"WS: Received command: {cmd}")
-                        
-                        if cmd.get('action') == 'switch_mode':
-                            new_mode = cmd.get('mode', 'motion')
-                            print(f"WS: Mode switch request to: {new_mode}")
-                            
-                            if new_mode in ['motion', 'alphabet']:
-                                with model_mode_lock:
-                                    global current_model_mode, recognized_words
-                                    global last_display_word, last_display_start, last_committed_word
-                                    
-                                    # Check availability
-                                    if new_mode == 'motion' and detector is None:
-                                        error_msg = json.dumps({'error': 'Motion model not available', 'status': 'error'})
-                                        print(f"WS: {error_msg}")
-                                        await websocket.send(error_msg)
-                                    elif new_mode == 'alphabet' and alphabet_detector is None:
-                                        error_msg = json.dumps({'error': 'Alphabet model not available', 'status': 'error'})
-                                        print(f"WS: {error_msg}")
-                                        await websocket.send(error_msg)
-                                    else:
-                                        # Clear state
-                                        if new_mode == 'motion' and detector:
-                                            with detector_lock:
-                                                detector.frame_buffer.clear()
-                                                detector.prediction_history.clear()
-                                        elif new_mode == 'alphabet' and alphabet_detector:
-                                            alphabet_detector.prediction_history.clear()
-                                        
-                                        recognized_words = []
-                                        last_display_word = None
-                                        last_display_start = None
-                                        last_committed_word = None
-                                        
-                                        old_mode = current_model_mode
-                                        current_model_mode = new_mode
-                                        print(f"WS: Successfully switched from {old_mode} to {new_mode} mode")
-                                        
-                                        success_msg = json.dumps({
-                                            'status': 'success',
-                                            'mode': current_model_mode
-                                        })
-                                        print(f"WS: Sending response: {success_msg}")
-                                        await websocket.send(success_msg)
-                            else:
-                                error_msg = json.dumps({'error': 'Invalid mode', 'status': 'error'})
-                                print(f"WS: {error_msg}")
-                                await websocket.send(error_msg)
-                        else:
-                            print(f"WS: Unknown command, sending OK")
-                            await websocket.send('OK')
-                    except json.JSONDecodeError as e:
-                        text_preview = str(message)[:200]
-                        print(f"WS: JSON decode error: {e}, message: {text_preview}")
-                        await websocket.send('OK')
+                    # Text messages (log content up to 200 chars)
+                    text_preview = str(message)[:200]
+                    print(f"WS: received text message: {text_preview}")
+                    await websocket.send('OK')
             except websockets.exceptions.ConnectionClosed:
                 print(f"WS loop connection closed while handling message from {websocket.remote_address}")
                 break
@@ -1096,22 +798,20 @@ def process_frame_bytes_sync(frame_bytes):
 
     This version treats incoming frames from the web client as the primary
     input and returns a JSON-serializable dict containing prediction metadata.
-    Supports both motion mode (CNN-LSTM with buffering) and alphabet mode (single-frame).
 
     Returns:
-    - dict with keys: 'prediction' (str or None), 'confidence' (float), 'mode' (str)
+    - dict with keys: 'prediction' (str or None), 'confidence' (float)
     """
     # Ensure globals are declared before any reference within this function
     global current_prediction, current_confidence
     global last_display_word, last_display_start, last_committed_word
-    global recognized_words, current_model_mode
+    global recognized_words
   # The json object that will be sent back to the client
     result = {
         'prediction': None,
         'confidence': 0.0,
         'committed_words': [],
         'sentence': "",
-        'mode': current_model_mode,
     }
 
     try:
@@ -1122,9 +822,6 @@ def process_frame_bytes_sync(frame_bytes):
             print("process_frame_bytes_sync: cv2.imdecode failed for incoming frame")
             return result
 
-        # Mirror the frame horizontally to match user perspective
-        img = cv2.flip(img, 1)
-
         # optional debug metric
         try:
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -1132,124 +829,70 @@ def process_frame_bytes_sync(frame_bytes):
         except Exception:
             mean_brightness = -1.0
 
-        # Process frame based on current mode
-        with model_mode_lock:
-            mode = current_model_mode
-        
-        # Debug: log mode every 30 frames
-        global frame_count
-        if frame_count % 30 == 0:
-            print(f"[FRAME] Processing in {mode.upper()} mode (frame {frame_count})")
-        
-        if mode == 'alphabet':
-            # ALPHABET MODE: Single-frame prediction with hand landmark model
-            if alphabet_detector is None:
-                result['prediction'] = "Alphabet model not loaded"
-                return result
-            
-            try:
-                pred, conf = alphabet_detector.predict_from_frame(img)
-                if pred:
-                    print(f"[ALPHABET] Detected: {pred} (confidence: {conf:.3f})")
-                    # update shared state
-                    current_prediction = pred
-                    current_confidence = conf
-                    result['prediction'] = pred
-                    result['confidence'] = float(conf)
-                    # Hold-to-commit logic (time based)
-                    now = time.monotonic()
-                    if pred != last_display_word:
-                        last_display_word = pred
-                        last_display_start = now
-                    shown_for = 0.0 if last_display_start is None else (now - last_display_start)
-                    if shown_for >= COMMIT_SECONDS and pred != last_committed_word:
-                        recognized_words.append({
-                            'text': pred,
-                            'confidence': float(conf),
-                            't_utc': datetime.utcnow().isoformat() + 'Z'
-                        })
-                        last_committed_word = pred
-                    # Compute sentence
-                    committed = [w['text'] for w in recognized_words]
-                    sentence = grammar_fix(committed)
-                    result['committed_words'] = committed
-                    result['sentence'] = sentence
-                else:
-                    # No hands detected
-                    committed = [w['text'] for w in recognized_words]
-                    result['committed_words'] = committed
-                    result['sentence'] = grammar_fix(committed)
-            except Exception as e:
-                print(f"Alphabet mode prediction error: {e}")
-                committed = [w['text'] for w in recognized_words]
-                result['committed_words'] = committed
-                result['sentence'] = grammar_fix(committed)
-        
-        else:
-            # MOTION MODE: Multi-frame buffering with CNN-LSTM model
-            if detector is None:
-                result['prediction'] = "Motion model not loaded"
-                return result
+        # Interact with the detector under a lock to ensure thread-safety
+        if detector is None:
+            return result
 
-            try:
-                with detector_lock:
-                    # Server-side hand gate: skip buffering/prediction if no hands are present
+        try:
+            with detector_lock:
+                # Server-side hand gate: skip buffering/prediction if no hands are present
+                try:
+                    hands_present = False
                     try:
-                        hands_present = False
-                        try:
-                            hands_info = detector.get_hand_overlay_info(img)
-                            hands_present = bool(hands_info)
-                        except Exception:
-                            hands_present = False
-                        if not hands_present:
-                            # No hands detected; do not add frame to buffer or attempt prediction
-                            # Still return current committed sentence if any.
-                            committed = [w['text'] for w in recognized_words]
-                            result['committed_words'] = committed
-                            result['sentence'] = grammar_fix(committed)
-                            return result
+                        hands_info = detector.get_hand_overlay_info(img)
+                        hands_present = bool(hands_info)
                     except Exception:
-                        # If hand detection fails for any reason, fall back to processing
-                        pass
+                        hands_present = False
+                    if not hands_present:
+                        # No hands detected; do not add frame to buffer or attempt prediction
+                        # Still return current committed sentence if any.
+                        committed = [w['text'] for w in recognized_words]
+                        result['committed_words'] = committed
+                        result['sentence'] = grammar_fix(committed)
+                        return result
+                except Exception:
+                    # If hand detection fails for any reason, fall back to processing
+                    pass
 
-                    detector.add_frame(img)
-                    if detector.is_buffer_ready():
-                        pred, conf = detector.predict_gesture()
-                        if pred:
-                            print(f"[MOTION] Detected: {pred} (confidence: {conf:.3f})")
-                            # update shared state
-                            current_prediction = pred
-                            current_confidence = conf
-                            result['prediction'] = pred
-                            result['confidence'] = float(conf)
-                            # Hold-to-commit logic (time based)
-                            now = time.monotonic()
-                            if pred != last_display_word:
-                                last_display_word = pred
-                                last_display_start = now
-                            shown_for = 0.0 if last_display_start is None else (now - last_display_start)
-                            if shown_for >= COMMIT_SECONDS and pred != last_committed_word:
-                                recognized_words.append({
-                                    'text': pred,
-                                    'confidence': float(conf),
-                                    't_utc': datetime.utcnow().isoformat() + 'Z'
-                                })
-                                last_committed_word = pred
-                                # Persist session JSON snapshot on each new committed word
-                            committed = [w['text'] for w in recognized_words]
-                            sentence = grammar_fix(committed)
-                            result['committed_words'] = committed
-                            result['sentence'] = sentence
-                    # Even if no commit, still compute up-to-date sentence for UI (non-invasive)
-                    if not result['sentence']:
-                        try:
-                            committed = [w['text'] for w in recognized_words]
-                            result['committed_words'] = committed
-                            result['sentence'] = grammar_fix(committed)
-                        except Exception:
-                            pass
-            except Exception as e:
-                print(f"Motion mode prediction error: {e}")
+                detector.add_frame(img)
+                if detector.is_buffer_ready():
+                    pred, conf = detector.predict_gesture()
+                    if pred:
+                        # update shared state
+                        current_prediction = pred
+                        current_confidence = conf
+                        result['prediction'] = pred
+                        result['confidence'] = float(conf)
+                        # Hold-to-commit logic (time based)
+                        now = time.monotonic()
+                        if pred != last_display_word:
+                            last_display_word = pred
+                            last_display_start = now
+                        shown_for = 0.0 if last_display_start is None else (now - last_display_start)
+                        if shown_for >= COMMIT_SECONDS and pred != last_committed_word:
+                            recognized_words.append({
+                                'text': pred,
+                                'confidence': float(conf),
+                                't_utc': datetime.utcnow().isoformat() + 'Z'
+                            })
+                            last_committed_word = pred
+                            # Persist session JSON snapshot on each new committed word
+                        committed = [w['text'] for w in recognized_words]
+                        sentence = grammar_fix(committed)
+                        result['committed_words'] = committed
+                        result['sentence'] = sentence
+                # Even if no commit, still compute up-to-date sentence for UI (non-invasive)
+                if not result['sentence']:
+                    try:
+                        committed = [w['text'] for w in recognized_words]
+                        result['committed_words'] = committed
+                        result['sentence'] = grammar_fix(committed)
+                    except Exception:
+                        pass
+        except Exception as det_e:
+            print(f"Detector processing error: {det_e}")
+            import traceback as _tb
+            _tb.print_exc()
 
         # Draw overlays (kept for internal use / logs) but not returned
         try:
@@ -1265,10 +908,6 @@ def process_frame_bytes_sync(frame_bytes):
                 result['sentence'] = grammar_fix(committed)
             except Exception:
                 pass
-        
-        # Increment frame counter
-        frame_count += 1
-        
         return result
 
     except Exception as e:

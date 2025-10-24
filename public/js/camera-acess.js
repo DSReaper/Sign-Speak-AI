@@ -22,8 +22,6 @@ class AISignLanguageDetection {
 
         this.isExpanded = false;
     this.isAIActive = false;
-        // Model mode ('motion' or 'alphabet')
-        this.currentModelMode = 'motion';
         // performance presets
         this.performanceMode = 'balanced'; // 'quality' | 'balanced' | 'speed'
         this._perfSettings = {
@@ -58,36 +56,7 @@ class AISignLanguageDetection {
     }
 
     initializeEventListeners() {
-        // Model mode switching
-        const motionModeBtn = document.getElementById('motionMode');
-        const alphabetModeBtn = document.getElementById('alphabetMode');
-        
-        console.log('[INIT] Motion button:', motionModeBtn);
-        console.log('[INIT] Alphabet button:', alphabetModeBtn);
-        
-        if (motionModeBtn) {
-            motionModeBtn.addEventListener('click', (e) => {
-                console.log('[CLICK] Motion button clicked', e);
-                e.preventDefault();
-                e.stopPropagation();
-                this.switchModelMode('motion');
-            });
-            console.log('[INIT] Motion button listener attached');
-        } else {
-            console.error('[INIT] Motion button not found!');
-        }
-        
-        if (alphabetModeBtn) {
-            alphabetModeBtn.addEventListener('click', (e) => {
-                console.log('[CLICK] Alphabet button clicked', e);
-                e.preventDefault();
-                e.stopPropagation();
-                this.switchModelMode('alphabet');
-            });
-            console.log('[INIT] Alphabet button listener attached');
-        } else {
-            console.error('[INIT] Alphabet button not found!');
-        }
+        // Single detection mode in use; no mode-switching UI
         
         // AI controls
         document.getElementById('toggleHands').addEventListener('click', () => {
@@ -410,73 +379,11 @@ class AISignLanguageDetection {
         this.ws.onmessage = (evt) => {
             const data = evt.data;
 
-            // If server sends JSON text (prediction metadata or mode switch response)
+            // If server sends JSON text (prediction metadata)
             if (typeof data === 'string') {
                 try {
                     const obj = JSON.parse(data);
-                    console.log('[WS] Received:', obj);  // Debug logging
-                    
-                    // Handle mode switch confirmation
-                    if (obj.status === 'success' && obj.mode) {
-                        console.log(`Successfully switched to ${obj.mode} mode`);
-                        this.currentModelMode = obj.mode;
-                        
-                        // Update UI buttons to reflect the new mode
-                        const motionBtn = document.getElementById('motionMode');
-                        const alphabetBtn = document.getElementById('alphabetMode');
-                        
-                        if (obj.mode === 'motion') {
-                            motionBtn?.classList.add('active');
-                            alphabetBtn?.classList.remove('active');
-                        } else if (obj.mode === 'alphabet') {
-                            alphabetBtn?.classList.add('active');
-                            motionBtn?.classList.remove('active');
-                        }
-                        
-                        // Update display with success message
-                        this.detectedPhrase.style.color = ''; // Reset color
-                        this.detectedPhrase.textContent = `${obj.mode.toUpperCase()} mode active. Waiting for detection...`;
-                        return;
-                    }
-                    
-                    // Handle mode switch or other errors
-                    if (obj.error || (obj.status === 'error' && obj.message)) {
-                        const errorMsg = obj.error || obj.message;
-                        console.error('[WS] Server error:', errorMsg);
-                        
-                        // Display error message to user
-                        this.detectedPhrase.textContent = errorMsg;
-                        this.detectedPhrase.style.color = '#dc3545'; // Red color for error
-                        
-                        // Revert UI buttons to the current (working) mode
-                        const motionBtn = document.getElementById('motionMode');
-                        const alphabetBtn = document.getElementById('alphabetMode');
-                        
-                        if (this.currentModelMode === 'motion') {
-                            motionBtn?.classList.add('active');
-                            alphabetBtn?.classList.remove('active');
-                        } else if (this.currentModelMode === 'alphabet') {
-                            alphabetBtn?.classList.add('active');
-                            motionBtn?.classList.remove('active');
-                        }
-                        
-                        // Clear error message after 3 seconds and restore normal state
-                        setTimeout(() => {
-                            this.detectedPhrase.style.color = ''; // Reset to default color
-                            this.detectedPhrase.textContent = `${this.currentModelMode.toUpperCase()} mode active. Waiting for detection...`;
-                        }, 3000);
-                        return;
-                    }
-                    
-                    // Handle prediction data
-                    // Example server response: { prediction, confidence, committed_words, sentence, mode }
-                    console.log(`[WS] Mode: ${obj.mode}, Prediction: ${obj.prediction}, Sentence: ${obj.sentence}`);
-                    
-                    // Update current mode if provided in prediction response
-                    if (obj.mode && obj.mode !== this.currentModelMode) {
-                        this.currentModelMode = obj.mode;
-                    }
-                    
+                    // Example server response: { prediction, confidence, committed_words, sentence }
                     if (obj.sentence && obj.sentence.trim().length > 0) {
                         // Ensure sentences are wrapped in quotes if not already
                         const sentence = obj.sentence.trim();
@@ -486,6 +393,8 @@ class AISignLanguageDetection {
                     } else if (obj.prediction) {
                         this.updateDetectedPhrase(`"${obj.prediction}"`, obj.committed_words || []);
                         if (this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
+                    } else if (obj.error) {
+                        console.warn('AI server error:', obj.error);
                     }
                 } catch (err) {
                     console.warn('Failed to parse WS text message as JSON', err, evt.data);
@@ -496,7 +405,7 @@ class AISignLanguageDetection {
                 return;
             }
 
-            // Fallback: try to parse as JSON (for backward compatibility)
+            // We expect a JSON string response from the server describing the detected phrase. Parse it and update UI.
             try {
                 const obj = JSON.parse(data);
                 if (obj.sentence && obj.sentence.trim().length > 0) {
@@ -508,6 +417,8 @@ class AISignLanguageDetection {
                 } else if (obj.prediction) {
                     this.updateDetectedPhrase(`"${obj.prediction}"`, obj.committed_words || []);
                     if (this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
+                } else if (obj.error) {
+                    console.warn('AI server error:', obj.error);
                 }
             } catch (err) {
                 console.warn('Failed to parse WS JSON response', err, data);
@@ -849,11 +760,7 @@ class AISignLanguageDetection {
 
             // Draw current decoded frame to the offscreen canvas. This gives us
             // an ImageBitmap-like pixel source we can resize and re-encode.
-            // Mirror the frame horizontally to match user perspective
-            this._ctx.save();
-            this._ctx.scale(-1, 1);
-            this._ctx.drawImage(this._hiddenVideo, -this._canvas.width, 0, this._canvas.width, this._canvas.height);
-            this._ctx.restore();
+            this._ctx.drawImage(this._hiddenVideo, 0, 0, this._canvas.width, this._canvas.height);
 
             // Resize to configured resolution for transfer (bandwidth tradeoff).
             const perfSet = this._perfSettings[this.performanceMode] || this._perfSettings.balanced;
@@ -865,11 +772,7 @@ class AISignLanguageDetection {
                 this._sendCanvas.width = sendWidth;
                 this._sendCanvas.height = sendHeight;
             }
-            // Mirror when copying to send canvas to match user perspective
-            this._sendCtx.save();
-            this._sendCtx.scale(-1, 1);
-            this._sendCtx.drawImage(this._canvas, -sendWidth, 0, sendWidth, sendHeight);
-            this._sendCtx.restore();
+            this._sendCtx.drawImage(this._canvas, 0, 0, sendWidth, sendHeight);
 
             // Encode as JPEG with configured quality. Avoid sending if the WS
             // backend is backed up (bufferedAmount high). This helps prevent
@@ -944,24 +847,6 @@ class AISignLanguageDetection {
     }
 
     updateStatus(data) {
-        // Sync model mode with server if provided
-        if (data.mode && data.mode !== this.currentModelMode) {
-            console.log(`Syncing mode from server: ${data.mode}`);
-            this.currentModelMode = data.mode;
-            
-            // Update UI buttons to reflect server state
-            const motionBtn = document.getElementById('motionMode');
-            const alphabetBtn = document.getElementById('alphabetMode');
-            
-            if (data.mode === 'motion') {
-                motionBtn?.classList.add('active');
-                alphabetBtn?.classList.remove('active');
-            } else if (data.mode === 'alphabet') {
-                alphabetBtn?.classList.add('active');
-                motionBtn?.classList.remove('active');
-            }
-        }
-        
         // Update prediction
         if (data.prediction && data.prediction !== "Waiting...") {
             this.updateDetectedPhrase(`"${data.prediction}"`);
@@ -982,65 +867,6 @@ class AISignLanguageDetection {
             console.log('Hand detection toggled:', data.show_hands);
         } catch (error) {
             console.error('Error toggling hand detection:', error);
-        }
-    }
-
-    switchModelMode(mode) {
-        console.log(`[SWITCH] switchModelMode called with mode: ${mode}`);
-        console.log(`[SWITCH] Current mode: ${this.currentModelMode}`);
-        console.log(`[SWITCH] WebSocket state:`, this.ws ? this.ws.readyState : 'no ws');
-        
-        if (mode === this.currentModelMode) {
-            console.log(`[SWITCH] Already in ${mode} mode`);
-            return; // Already in this mode
-        }
-        
-        console.log(`[SWITCH] Switching from ${this.currentModelMode} to ${mode} mode...`);
-        
-        // Immediately update UI to show visual feedback
-        const motionBtn = document.getElementById('motionMode');
-        const alphabetBtn = document.getElementById('alphabetMode');
-        
-        // Optimistically update button states (will revert if error)
-        if (mode === 'motion') {
-            motionBtn?.classList.add('active');
-            alphabetBtn?.classList.remove('active');
-        } else if (mode === 'alphabet') {
-            alphabetBtn?.classList.add('active');
-            motionBtn?.classList.remove('active');
-        }
-        
-        // Send mode switch command to server via WebSocket
-        // UI will be updated when we receive confirmation from the server
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            const command = {
-                action: 'switch_mode',
-                mode: mode
-            };
-            console.log('[SWITCH] Sending command:', JSON.stringify(command));
-            this.ws.send(JSON.stringify(command));
-            
-            // Show loading state while waiting for server response
-            this.detectedPhrase.textContent = `Switching to ${mode.toUpperCase()} mode...`;
-        } else {
-            console.error('[SWITCH] WebSocket not connected. Cannot switch model mode. State:', this.ws?.readyState);
-            
-            // Revert button states
-            if (this.currentModelMode === 'motion') {
-                motionBtn?.classList.add('active');
-                alphabetBtn?.classList.remove('active');
-            } else if (this.currentModelMode === 'alphabet') {
-                alphabetBtn?.classList.add('active');
-                motionBtn?.classList.remove('active');
-            }
-            
-            this.detectedPhrase.textContent = 'Connection lost. Please refresh.';
-            this.detectedPhrase.style.color = '#dc3545';
-            
-            setTimeout(() => {
-                this.detectedPhrase.style.color = '';
-                this.detectedPhrase.textContent = `${this.currentModelMode.toUpperCase()} mode active. Waiting for detection...`;
-            }, 3000);
         }
     }
 
@@ -1141,7 +967,6 @@ class AISignLanguageDetection {
         this.detectedPhrase.style.opacity = '0.5';
         this.detectedPhrase.style.transform = 'scale(0.95)';
         setTimeout(() => {
-            this.detectedPhrase.style.color = ''; // Reset to default color
             this.detectedPhrase.textContent = phrase;
             this.detectedPhrase.style.opacity = '1';
             this.detectedPhrase.style.transform = 'scale(1)';
