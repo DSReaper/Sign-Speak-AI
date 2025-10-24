@@ -1,0 +1,45 @@
+SASL CNN-Only Training Summary
+==================================================
+
+Training Date: 2025-10-11 20:40:10
+Device Used: cuda
+
+Dataset Information:
+  Classes: 13
+  Class Names: 1, 2, Enjoy, Fine, Happy, How are you, I Love You, I'm Good, Mad, No, Sad, Two Hands, Yes
+  Total Videos: 410
+  Augmentation Factor: 3x
+
+Training Configuration:
+  Epochs: 50
+  Batch Size: 8
+  Learning Rate: 0.001
+  Sequence Length: 30
+  Input Size: (224, 224)
+
+Final Results:
+  Best Validation Accuracy: 98.78%
+  Final Training Accuracy: 98.93%
+  Final Validation Accuracy: 96.34%
+  Epochs Trained: 29
+
+Per-Class Performance:
+  1: Precision=1.000, Recall=0.833, F1=0.909
+  2: Precision=0.857, Recall=1.000, F1=0.923
+  Enjoy: Precision=1.000, Recall=1.000, F1=1.000
+  Fine: Precision=1.000, Recall=1.000, F1=1.000
+  Happy: Precision=1.000, Recall=1.000, F1=1.000
+  How are you: Precision=1.000, Recall=1.000, F1=1.000
+  I Love You: Precision=1.000, Recall=1.000, F1=1.000
+  I'm Good: Precision=1.000, Recall=1.000, F1=1.000
+  Mad: Precision=1.000, Recall=1.000, F1=1.000
+  No: Precision=1.000, Recall=1.000, F1=1.000
+  Sad: Precision=1.000, Recall=1.000, F1=1.000
+  Two Hands: Precision=1.000, Recall=1.000, F1=1.000
+  Yes: Precision=1.000, Recall=1.000, F1=1.000
+
+Output Files:
+  Model: outputs\training_20251011_163502\models\best_sasl_cnn_lstm_model.pth
+  Training Plot: outputs\training_20251011_163502\plots\cnn_lstm_training_history.png
+  Confusion Matrix: outputs\training_20251011_163502\confusion_matrices\cnn_lstm_confusion_matrix.png
+  Results: outputs\training_20251011_163502\results\cnn_training_results.json
