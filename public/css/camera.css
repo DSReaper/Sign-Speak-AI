@@ -1,4 +1,47 @@
-/* Removed detection-mode and mode-btn styles (unused) */
+/* Detection Mode Buttons */
+.detection-mode {
+  display: flex;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 4px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 20;
+}
+
+.mode-btn {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #666;
+  white-space: nowrap;
+  position: relative;
+  z-index: 21;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mode-btn:active {
+  transform: scale(0.95);
+}
+
+.mode-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #333;
+}
+
+.mode-btn.active {
+  background: #000;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
 
 .expand-btn {
   background: rgba(255, 255, 255, 0.9);
@@ -110,7 +153,13 @@
   padding: 0 10px;
 }
 
-.camera-controls .expand-btn {
+.camera-controls .expand-btn,
+.camera-controls .detection-mode,
+.camera-controls .camera-options {
+  pointer-events: auto;
+}
+
+.camera-controls .mode-btn {
   pointer-events: auto;
 }
 
@@ -395,7 +444,16 @@
     align-items: stretch;
   }
 
-  /* Removed detection-mode and mode-btn responsive styles (unused) */
+  /* Mode buttons responsive */
+  .detection-mode {
+    justify-content: center;
+  }
+
+  .mode-btn {
+    flex: 1;
+    font-size: 12px;
+    padding: 10px 12px;
+  }
 
   .expand-btn {
     align-self: center;
@@ -729,6 +787,7 @@
   height: 100%;
   object-fit: cover;
   border-radius: 10px;
+  transform: scaleX(-1);
 }
 
 /* Camera page layout: fill viewport above fixed bottom nav and proportionally divide space */
@@ -804,6 +863,20 @@
 [data-theme="dark"] .results-section {
   background: rgba(20, 20, 20, 0.95);
   box-shadow: var(--shadow-inset-top), var(--shadow-bottom-2);
+}
+[data-theme="dark"] .detection-mode {
+  background: rgba(30, 30, 30, 0.95);
+}
+[data-theme="dark"] .mode-btn {
+  color: #bdbdbd;
+}
+[data-theme="dark"] .mode-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+[data-theme="dark"] .mode-btn.active {
+  background: #fff;
+  color: #000;
 }
 [data-theme="dark"] .expand-btn {
   background: rgba(30, 30, 30, 0.9);
