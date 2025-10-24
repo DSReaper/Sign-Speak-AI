@@ -67,7 +67,6 @@
     };
     localStorage.setItem(KEY, JSON.stringify(settings));
     apply(settings);
-    alert("Settings saved.");
   }
 
   function reset() {
@@ -129,5 +128,13 @@
     els.saveBtn.addEventListener("click", save);
     els.resetBtn.addEventListener("click", reset);
     els.previewTTS.addEventListener("click", preview);
+
+    // Auto-save on change to avoid mismatches if user navigates away without clicking Save
+    try {
+      const voiceInputs = document.querySelectorAll('input[name="voiceGender"]');
+      voiceInputs.forEach(r => r.addEventListener('change', () => save()));
+      if (els.rate) els.rate.addEventListener('change', () => save());
+      if (els.theme) els.theme.addEventListener('change', () => save());
+    } catch (_) {}
   });
 })();
