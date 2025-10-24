@@ -201,9 +201,9 @@ app.get('/health', (req, res) => {
 });
 
 // ------------------------------------------------------------------
-// Text-to-Speech endpoint (uses Python server/tts-transcript.py)
-// POST /tts { text: "Hello", voiceGender: "female"|"male", rate: 0.5..2.0 }
-// Returns audio/wav binary and logs detailed diagnostics.
+// Text-to-Speech endpoint (uses Python tts-transcript.py)
+// POST /tts { text: "Hello" }
+// Returns audio/wav binary.
 // ------------------------------------------------------------------
 app.post('/tts', authenticateToken, async (req, res) => {
     try {
@@ -212,48 +212,16 @@ app.post('/tts', authenticateToken, async (req, res) => {
             return res.status(400).json({ ok: false, error: 'Missing text' });
         }
 
-    // Extract TTS settings from request body with defaults
-    // Accept voice alias to be tolerant of different clients
-    let voiceGender = (req.body.voiceGender || req.body.voice || 'female');
-    voiceGender = (typeof voiceGender === 'string') ? voiceGender.toLowerCase() : 'female';
-    let rate = parseFloat(req.body.rate) || 1.0;
-    let volume = (typeof req.body.volume === 'number') ? req.body.volume : 0.9;
-        
-        // Validate voice gender
-        if (!['female', 'male'].includes(voiceGender)) {
-            console.warn('[TTS] Invalid voice gender received:', voiceGender);
-            return res.status(400).json({ ok: false, error: 'Invalid voice gender. Must be "female" or "male".' });
-        }
-        
-        // Validate and clamp rate to acceptable range
-        rate = Math.max(0.5, Math.min(2.0, rate)); // Clamp between 0.5x and 2.0x speed
-        // Validate and clamp volume 0..1
-        volume = Math.max(0.0, Math.min(1.0, volume));
-        
-        // Convert client rate (0.5-2.0) to pyttsx3 rate (words per minute)
-        // Normal speaking rate is ~160 WPM, so we scale accordingly
-    const pythonRate = Math.round(160 * rate);
-        
         // Create a unique temp filename each request 
         const fs = require('fs');
         const tmpDir = path.join(__dirname, 'tts_tmp');
         fs.mkdirSync(tmpDir, { recursive: true });
         const unique = Date.now().toString(36) + '_' + crypto.randomBytes(4).toString('hex');
-    const outPath = path.join(tmpDir, `tts_${unique}.wav`);
+        const outPath = path.join(tmpDir, `tts_${unique}.wav`);
 
         const pythonExe = process.env.PYTHON || 'python';
-    const scriptPath = path.join(__dirname, 'tts-transcript.py');
-        const args = [
-            scriptPath, 
-            '--text', text, 
-            '--out', outPath,
-            '--voice', voiceGender,
-            '--rate', pythonRate.toString(),
-            '--volume', volume.toString()
-        ];
-        // Debug flag removed per request.
-
-        // (Debug logging removed by request)
+        const scriptPath = path.join(__dirname, 'tts-transcript.py');
+        const args = [scriptPath, '--text', text, '--out', outPath];
 
         const py = spawn(pythonExe, args, { stdio: ['ignore','pipe','pipe'] });
         let stdout = '';
@@ -267,7 +235,7 @@ app.post('/tts', authenticateToken, async (req, res) => {
                 fs.unlink(outPath, () => {});
             };
             if (code !== 0) {
-                console.error('TTS failed:', code, { stderr: stderr.trim() });
+                console.error('TTS failed:', code, stderr, stdout);
                 let parsed;
                 try { parsed = JSON.parse(stdout.trim()); } catch {}
                 cleanup();
