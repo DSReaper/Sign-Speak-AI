@@ -1,5 +1,7 @@
 class AISignLanguageDetection {
     constructor() {
+        console.log('CONSTRUCTING AISignLanguageDetection');
+        
         // visible feed element
         this.aiCameraFeed = document.getElementById('aiCameraFeed');
         this.cameraSection = document.getElementById('cameraSection');
@@ -22,8 +24,6 @@ class AISignLanguageDetection {
 
         this.isExpanded = false;
     this.isAIActive = false;
-        // Model mode ('motion' or 'alphabet')
-        this.currentModelMode = 'motion';
         // performance presets
         this.performanceMode = 'balanced'; // 'quality' | 'balanced' | 'speed'
         this._perfSettings = {
@@ -58,36 +58,68 @@ class AISignLanguageDetection {
     }
 
     initializeEventListeners() {
-        // Model mode switching
+        console.log('INITIALIZING EVENT LISTENERS');
+        
+        // Mode switching buttons
         const motionModeBtn = document.getElementById('motionMode');
         const alphabetModeBtn = document.getElementById('alphabetMode');
         
-        console.log('[INIT] Motion button:', motionModeBtn);
-        console.log('[INIT] Alphabet button:', alphabetModeBtn);
+        // Debug: Log all elements with similar IDs or classes
+        console.log('=== BUTTON DEBUGGING ===');
+        console.log('Motion button:', motionModeBtn);
+        console.log('Alphabet button:', alphabetModeBtn);
+        console.log('Motion button classes:', motionModeBtn?.className);
+        console.log('Alphabet button classes:', alphabetModeBtn?.className);
+        console.log('Motion button parent:', motionModeBtn?.parentElement);
+        console.log('Alphabet button parent:', alphabetModeBtn?.parentElement);
         
         if (motionModeBtn) {
+            console.log('Motion mode button found, attaching listener');
+            
+            // Test if button is clickable with a simple test
+            motionModeBtn.style.cursor = 'pointer';
+            motionModeBtn.style.pointerEvents = 'auto';
+            
             motionModeBtn.addEventListener('click', (e) => {
-                console.log('[CLICK] Motion button clicked', e);
-                e.preventDefault();
-                e.stopPropagation();
-                this.switchModelMode('motion');
-            });
-            console.log('[INIT] Motion button listener attached');
+                try {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('MOTION MODE BUTTON CLICKED');
+                    this.switchToMotionMode();
+                } catch (error) {
+                    console.error('ERROR in Motion button click handler');
+                    console.error('Error:', error);
+                    console.error('Stack:', error.stack);
+                }
+            }, true); // Use capture phase
         } else {
-            console.error('[INIT] Motion button not found!');
+            console.error('Motion mode button NOT found');
         }
         
         if (alphabetModeBtn) {
+            console.log('Alphabet mode button found, attaching listener');
+            
+            // Test if button is clickable with a simple test
+            alphabetModeBtn.style.cursor = 'pointer';
+            alphabetModeBtn.style.pointerEvents = 'auto';
+            
             alphabetModeBtn.addEventListener('click', (e) => {
-                console.log('[CLICK] Alphabet button clicked', e);
-                e.preventDefault();
-                e.stopPropagation();
-                this.switchModelMode('alphabet');
-            });
-            console.log('[INIT] Alphabet button listener attached');
+                try {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('ALPHABET MODE BUTTON CLICKED');
+                    this.switchToAlphabetMode();
+                } catch (error) {
+                    console.error('ERROR in Alphabet button click handler');
+                    console.error('Error:', error);
+                    console.error('Stack:', error.stack);
+                }
+            }, true); // Use capture phase
         } else {
-            console.error('[INIT] Alphabet button not found!');
+            console.error('Alphabet mode button NOT found');
         }
+        
+        console.log('=== END BUTTON DEBUGGING ===');
         
         // AI controls
         document.getElementById('toggleHands').addEventListener('click', () => {
@@ -410,79 +442,43 @@ class AISignLanguageDetection {
         this.ws.onmessage = (evt) => {
             const data = evt.data;
 
-            // If server sends JSON text (prediction metadata or mode switch response)
+            // If server sends JSON text (prediction metadata)
             if (typeof data === 'string') {
                 try {
                     const obj = JSON.parse(data);
-                    console.log('[WS] Received:', obj);  // Debug logging
                     
-                    // Handle mode switch confirmation
-                    if (obj.status === 'success' && obj.mode) {
-                        console.log(`Successfully switched to ${obj.mode} mode`);
-                        this.currentModelMode = obj.mode;
-                        
-                        // Update UI buttons to reflect the new mode
-                        const motionBtn = document.getElementById('motionMode');
-                        const alphabetBtn = document.getElementById('alphabetMode');
-                        
-                        if (obj.mode === 'motion') {
-                            motionBtn?.classList.add('active');
-                            alphabetBtn?.classList.remove('active');
-                        } else if (obj.mode === 'alphabet') {
-                            alphabetBtn?.classList.add('active');
-                            motionBtn?.classList.remove('active');
+                    // Log model output to console
+                    if (obj.prediction) {
+                        console.log('=== AI PREDICTION ===');
+                        console.log('Prediction:', obj.prediction);
+                        console.log('Confidence:', obj.confidence ? (obj.confidence * 100).toFixed(2) + '%' : 'N/A');
+                        console.log('Mode:', obj.mode || 'unknown');
+                        if (obj.sentence) {
+                            console.log('Sentence:', obj.sentence);
                         }
-                        
-                        // Update display with success message
-                        this.detectedPhrase.style.color = ''; // Reset color
-                        this.detectedPhrase.textContent = `${obj.mode.toUpperCase()} mode active. Waiting for detection...`;
-                        return;
+                        if (obj.committed_words && obj.committed_words.length > 0) {
+                            console.log('Committed:', obj.committed_words);
+                        }
+                        console.log('=====================');
                     }
                     
-                    // Handle mode switch or other errors
-                    if (obj.error || (obj.status === 'error' && obj.message)) {
-                        const errorMsg = obj.error || obj.message;
-                        console.error('[WS] Server error:', errorMsg);
-                        
-                        // Display error message to user
-                        this.detectedPhrase.textContent = errorMsg;
-                        this.detectedPhrase.style.color = '#dc3545'; // Red color for error
-                        
-                        // Revert UI buttons to the current (working) mode
-                        const motionBtn = document.getElementById('motionMode');
-                        const alphabetBtn = document.getElementById('alphabetMode');
-                        
-                        if (this.currentModelMode === 'motion') {
-                            motionBtn?.classList.add('active');
-                            alphabetBtn?.classList.remove('active');
-                        } else if (this.currentModelMode === 'alphabet') {
-                            alphabetBtn?.classList.add('active');
-                            motionBtn?.classList.remove('active');
-                        }
-                        
-                        // Clear error message after 3 seconds and restore normal state
-                        setTimeout(() => {
-                            this.detectedPhrase.style.color = ''; // Reset to default color
-                            this.detectedPhrase.textContent = `${this.currentModelMode.toUpperCase()} mode active. Waiting for detection...`;
-                        }, 3000);
-                        return;
-                    }
-                    
-                    // Handle prediction data
                     // Example server response: { prediction, confidence, committed_words, sentence, mode }
-                    console.log(`[WS] Mode: ${obj.mode}, Prediction: ${obj.prediction}, Sentence: ${obj.sentence}`);
-                    
-                    // Update current mode if provided in prediction response
-                    if (obj.mode && obj.mode !== this.currentModelMode) {
-                        this.currentModelMode = obj.mode;
-                    }
-                    
                     if (obj.sentence && obj.sentence.trim().length > 0) {
+                        // Show the sentence (committed words with grammar)
                         this.updateDetectedPhrase(obj.sentence, obj.committed_words || []);
                         if (obj.prediction && this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
-                    } else if (obj.prediction) {
+                    } else if (obj.prediction && obj.mode === 'motion') {
+                        // In motion mode, show individual predictions
                         this.updateDetectedPhrase(`"${obj.prediction}"`, obj.committed_words || []);
                         if (this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
+                    } else if (obj.mode === 'alphabet') {
+                        // In alphabet mode, only show committed words (don't show rapid individual letters)
+                        // Show empty or "Hold gesture to add letter..." message
+                        if (!obj.sentence || obj.sentence.trim().length === 0) {
+                            this.updateDetectedPhrase('Hold gesture to add letter...');
+                        }
+                    } else if (obj.error) {
+                        console.warn('AI server error:', obj.error);
                     }
                 } catch (err) {
                     console.warn('Failed to parse WS text message as JSON', err, evt.data);
@@ -493,15 +489,41 @@ class AISignLanguageDetection {
                 return;
             }
 
-            // Fallback: try to parse as JSON (for backward compatibility)
+            // We expect a JSON string response from the server describing the detected phrase. Parse it and update UI.
             try {
                 const obj = JSON.parse(data);
+                
+                // Log model output to console
+                if (obj.prediction) {
+                    console.log('=== AI PREDICTION ===');
+                    console.log('Prediction:', obj.prediction);
+                    console.log('Confidence:', obj.confidence ? (obj.confidence * 100).toFixed(2) + '%' : 'N/A');
+                    console.log('Mode:', obj.mode || 'unknown');
+                    if (obj.sentence) {
+                        console.log('Sentence:', obj.sentence);
+                    }
+                    if (obj.committed_words && obj.committed_words.length > 0) {
+                        console.log('Committed:', obj.committed_words);
+                    }
+                    console.log('=====================');
+                }
+                
                 if (obj.sentence && obj.sentence.trim().length > 0) {
+                    // Show the sentence (committed words with grammar)
                     this.updateDetectedPhrase(obj.sentence, obj.committed_words || []);
                     if (obj.prediction && this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
-                } else if (obj.prediction) {
+                } else if (obj.prediction && obj.mode === 'motion') {
+                    // In motion mode, show individual predictions
                     this.updateDetectedPhrase(`"${obj.prediction}"`, obj.committed_words || []);
                     if (this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
+                } else if (obj.mode === 'alphabet') {
+                    // In alphabet mode, only show committed words (don't show rapid individual letters)
+                    // Show empty or "Hold gesture to add letter..." message
+                    if (!obj.sentence || obj.sentence.trim().length === 0) {
+                        this.updateDetectedPhrase('Hold gesture to add letter...');
+                    }
+                } else if (obj.error) {
+                    console.warn('AI server error:', obj.error);
                 }
             } catch (err) {
                 console.warn('Failed to parse WS JSON response', err, data);
@@ -839,11 +861,7 @@ class AISignLanguageDetection {
 
             // Draw current decoded frame to the offscreen canvas. This gives us
             // an ImageBitmap-like pixel source we can resize and re-encode.
-            // Mirror the frame horizontally to match user perspective
-            this._ctx.save();
-            this._ctx.scale(-1, 1);
-            this._ctx.drawImage(this._hiddenVideo, -this._canvas.width, 0, this._canvas.width, this._canvas.height);
-            this._ctx.restore();
+            this._ctx.drawImage(this._hiddenVideo, 0, 0, this._canvas.width, this._canvas.height);
 
             // Resize to configured resolution for transfer (bandwidth tradeoff).
             const perfSet = this._perfSettings[this.performanceMode] || this._perfSettings.balanced;
@@ -855,11 +873,7 @@ class AISignLanguageDetection {
                 this._sendCanvas.width = sendWidth;
                 this._sendCanvas.height = sendHeight;
             }
-            // Mirror when copying to send canvas to match user perspective
-            this._sendCtx.save();
-            this._sendCtx.scale(-1, 1);
-            this._sendCtx.drawImage(this._canvas, -sendWidth, 0, sendWidth, sendHeight);
-            this._sendCtx.restore();
+            this._sendCtx.drawImage(this._canvas, 0, 0, sendWidth, sendHeight);
 
             // Encode as JPEG with configured quality. Avoid sending if the WS
             // backend is backed up (bufferedAmount high). This helps prevent
@@ -934,24 +948,6 @@ class AISignLanguageDetection {
     }
 
     updateStatus(data) {
-        // Sync model mode with server if provided
-        if (data.mode && data.mode !== this.currentModelMode) {
-            console.log(`Syncing mode from server: ${data.mode}`);
-            this.currentModelMode = data.mode;
-            
-            // Update UI buttons to reflect server state
-            const motionBtn = document.getElementById('motionMode');
-            const alphabetBtn = document.getElementById('alphabetMode');
-            
-            if (data.mode === 'motion') {
-                motionBtn?.classList.add('active');
-                alphabetBtn?.classList.remove('active');
-            } else if (data.mode === 'alphabet') {
-                alphabetBtn?.classList.add('active');
-                motionBtn?.classList.remove('active');
-            }
-        }
-        
         // Update prediction
         if (data.prediction && data.prediction !== "Waiting...") {
             this.updateDetectedPhrase(`"${data.prediction}"`);
@@ -975,65 +971,6 @@ class AISignLanguageDetection {
         }
     }
 
-    switchModelMode(mode) {
-        console.log(`[SWITCH] switchModelMode called with mode: ${mode}`);
-        console.log(`[SWITCH] Current mode: ${this.currentModelMode}`);
-        console.log(`[SWITCH] WebSocket state:`, this.ws ? this.ws.readyState : 'no ws');
-        
-        if (mode === this.currentModelMode) {
-            console.log(`[SWITCH] Already in ${mode} mode`);
-            return; // Already in this mode
-        }
-        
-        console.log(`[SWITCH] Switching from ${this.currentModelMode} to ${mode} mode...`);
-        
-        // Immediately update UI to show visual feedback
-        const motionBtn = document.getElementById('motionMode');
-        const alphabetBtn = document.getElementById('alphabetMode');
-        
-        // Optimistically update button states (will revert if error)
-        if (mode === 'motion') {
-            motionBtn?.classList.add('active');
-            alphabetBtn?.classList.remove('active');
-        } else if (mode === 'alphabet') {
-            alphabetBtn?.classList.add('active');
-            motionBtn?.classList.remove('active');
-        }
-        
-        // Send mode switch command to server via WebSocket
-        // UI will be updated when we receive confirmation from the server
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            const command = {
-                action: 'switch_mode',
-                mode: mode
-            };
-            console.log('[SWITCH] Sending command:', JSON.stringify(command));
-            this.ws.send(JSON.stringify(command));
-            
-            // Show loading state while waiting for server response
-            this.detectedPhrase.textContent = `Switching to ${mode.toUpperCase()} mode...`;
-        } else {
-            console.error('[SWITCH] WebSocket not connected. Cannot switch model mode. State:', this.ws?.readyState);
-            
-            // Revert button states
-            if (this.currentModelMode === 'motion') {
-                motionBtn?.classList.add('active');
-                alphabetBtn?.classList.remove('active');
-            } else if (this.currentModelMode === 'alphabet') {
-                alphabetBtn?.classList.add('active');
-                motionBtn?.classList.remove('active');
-            }
-            
-            this.detectedPhrase.textContent = 'Connection lost. Please refresh.';
-            this.detectedPhrase.style.color = '#dc3545';
-            
-            setTimeout(() => {
-                this.detectedPhrase.style.color = '';
-                this.detectedPhrase.textContent = `${this.currentModelMode.toUpperCase()} mode active. Waiting for detection...`;
-            }, 3000);
-        }
-    }
-
     async resetBuffer() {
         try {
             const response = await fetch(`${this.flaskUrl}/reset_detector`, { method: 'POST' });
@@ -1044,6 +981,102 @@ class AISignLanguageDetection {
             }
         } catch (error) {
             console.error('Error resetting buffer:', error);
+        }
+    }
+
+    async switchToMotionMode() {
+        try {
+            console.log('=== SWITCHING TO MOTION MODE ===');
+            
+            // Update button states IMMEDIATELY (optimistic UI)
+            const motionBtn = document.getElementById('motionMode');
+            const alphabetBtn = document.getElementById('alphabetMode');
+            if (motionBtn) {
+                motionBtn.classList.add('active');
+                console.log('Added active class to Motion button');
+            }
+            if (alphabetBtn) {
+                alphabetBtn.classList.remove('active');
+                console.log('Removed active class from Alphabet button');
+            }
+            
+            // Send mode switch via WebSocket instead of HTTP fetch
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                console.log('Sending mode switch command via WebSocket');
+                this.ws.send(JSON.stringify({ 
+                    action: 'switch_mode', 
+                    mode: 'motion' 
+                }));
+                
+                // Clear current phrase
+                this.updateDetectedPhrase('');
+                console.log('SUCCESS - Motion mode switch command sent');
+            } else {
+                console.error('FAILED - WebSocket not connected');
+                
+                // Revert button states on error
+                if (motionBtn) motionBtn.classList.remove('active');
+                if (alphabetBtn) alphabetBtn.classList.add('active');
+            }
+        } catch (error) {
+            console.error('EXCEPTION in switchToMotionMode:', error);
+            console.error('Error name:', error.name);
+            console.error('Error message:', error.message);
+            console.error('Stack:', error.stack);
+            
+            // Revert button states on error
+            const motionBtn = document.getElementById('motionMode');
+            const alphabetBtn = document.getElementById('alphabetMode');
+            if (motionBtn) motionBtn.classList.remove('active');
+            if (alphabetBtn) alphabetBtn.classList.add('active');
+        }
+    }
+
+    async switchToAlphabetMode() {
+        try {
+            console.log('=== SWITCHING TO ALPHABET MODE ===');
+            
+            // Update button states IMMEDIATELY (optimistic UI)
+            const motionBtn = document.getElementById('motionMode');
+            const alphabetBtn = document.getElementById('alphabetMode');
+            if (motionBtn) {
+                motionBtn.classList.remove('active');
+                console.log('Removed active class from Motion button');
+            }
+            if (alphabetBtn) {
+                alphabetBtn.classList.add('active');
+                console.log('Added active class to Alphabet button');
+            }
+            
+            // Send mode switch via WebSocket instead of HTTP fetch
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                console.log('Sending mode switch command via WebSocket');
+                this.ws.send(JSON.stringify({ 
+                    action: 'switch_mode', 
+                    mode: 'alphabet' 
+                }));
+                
+                // Clear current phrase
+                this.updateDetectedPhrase('');
+                console.log('SUCCESS - Alphabet mode switch command sent');
+            } else {
+                console.error('FAILED - WebSocket not connected');
+                
+                // Revert button states on error
+                if (motionBtn) motionBtn.classList.add('active');
+                if (alphabetBtn) alphabetBtn.classList.remove('active');
+            }
+        } catch (error) {
+            console.error('EXCEPTION in switchToAlphabetMode:', error);
+            console.error('Error name:', error.name);
+            console.error('Error message:', error.message);
+            console.error('Stack:', error.stack);
+            
+            // Revert button states on error
+            const motionBtn = document.getElementById('motionMode');
+            const alphabetBtn = document.getElementById('alphabetMode');
+            if (motionBtn) motionBtn.classList.add('active');
+            if (alphabetBtn) alphabetBtn.classList.remove('active');
         }
     }
 
@@ -1131,7 +1164,6 @@ class AISignLanguageDetection {
         this.detectedPhrase.style.opacity = '0.5';
         this.detectedPhrase.style.transform = 'scale(0.95)';
         setTimeout(() => {
-            this.detectedPhrase.style.color = ''; // Reset to default color
             this.detectedPhrase.textContent = phrase;
             this.detectedPhrase.style.opacity = '1';
             this.detectedPhrase.style.transform = 'scale(1)';
@@ -1232,27 +1264,107 @@ class AISignLanguageDetection {
     }
 }
 
+// Add global test functions immediately (don't wait for DOMContentLoaded)
+window.testAlphabetButton = () => {
+    console.log('TESTING ALPHABET BUTTON CLICK');
+    const btn = document.getElementById('alphabetMode');
+    if (btn) {
+        console.log('Button found:', btn);
+        btn.click();
+    } else {
+        console.error('Alphabet button not found!');
+    }
+};
+
+window.testMotionButton = () => {
+    console.log('TESTING MOTION BUTTON CLICK');
+    const btn = document.getElementById('motionMode');
+    if (btn) {
+        console.log('Button found:', btn);
+        btn.click();
+    } else {
+        console.error('Motion button not found!');
+    }
+};
+
+window.checkButtons = () => {
+    console.log('CHECKING BUTTONS');
+    const motionBtn = document.getElementById('motionMode');
+    const alphabetBtn = document.getElementById('alphabetMode');
+    console.log('Motion button:', motionBtn);
+    console.log('Alphabet button:', alphabetBtn);
+    console.log('Motion button computed style:', motionBtn ? window.getComputedStyle(motionBtn) : 'N/A');
+    console.log('Alphabet button computed style:', alphabetBtn ? window.getComputedStyle(alphabetBtn) : 'N/A');
+    if (motionBtn) {
+        console.log('Motion button z-index:', window.getComputedStyle(motionBtn).zIndex);
+        console.log('Motion button pointer-events:', window.getComputedStyle(motionBtn).pointerEvents);
+        console.log('Motion button position:', motionBtn.getBoundingClientRect());
+    }
+    if (alphabetBtn) {
+        console.log('Alphabet button z-index:', window.getComputedStyle(alphabetBtn).zIndex);
+        console.log('Alphabet button pointer-events:', window.getComputedStyle(alphabetBtn).pointerEvents);
+        console.log('Alphabet button position:', alphabetBtn.getBoundingClientRect());
+    }
+};
+
+console.log('GLOBAL TEST FUNCTIONS LOADED');
+console.log('  Type: testAlphabetButton()');
+console.log('  Type: testMotionButton()');
+console.log('  Type: checkButtons()');
+
 // Initialize the AI sign language detection when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    const detector = new AISignLanguageDetection();
+    console.log('DOM CONTENT LOADED - INITIALIZING APP');
     
-    // Handle page unload
-    window.addEventListener('beforeunload', () => {
-        detector.destroy();
-    });
-    
-    // Handle page visibility changes
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            // Page is hidden, you might want to pause updates
-            console.log('Page hidden - AI detection continues in background');
-        } else {
-            // Page is visible again
-            console.log('Page visible - AI detection active');
+    try {
+        const detector = new AISignLanguageDetection();
+        console.log('AISignLanguageDetection initialized successfully');
+        
+        // Handle page unload
+        window.addEventListener('beforeunload', () => {
+            try {
+                detector.destroy();
+            } catch (err) {
+                console.error('Error during page unload:', err);
+            }
+        });
+        
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            try {
+                if (document.hidden) {
+                    // Page is hidden, you might want to pause updates
+                    console.log('Page hidden - AI detection continues in background');
+                } else {
+                    // Page is visible again
+                    console.log('Page visible - AI detection active');
+                }
+            } catch (err) {
+                console.error('Error handling visibility change:', err);
+            }
+        });
+        
+        // Initialize shared PlayAudioModule if present
+        if (window.PlayAudioModule && typeof window.PlayAudioModule.init === 'function') {
+            try {
+                window.PlayAudioModule.init({ modalSelector: '#responseModal', textareaSelector: '#userResponse', closeBtnSelector: '#closeModal' });
+            } catch (err) {
+                console.error('Error initializing PlayAudioModule:', err);
+            }
         }
-    });
-    // Initialize shared PlayAudioModule if present
-    if (window.PlayAudioModule && typeof window.PlayAudioModule.init === 'function') {
-        window.PlayAudioModule.init({ modalSelector: '#responseModal', textareaSelector: '#userResponse', closeBtnSelector: '#closeModal' });
+        
+        // Make detector globally accessible for debugging
+        window.aiDetector = detector;
+        console.log('Detector available as window.aiDetector');
+        
+    } catch (error) {
+        console.error('CRITICAL ERROR DURING INITIALIZATION');
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        console.error('Full error object:', error);
+        
+        // Show error to user
+        alert('Failed to initialize AI detection system. Please check the console for details.');
     }
 });

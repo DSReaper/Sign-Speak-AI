@@ -1071,18 +1071,30 @@ def switch_mode():
     global current_model_mode, detector, alphabet_detector
     global recognized_words, last_display_word, last_display_start, last_committed_word
     
+    print("\n" + "="*60)
+    print("SWITCH MODE REQUEST RECEIVED")
+    print("="*60)
+    
     try:
         data = request.get_json()
         mode = data.get('mode', 'motion')
         
+        print(f"Requested mode: {mode}")
+        print(f"Current mode: {current_model_mode}")
+        print(f"Motion detector available: {detector is not None}")
+        print(f"Alphabet detector available: {alphabet_detector is not None}")
+        
         if mode not in ['motion', 'alphabet']:
+            print(f"ERROR: Invalid mode '{mode}'")
             return jsonify({'status': 'error', 'message': 'Invalid mode. Use "motion" or "alphabet"'}), 400
         
         with model_mode_lock:
             # Check if requested model is available
             if mode == 'motion' and detector is None:
+                print("ERROR: Motion model not available")
                 return jsonify({'status': 'error', 'message': 'Motion model not available'}), 503
             if mode == 'alphabet' and alphabet_detector is None:
+                print("ERROR: Alphabet model not available")
                 return jsonify({'status': 'error', 'message': 'Alphabet model not available'}), 503
             
             # Clear any buffered state when switching modes
@@ -1090,20 +1102,24 @@ def switch_mode():
                 with detector_lock:
                     detector.frame_buffer.clear()
                     detector.prediction_history.clear()
+                print("Cleared motion detector buffers")
             elif mode == 'alphabet' and alphabet_detector:
                 alphabet_detector.prediction_history.clear()
+                print("Cleared alphabet detector history")
             
             # Reset sentence construction state
             recognized_words = []
             last_display_word = None
             last_display_start = None
             last_committed_word = None
+            print("Reset sentence construction state")
             
             # Switch mode
             old_mode = current_model_mode
             current_model_mode = mode
             
-            print(f"Switched from {old_mode} mode to {mode} mode")
+            print(f"✓ Successfully switched from {old_mode} mode to {mode} mode")
+            print("="*60 + "\n")
             
             return jsonify({
                 'status': 'success',
@@ -1111,7 +1127,10 @@ def switch_mode():
                 'message': f'Switched to {mode} mode'
             })
     except Exception as e:
-        print(f"Error switching mode: {e}")
+        print(f"ERROR switching mode: {e}")
+        import traceback
+        traceback.print_exc()
+        print("="*60 + "\n")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # The frontend captures frames and sends them to the WebSocket server.

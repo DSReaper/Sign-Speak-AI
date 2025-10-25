@@ -1,5 +1,5 @@
 module.exports = async function(videoPath) 
 {
-  const response = await axios.post('http://localhost:8001', { videoPath });
+  const response = await axios.post('https://ssai.belgiumcampus.ac.za', { videoPath });
   return response.data.text;
 };
