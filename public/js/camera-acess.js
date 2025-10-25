@@ -1438,6 +1438,21 @@ class AISignLanguageDetection {
             console.warn('sessionStorage unavailable for transcript persistence', e);
         }
 
+        // When the detected phrase changes, reset the save/star button to its
+        // normal state so it no longer appears "saved" (yellow). This ensures
+        // the UI accurately reflects that the new phrase hasn't been saved yet.
+        try {
+            const starBtn = document.getElementById('starBtn');
+            if (starBtn) {
+                starBtn.classList.remove('active');
+                // Clear any inline transform/style set during the save animation
+                starBtn.style.transform = '';
+                starBtn.style.background = '';
+                starBtn.style.borderColor = '';
+                starBtn.style.color = '';
+            }
+        } catch (_) { /* ignore errors when resetting UI */ }
+
         // Animate the phrase update
         this.detectedPhrase.style.opacity = '0.5';
         this.detectedPhrase.style.transform = 'scale(0.95)';
