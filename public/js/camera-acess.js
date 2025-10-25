@@ -385,10 +385,7 @@ class AISignLanguageDetection {
                     const obj = JSON.parse(data);
                     // Example server response: { prediction, confidence, committed_words, sentence }
                     if (obj.sentence && obj.sentence.trim().length > 0) {
-                        // Ensure sentences are wrapped in quotes if not already
-                        const sentence = obj.sentence.trim();
-                        const formattedSentence = (sentence.startsWith('"') && sentence.endsWith('"')) ? sentence : `"${sentence}"`;
-                        this.updateDetectedPhrase(formattedSentence, obj.committed_words || []);
+                        this.updateDetectedPhrase(obj.sentence, obj.committed_words || []);
                         if (obj.prediction && this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
                     } else if (obj.prediction) {
                         this.updateDetectedPhrase(`"${obj.prediction}"`, obj.committed_words || []);
@@ -409,10 +406,7 @@ class AISignLanguageDetection {
             try {
                 const obj = JSON.parse(data);
                 if (obj.sentence && obj.sentence.trim().length > 0) {
-                    // Ensure sentences are wrapped in quotes if not already
-                    const sentence = obj.sentence.trim();
-                    const formattedSentence = (sentence.startsWith('"') && sentence.endsWith('"')) ? sentence : `"${sentence}"`;
-                    this.updateDetectedPhrase(formattedSentence, obj.committed_words || []);
+                    this.updateDetectedPhrase(obj.sentence, obj.committed_words || []);
                     if (obj.prediction && this.confidenceStatus) this.confidenceStatus.textContent = `${(obj.confidence||0).toFixed(2)}`;
                 } else if (obj.prediction) {
                     this.updateDetectedPhrase(`"${obj.prediction}"`, obj.committed_words || []);
