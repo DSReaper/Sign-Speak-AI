@@ -1,34 +1,4 @@
-/* Mode switching buttons */
-.detection-mode {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.mode-btn {
-  padding: 8px 16px;
-  border: 2px solid #ddd;
-  background: white;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  color: #333;
-  pointer-events: auto;
-}
-
-.mode-btn:hover {
-  border-color: #333;
-  color: #333;
-  transform: translateY(-1px);
-}
-
-.mode-btn.active {
-  background: #000;
-  border-color: #000;
-  color: white;
-}
+/* Removed detection-mode and mode-btn styles (unused) */
 
 .expand-btn {
   background: rgba(255, 255, 255, 0.9);
@@ -135,26 +105,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  z-index: 100;
+  z-index: 10;
   pointer-events: none;
   padding: 0 10px;
 }
 
-.camera-controls .detection-mode,
-.camera-controls .camera-options,
 .camera-controls .expand-btn {
   pointer-events: auto;
-}
-
-.camera-controls .detection-mode {
-  z-index: 101;
-  position: relative;
-}
-
-.camera-controls .mode-btn {
-  pointer-events: auto !important;
-  z-index: 102;
-  position: relative;
 }
 
 /* Camera Loading State */
@@ -772,14 +729,6 @@
   height: 100%;
   object-fit: cover;
   border-radius: 10px;
-  transform: scaleX(-1); /* Mirror video horizontally for natural user perspective */
-  position: relative;
-  z-index: 1; /* Below controls and overlay */
-}
-
-#overlayCanvas {
-  z-index: 2; /* Above video, below controls */
-  pointer-events: none; /* Never block clicks */
 }
 
 /* Camera page layout: fill viewport above fixed bottom nav and proportionally divide space */
@@ -859,24 +808,7 @@
 [data-theme="dark"] .expand-btn {
   background: rgba(30, 30, 30, 0.9);
 }
-
-[data-theme="dark"] .mode-btn {
-  background: rgba(30, 30, 30, 0.9);
-  border-color: #444;
-  color: #e6e6e6;
-}
-
-[data-theme="dark"] .mode-btn:hover {
-  border-color: #666;
-  color: #fff;
-}
-
-[data-theme="dark"] .mode-btn.active {
-  background: #000;
-  border-color: #000;
-  color: white;
-}
-
+/* Removed dark theme overrides for mode-btn and detection-mode (unused) */
 [data-theme="dark"] .results-title,
 [data-theme="dark"] .detected-phrase {
   color: #e6e6e6;
