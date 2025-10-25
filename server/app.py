@@ -26,6 +26,7 @@ from queue import Queue, Empty
 from datetime import datetime
 import timm
 import glob
+import joblib
 
 # Suppress MediaPipe verbose logging
 os.environ['GLOG_minloglevel'] = '2'
@@ -45,6 +46,9 @@ CORS(app)  # Enable CORS for Node.js integration
 
 # Global variables
 detector = None
+alphabet_detector = None  # Hand landmark model for alphabet mode
+current_model_mode = 'motion'  # 'motion' or 'alphabet'
+model_mode_lock = threading.Lock()
 current_prediction = "Loading the AI detection model..."
 current_confidence = 0.0
 # Grammar / sentence construction session state
@@ -77,6 +81,20 @@ except Exception:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
+# Try to import models from training module for compatibility
+try:
+    models_dir = os.path.join(current_dir, "models")
+    sys.path.insert(0, models_dir)
+    from video_cnn_only_training import CNNLSTMModel as TrainedCNNLSTMModel, CombinedCNNHandModel
+    print("Successfully imported model architectures from training module")
+    USE_TRAINED_MODELS = True
+except ImportError as e:
+    print(f"Could not import models from training module: {e}")
+    print("Using local model definitions (may cause compatibility issues)")
+    TrainedCNNLSTMModel = None
+    CombinedCNNHandModel = None
+    USE_TRAINED_MODELS = False
+
 # ============================================================================
 # MODEL ARCHITECTURES 
 # ============================================================================
@@ -84,7 +102,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 class CNNLSTMModel(nn.Module):
     """CNN+LSTM model for video classification using PyTorch"""
     
-    def __init__(self, num_classes, sequence_length=30, input_size=(224, 224)):
+    def __init__(self, num_classes, sequence_length=16, input_size=(224, 224)):
         super(CNNLSTMModel, self).__init__()
         
         self.sequence_length = sequence_length
@@ -152,6 +170,218 @@ class CNNLSTMModel(nn.Module):
         return x
 
 
+class CombinedCNNHandModel(nn.Module):
+    """Combined model that processes both video frames and hand landmarks"""
+    
+    def __init__(self, num_classes, sequence_length=30, input_size=(224, 224)):
+        super(CombinedCNNHandModel, self).__init__()
+        
+        self.num_classes = num_classes
+        self.sequence_length = sequence_length
+        
+        # CNN branch for video frames
+        self.cnn_branch = CNNLSTMModel(num_classes, sequence_length, input_size)
+        
+        # Hand landmark branch
+        self.hand_branch = HandLandmarkLSTM(num_classes, sequence_length)
+        
+        # Fusion layer to combine predictions from both branches
+        self.fusion = nn.Sequential(
+            nn.Linear(num_classes * 2, 256),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(128, num_classes)
+        )
+        
+        # Learnable weights for combining branches
+        self.cnn_weight = nn.Parameter(torch.tensor(0.7))
+        self.hand_weight = nn.Parameter(torch.tensor(0.3))
+    
+    def forward(self, video_frames, hand_landmarks):
+        """
+        Args:
+            video_frames: (batch, seq_len, C, H, W)
+            hand_landmarks: (batch, seq_len, 126)
+        Returns:
+            final_outputs, cnn_outputs, hand_outputs
+        """
+        # Get predictions from both branches
+        cnn_logits = self.cnn_branch(video_frames)
+        hand_logits = self.hand_branch(hand_landmarks)
+        
+        # Combine logits with fusion layer
+        combined_features = torch.cat([cnn_logits, hand_logits], dim=1)
+        final_logits = self.fusion(combined_features)
+        
+        return final_logits, cnn_logits, hand_logits
+
+
+class HandLandmarkLSTM(nn.Module):
+    """LSTM model for hand landmark sequences"""
+    
+    def __init__(self, num_classes, sequence_length=30, hand_features=126):
+        super(HandLandmarkLSTM, self).__init__()
+        
+        self.sequence_length = sequence_length
+        self.hand_features = hand_features  # 2 hands * 21 landmarks * 3 coords
+        self.num_classes = num_classes
+        
+        # Input processing
+        self.input_projection = nn.Linear(hand_features, 256)
+        self.input_dropout = nn.Dropout(0.2)
+        
+        # LSTM layers for temporal modeling
+        self.lstm1 = nn.LSTM(256, 128, bidirectional=True, batch_first=True, dropout=0.3)
+        self.lstm2 = nn.LSTM(256, 64, bidirectional=True, batch_first=True, dropout=0.3)
+        
+        # Classification layers
+        self.classifier = nn.Sequential(
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Dropout(0.4),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(64, num_classes)
+        )
+    
+    def forward(self, x):
+        # x shape: (batch_size, sequence_length, hand_features)
+        
+        # Project hand features
+        x = self.input_projection(x)  # (batch, seq, 256)
+        x = torch.relu(x)
+        x = self.input_dropout(x)
+        
+        # LSTM processing
+        x, _ = self.lstm1(x)  # (batch, seq, 256)
+        x, _ = self.lstm2(x)  # (batch, seq, 128)
+        
+        # Global average pooling over sequence
+        x = torch.mean(x, dim=1)  # (batch, 128)
+        
+        # Classification
+        x = self.classifier(x)
+        
+        return x
+
+
+# ============================================================================
+# HAND LANDMARK MODEL (ALPHABET MODE)
+# ============================================================================
+
+class HandGestureRecognizer:
+    """Hand landmark-based gesture recognition for alphabet mode (single-frame)."""
+    
+    def __init__(self, model_dir):
+        """
+        Initialize the recognizer with a trained hand landmark model.
+        
+        Args:
+            model_dir: Directory containing the trained model files
+        """
+        print(f"Loading alphabet model from: {model_dir}")
+        
+        # Load model components
+        self.model = joblib.load(f"{model_dir}/random_forest_model.joblib")
+        self.scaler = joblib.load(f"{model_dir}/scaler.joblib")
+        self.label_encoder = joblib.load(f"{model_dir}/label_encoder.joblib")
+        
+        print(f"Alphabet model loaded successfully!")
+        print(f"Recognizing {len(self.label_encoder.classes_)} gestures: {', '.join(self.label_encoder.classes_)}")
+        
+        # Initialize MediaPipe Hands
+        self.mp_hands = mp.solutions.hands
+        self.hands = self.mp_hands.Hands(
+            static_image_mode=False,
+            max_num_hands=2,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5
+        )
+        
+        # For smoothing predictions
+        self.prediction_history = deque(maxlen=5)
+        
+        # Check model input size
+        expected_features = self.scaler.n_features_in_
+        self.two_hand_mode = (expected_features == 126)
+        
+        if self.two_hand_mode:
+            print("Alphabet model supports TWO-HAND gestures (left + right)")
+        else:
+            print("Alphabet model uses SINGLE-HAND format")
+        
+    def extract_landmarks(self, hand_landmarks):
+        """Extract landmark coordinates from MediaPipe hand landmarks."""
+        landmarks = []
+        for landmark in hand_landmarks.landmark:
+            landmarks.extend([landmark.x, landmark.y, landmark.z])
+        return np.array(landmarks)
+    
+    def predict_from_frame(self, frame):
+        """
+        Predict gesture from a single frame (no buffering).
+        
+        Args:
+            frame: OpenCV BGR image
+            
+        Returns:
+            predicted_class: Predicted gesture class (or None)
+            confidence: Prediction confidence
+        """
+        # Convert to RGB for MediaPipe
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = self.hands.process(rgb_frame)
+        
+        if not results.multi_hand_landmarks:
+            return None, 0.0
+        
+        # Collect hand data
+        hands_data = {}
+        for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
+            hand_label = handedness.classification[0].label.lower()
+            hands_data[hand_label] = self.extract_landmarks(hand_landmarks)
+        
+        # Prepare feature vector
+        if self.two_hand_mode:
+            left_landmarks = hands_data.get('left', np.zeros(63))
+            right_landmarks = hands_data.get('right', np.zeros(63))
+            features = np.concatenate([left_landmarks, right_landmarks]).reshape(1, -1)
+        else:
+            if 'left' in hands_data:
+                features = hands_data['left'].reshape(1, -1)
+            elif 'right' in hands_data:
+                features = hands_data['right'].reshape(1, -1)
+            else:
+                return None, 0.0
+        
+        # Scale and predict
+        features_scaled = self.scaler.transform(features)
+        prediction = self.model.predict(features_scaled)
+        probabilities = self.model.predict_proba(features_scaled)[0]
+        
+        predicted_class = self.label_encoder.inverse_transform(prediction)[0]
+        confidence = np.max(probabilities)
+        
+        # Add to history for smoothing
+        self.prediction_history.append(predicted_class)
+        
+        # Use most common prediction in recent history
+        if len(self.prediction_history) >= 3:
+            from collections import Counter
+            smoothed_prediction = Counter(self.prediction_history).most_common(1)[0][0]
+            return smoothed_prediction, confidence
+        
+        return predicted_class, confidence
+    
+    def cleanup(self):
+        """Clean up resources"""
+        if hasattr(self, 'hands') and self.hands:
+            self.hands.close()
+
 
 # ============================================================================
 # HAND DETECTION SYSTEM 
@@ -178,32 +408,38 @@ class WebHandDetector:
         """Detect hands in frame and return hand data"""
         if not self.hands:
             return []
+        
+        try:
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = self.hands.process(rgb_frame)
             
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.hands.process(rgb_frame)
-        
-        hands_data = []
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                # Get bounding box
-                h, w, _ = frame.shape
-                x_coords = [lm.x * w for lm in hand_landmarks.landmark]
-                y_coords = [lm.y * h for lm in hand_landmarks.landmark]
-                
-                bbox = [
-                    int(min(x_coords)),
-                    int(min(y_coords)),
-                    int(max(x_coords)),
-                    int(max(y_coords))
-                ]
-                
-                hands_data.append({
-                    'landmarks': hand_landmarks,
-                    'bbox': bbox,
-                    'confidence': 0.8
-                })
-        
-        return hands_data
+            hands_data = []
+            if results.multi_hand_landmarks:
+                for hand_landmarks in results.multi_hand_landmarks:
+                    # Get bounding box
+                    h, w, _ = frame.shape
+                    x_coords = [lm.x * w for lm in hand_landmarks.landmark]
+                    y_coords = [lm.y * h for lm in hand_landmarks.landmark]
+                    
+                    bbox = [
+                        int(min(x_coords)),
+                        int(min(y_coords)),
+                        int(max(x_coords)),
+                        int(max(y_coords))
+                    ]
+                    
+                    hands_data.append({
+                        'landmarks': hand_landmarks,
+                        'bbox': bbox,
+                        'confidence': 0.8
+                    })
+            
+            return hands_data
+        except Exception as e:
+            print(f"[ERROR] Exception in detect_hands: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
     
     def draw_hands(self, frame, hands_data):
         """Draw hand landmarks and bounding boxes"""
@@ -247,6 +483,17 @@ class WebGestureDetector:
         self.prediction_history = deque(maxlen=10)
         self.hand_detector = WebHandDetector()
         
+        # Check if model is a combined CNN+Hand model
+        self.is_combined_model = hasattr(model, 'cnn_branch') and hasattr(model, 'hand_branch')
+        
+        # If combined model, we need to track hand landmarks
+        if self.is_combined_model:
+            self.hand_landmarks_buffer = deque(maxlen=buffer_size)
+            print("WebGestureDetector initialized for Combined CNN+Hand model")
+        else:
+            self.hand_landmarks_buffer = None
+            print("WebGestureDetector initialized for CNN-only model")
+        
         # Transform for model input
         self.transform = transforms.Compose([
             transforms.ToPILImage(),
@@ -256,8 +503,35 @@ class WebGestureDetector:
         ])
     
     def add_frame(self, frame):
-        """Add frame to buffer"""
+        """Add frame to buffer and extract hand landmarks if using combined model"""
         self.frame_buffer.append(frame.copy())
+        
+        # Extract hand landmarks if using combined model
+        if self.is_combined_model and self.hand_landmarks_buffer is not None:
+            try:
+                # detect_hands() will convert to RGB internally, pass BGR frame
+                hands_data = self.hand_detector.detect_hands(frame)
+                
+                # Extract landmark coordinates (2 hands * 21 landmarks * 3 coords = 126 features)
+                landmarks = []
+                for hand in hands_data[:2]:  # Max 2 hands
+                    if 'landmarks' in hand:
+                        for lm in hand['landmarks'].landmark:  # Access .landmark property
+                            landmarks.extend([lm.x, lm.y, lm.z])
+                
+                # Pad to 126 features
+                while len(landmarks) < 126:
+                    landmarks.append(0.0)
+                landmarks = landmarks[:126]
+                
+                self.hand_landmarks_buffer.append(landmarks)
+                    
+            except Exception as e:
+                # If hand detection fails, append zeros
+                self.hand_landmarks_buffer.append([0.0] * 126)
+                print(f"[ERROR] Hand detection exception: {e}")
+                import traceback
+                traceback.print_exc()
     
     def is_buffer_ready(self):
         """Check if buffer has enough frames for prediction"""
@@ -275,7 +549,21 @@ class WebGestureDetector:
             
             # Model prediction
             with torch.no_grad():
-                outputs = self.model(frames_tensor)
+                if self.is_combined_model:
+                    # Combined model needs both video and hand landmarks
+                    if len(self.hand_landmarks_buffer) >= self.buffer_size:
+                        hand_landmarks = np.array(list(self.hand_landmarks_buffer), dtype=np.float32)
+                        hand_tensor = torch.from_numpy(hand_landmarks).unsqueeze(0).to(self.device)
+                        
+                        # CombinedCNNHandModel returns (final_outputs, cnn_outputs, hand_outputs)
+                        final_outputs, cnn_outputs, hand_outputs = self.model(frames_tensor, hand_tensor)
+                        outputs = final_outputs  # Use the fused prediction
+                    else:
+                        # Not enough hand landmarks yet
+                        return None, 0.0
+                else:
+                    # CNN-only model
+                    outputs = self.model(frames_tensor)
                 
                 # Check for NaN outputs
                 if torch.isnan(outputs).any() or torch.isinf(outputs).any():
@@ -288,8 +576,18 @@ class WebGestureDetector:
                 predicted_class = self.class_names[predicted_idx.item()]
                 confidence_score = confidence.item()
                 
+                # Debug: Print top-3 predictions
+                top3_probs, top3_indices = torch.topk(probabilities, min(3, len(self.class_names)), dim=1)
+                print(f"[PREDICTION] Top-3: ", end="")
+                for i in range(min(3, len(self.class_names))):
+                    cls_name = self.class_names[top3_indices[0, i].item()]
+                    cls_conf = top3_probs[0, i].item()
+                    print(f"{cls_name}={cls_conf:.3f} ", end="")
+                print()
+                
                 # Filter low confidence predictions
                 if confidence_score < 0.01:
+                    print(f"[PREDICTION] Filtered out - confidence too low: {confidence_score:.3f}")
                     return None, 0.0
                 
                 # Add to history
@@ -297,10 +595,13 @@ class WebGestureDetector:
                 
                 # Get stable prediction
                 stable_prediction = self._get_stable_prediction()
+                print(f"[PREDICTION] Raw: {predicted_class} ({confidence_score:.3f}), Stable: {stable_prediction}")
                 return stable_prediction, confidence_score
                 
         except Exception as e:
             print(f"Prediction error: {e}")
+            import traceback
+            traceback.print_exc()
             return None, 0.0
     
     def _preprocess_frames(self, frames):
@@ -356,14 +657,17 @@ def find_latest_training_folder():
     models_dir = os.path.join(current_dir, "models")
 
     # Prefer outputs directory first
-    outputs_training = glob.glob(os.path.join(outputs_dir, "training_*"))
-    models_training = glob.glob(os.path.join(models_dir, "training_*"))
-
     candidates = []
-    if outputs_training:
-        candidates.extend(outputs_training)
-    if models_training:
-        candidates.extend(models_training)
+    
+    if os.path.exists(outputs_dir):
+        outputs_training = glob.glob(os.path.join(outputs_dir, "training_*"))
+        if outputs_training:
+            candidates.extend(outputs_training)
+    
+    if os.path.exists(models_dir):
+        models_training = glob.glob(os.path.join(models_dir, "training_*"))
+        if models_training:
+            candidates.extend(models_training)
 
     if not candidates:
         return None
@@ -379,11 +683,23 @@ def validate_model(model, device, class_names):
         
         # Create dummy input using model's preferred sequence length if available
         seq_len = getattr(model, 'sequence_length', 16)
+        
+        # Check if it's a combined model that needs hand landmarks
+        is_combined_model = hasattr(model, 'cnn_branch') and hasattr(model, 'hand_branch')
+        
         # (batch_size=1, seq_len, C=3, H=224, W=224)
-        dummy_input = torch.randn(1, seq_len, 3, 224, 224).to(device)
+        dummy_video = torch.randn(1, seq_len, 3, 224, 224).to(device)
         
         with torch.no_grad():
-            output = model(dummy_input)
+            if is_combined_model:
+                # Create dummy hand landmarks (batch_size=1, seq_len, 126 features)
+                dummy_hands = torch.randn(1, seq_len, 126).to(device)
+                # CombinedCNNHandModel returns (final_outputs, cnn_outputs, hand_outputs)
+                final_output, cnn_output, hand_output = model(dummy_video, dummy_hands)
+                output = final_output
+            else:
+                # CNN-only model
+                output = model(dummy_video)
             
             # Check output shape
             if output.shape != (1, len(class_names)):
@@ -401,57 +717,86 @@ def validate_model(model, device, class_names):
                 print("Softmax produces NaN or infinite values")
                 return False
             
-            print("Model validation passed")
+            model_type = "Combined CNN+Hand" if is_combined_model else "CNN-only"
+            print(f"Model validation passed ({model_type})")
             return True
             
     except Exception as e:
         print(f"Model validation failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def load_model_and_classes():
     """Load the SASL model and class names from training folder"""
     
+    print("Searching for trained CNN-LSTM model...")
+    
     # Find the latest training folder (prefer outputs/ over models/)
     training_folder = find_latest_training_folder()
     if not training_folder:
-        print("ERROR: No training folder found in outputs/ or models/ directory.")
-        print("Please ensure you have a training folder (e.g., training_20251011_163502) with:")
-        print("  - models/best_sasl_cnn_lstm_model.pth")
-        print("  - results/class_names.json")
+        print("ERROR: No training folder found!")
+        print("Please run video_cnn_only_training.py first to train the model.")
+        print(f"Searched in: {current_dir}/outputs and {current_dir}/models")
         return None, None
     
-    print(f"Using training folder: {os.path.basename(training_folder)}")
+    print(f"Found training folder: {os.path.basename(training_folder)}")
     
     # Load class names from results folder
     class_names_path = os.path.join(training_folder, "results", "class_names.json")
+    
+    # Try alternate class names file if primary not found
+    if not os.path.exists(class_names_path):
+        alt_class_names_path = os.path.join(training_folder, "results", "pytorch_sasl_classes.json")
+        if os.path.exists(alt_class_names_path):
+            class_names_path = alt_class_names_path
+            print(f"Using alternate class names file: {os.path.basename(class_names_path)}")
+    
     try:
         with open(class_names_path, 'r', encoding='utf-8') as f:
             class_names = json.load(f)
-        print(f"Loaded {len(class_names)} classes from results folder")
+        print(f"Loaded {len(class_names)} classes from {os.path.basename(class_names_path)}")
     except Exception as e:
-        print(f"ERROR: Failed to load class names from: {class_names_path}")
+        print(f"ERROR: Could not load class names from {class_names_path}")
         print(f"Error: {e}")
         return None, None
     
     # Load model from models folder within training directory
     model_path = os.path.join(training_folder, "models", "best_sasl_cnn_lstm_model.pth")
     if not os.path.exists(model_path):
-        print(f"ERROR: Model file not found: {model_path}")
-        print("Please ensure the model file exists in the training folder.")
+        print(f"ERROR: Model file not found at {model_path}")
+        print("Please ensure training completed successfully.")
         return None, None
     
+    print(f"Loading model from: {os.path.basename(model_path)}")
+    
     try:
-        # Create CNN+LSTM model architecture
-        model = CNNLSTMModel(
-            num_classes=len(class_names),
-            sequence_length=30,
-            input_size=(224, 224)
-        ).to(device)
+        # Determine which model class to use
+        ModelClass = TrainedCNNLSTMModel if USE_TRAINED_MODELS and TrainedCNNLSTMModel else CNNLSTMModel
         
-        print(f"CNN+LSTM model architecture created")
-        
-        # Load weights
+        # Load checkpoint first to check what model was saved
         checkpoint = torch.load(model_path, map_location=device, weights_only=False)
+        
+        # Try to detect if it's a combined model by checking for hand branch keys
+        is_combined_model = any('hand_branch' in key for key in checkpoint.keys())
+        
+        if is_combined_model and CombinedCNNHandModel is not None:
+            print("Detected Combined CNN+Hand model in checkpoint")
+            print("Detected Combined CNN+Hand model in checkpoint")
+            model = CombinedCNNHandModel(
+                num_classes=len(class_names),
+                sequence_length=16,
+                input_size=(224, 224)
+            ).to(device)
+        else:
+            print("Loading as CNN-LSTM model")
+            model = ModelClass(
+                num_classes=len(class_names),
+                sequence_length=16,
+                input_size=(224, 224)
+            ).to(device)
+        
+        print(f"Model architecture created")
         
         # Check if the checkpoint keys match our model
         model_keys = set(model.state_dict().keys())
@@ -461,14 +806,16 @@ def load_model_and_classes():
         unexpected_keys = checkpoint_keys - model_keys
         
         if missing_keys:
-            print(f"ERROR: Missing keys in checkpoint: {len(missing_keys)} keys missing")
-            print("The model architecture may not match the saved checkpoint.")
-            return None, None
+            print(f"WARNING: Missing keys in checkpoint: {len(missing_keys)} keys")
+            if len(missing_keys) < 10:
+                print(f"  Missing keys: {list(missing_keys)[:10]}")
         
         if unexpected_keys:
             print(f"WARNING: Unexpected keys in checkpoint: {len(unexpected_keys)} extra keys")
-            print("This may indicate a model version mismatch but loading will continue.")
+            if len(unexpected_keys) < 10:
+                print(f"  Unexpected keys: {list(unexpected_keys)[:10]}")
         
+        # Load the state dict (strict=False allows missing/unexpected keys)
         model.load_state_dict(checkpoint, strict=False)
         model.eval()
         
@@ -490,16 +837,118 @@ def load_model_and_classes():
         return None, None
 
 
+def find_latest_hand_landmark_model(base_dir="models"):
+    """
+    Find the most recent hand landmark model directory for alphabet mode.
+    
+    Args:
+        base_dir: Base directory to search for models
+        
+    Returns:
+        Path to the latest hand landmark model directory, or None if not found
+    """
+    search_path = os.path.join(current_dir, base_dir)
+    
+    if not os.path.exists(search_path):
+        print(f"Hand landmark models directory not found: {search_path}")
+        return None
+    
+    pattern = os.path.join(search_path, "hand_landmark_model_*")
+    model_dirs = glob.glob(pattern)
+    
+    if not model_dirs:
+        print(f"No hand landmark models found in: {search_path}")
+        return None
+    
+    # Sort by directory name (which includes timestamp) and get the latest
+    model_dirs.sort(reverse=True)
+    latest_model = model_dirs[0]
+    print(f"Found hand landmark model: {os.path.basename(latest_model)}")
+    return latest_model
 
-# Initialize model and detector
-print("Loading SASL AI Model...")
+
+def load_alphabet_model():
+    """Load the hand landmark model for alphabet mode"""
+    
+    print("\nSearching for hand landmark (alphabet) model...")
+    
+    # Find the latest hand landmark model
+    model_path = find_latest_hand_landmark_model()
+    if model_path is None:
+        print("WARNING: No hand landmark model found for alphabet mode")
+        print("  Alphabet mode will be disabled")
+        print("  To enable alphabet mode, train a hand landmark model first")
+        return None
+    
+    print(f"Loading alphabet model from: {os.path.basename(model_path)}")
+    
+    try:
+        # Verify required model files exist
+        required_files = [
+            "random_forest_model.joblib",
+            "scaler.joblib",
+            "label_encoder.joblib"
+        ]
+        
+        missing_files = []
+        for file in required_files:
+            file_path = os.path.join(model_path, file)
+            if not os.path.exists(file_path):
+                missing_files.append(file)
+        
+        if missing_files:
+            print(f"ERROR: Missing required model files: {missing_files}")
+            print("  Alphabet mode will be disabled")
+            return None
+        
+        recognizer = HandGestureRecognizer(model_path)
+        print(f"Alphabet model loaded successfully")
+        print(f"  - Model type: Random Forest")
+        print(f"  - Input mode: {'Two-hand' if recognizer.two_hand_mode else 'Single-hand'}")
+        print(f"  - Gestures: {len(recognizer.label_encoder.classes_)}")
+        return recognizer
+        
+    except Exception as e:
+        print(f"ERROR: Error loading alphabet model: {e}")
+        traceback.print_exc()
+        return None
+    except Exception as e:
+        print(f"ERROR: Failed to load alphabet model: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
+
+# Initialize models and detectors
+print("="*60)
+print("Loading SASL AI Models...")
+print("="*60)
+
+# Load motion model (CNN-LSTM)
+print("\n[1/2] Loading Motion Model (CNN-LSTM)...")
 model, class_names = load_model_and_classes()
 if model is None or class_names is None:
-    print("Failed to load model or class names. AI features will be disabled.")
+    print("Failed to load motion model. Motion mode will be disabled.")
     detector = None
 else:
-    # Use a 30-frame buffer to align with typical training sequence length
-    detector = WebGestureDetector(model, device, class_names, buffer_size=30)
+    # Use a 16-frame buffer to align with typical training sequence length
+    detector = WebGestureDetector(model, device, class_names, buffer_size=16)
+    print("Motion model loaded successfully")
+
+# Load alphabet model (Hand Landmarks)
+print("\n[2/2] Loading Alphabet Model (Hand Landmarks)...")
+alphabet_detector = load_alphabet_model()
+if alphabet_detector:
+    print("Alphabet model loaded successfully")
+else:
+    print("WARNING: Alphabet model not available")
+
+print("\n" + "="*60)
+print("Model Loading Complete")
+print(f"Motion Mode: {'Available' if detector else 'Disabled'}")
+print(f"Alphabet Mode: {'Available' if alphabet_detector else 'Disabled'}")
+print("="*60 + "\n")
 
 # ============================================================================
 # VIDEO STREAMING
@@ -616,6 +1065,74 @@ def draw_overlays(frame):
 
 # Clients send frames over the WebSocket for detection and receive JSON responses.
 
+@app.route('/switch_mode', methods=['POST'])
+def switch_mode():
+    """Switch between motion and alphabet detection modes"""
+    global current_model_mode, detector, alphabet_detector
+    global recognized_words, last_display_word, last_display_start, last_committed_word
+    
+    print("\n" + "="*60)
+    print("SWITCH MODE REQUEST RECEIVED")
+    print("="*60)
+    
+    try:
+        data = request.get_json()
+        mode = data.get('mode', 'motion')
+        
+        print(f"Requested mode: {mode}")
+        print(f"Current mode: {current_model_mode}")
+        print(f"Motion detector available: {detector is not None}")
+        print(f"Alphabet detector available: {alphabet_detector is not None}")
+        
+        if mode not in ['motion', 'alphabet']:
+            print(f"ERROR: Invalid mode '{mode}'")
+            return jsonify({'status': 'error', 'message': 'Invalid mode. Use "motion" or "alphabet"'}), 400
+        
+        with model_mode_lock:
+            # Check if requested model is available
+            if mode == 'motion' and detector is None:
+                print("ERROR: Motion model not available")
+                return jsonify({'status': 'error', 'message': 'Motion model not available'}), 503
+            if mode == 'alphabet' and alphabet_detector is None:
+                print("ERROR: Alphabet model not available")
+                return jsonify({'status': 'error', 'message': 'Alphabet model not available'}), 503
+            
+            # Clear any buffered state when switching modes
+            if mode == 'motion' and detector:
+                with detector_lock:
+                    detector.frame_buffer.clear()
+                    detector.prediction_history.clear()
+                print("Cleared motion detector buffers")
+            elif mode == 'alphabet' and alphabet_detector:
+                alphabet_detector.prediction_history.clear()
+                print("Cleared alphabet detector history")
+            
+            # Reset sentence construction state
+            recognized_words = []
+            last_display_word = None
+            last_display_start = None
+            last_committed_word = None
+            print("Reset sentence construction state")
+            
+            # Switch mode
+            old_mode = current_model_mode
+            current_model_mode = mode
+            
+            print(f"✓ Successfully switched from {old_mode} mode to {mode} mode")
+            print("="*60 + "\n")
+            
+            return jsonify({
+                'status': 'success',
+                'mode': current_model_mode,
+                'message': f'Switched to {mode} mode'
+            })
+    except Exception as e:
+        print(f"ERROR switching mode: {e}")
+        import traceback
+        traceback.print_exc()
+        print("="*60 + "\n")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 # The frontend captures frames and sends them to the WebSocket server.
 
 @app.route('/toggle_hands', methods=['POST'])
@@ -652,6 +1169,9 @@ def status():
     return jsonify({
         'prediction': current_prediction,
         'confidence': current_confidence,
+        'mode': current_model_mode,
+        'motion_available': detector is not None,
+        'alphabet_available': alphabet_detector is not None,
         'show_hands': show_hands,
         'show_server_overlays': show_server_overlays,
         'buffer_ready': detector.is_buffer_ready() if detector else False,
@@ -757,10 +1277,64 @@ async def ws_handler(websocket):
                     # Enqueue the frame for background processing; return quickly
                     worker.push_frame(message)
                 else:
-                    # Text messages (log content up to 200 chars)
-                    text_preview = str(message)[:200]
-                    print(f"WS: received text message: {text_preview}")
-                    await websocket.send('OK')
+                    # Text messages for mode switching or commands
+                    try:
+                        cmd = json.loads(message)
+                        print(f"WS: Received command: {cmd}")
+                        
+                        if cmd.get('action') == 'switch_mode':
+                            new_mode = cmd.get('mode', 'motion')
+                            print(f"WS: Mode switch request to: {new_mode}")
+                            
+                            if new_mode in ['motion', 'alphabet']:
+                                with model_mode_lock:
+                                    global current_model_mode, recognized_words
+                                    global last_display_word, last_display_start, last_committed_word
+                                    
+                                    # Check availability
+                                    if new_mode == 'motion' and detector is None:
+                                        error_msg = json.dumps({'error': 'Motion model not available', 'status': 'error'})
+                                        print(f"WS: {error_msg}")
+                                        await websocket.send(error_msg)
+                                    elif new_mode == 'alphabet' and alphabet_detector is None:
+                                        error_msg = json.dumps({'error': 'Alphabet model not available', 'status': 'error'})
+                                        print(f"WS: {error_msg}")
+                                        await websocket.send(error_msg)
+                                    else:
+                                        # Clear state
+                                        if new_mode == 'motion' and detector:
+                                            with detector_lock:
+                                                detector.frame_buffer.clear()
+                                                detector.prediction_history.clear()
+                                        elif new_mode == 'alphabet' and alphabet_detector:
+                                            alphabet_detector.prediction_history.clear()
+                                        
+                                        recognized_words = []
+                                        last_display_word = None
+                                        last_display_start = None
+                                        last_committed_word = None
+                                        
+                                        old_mode = current_model_mode
+                                        current_model_mode = new_mode
+                                        print(f"WS: Successfully switched from {old_mode} to {new_mode} mode")
+                                        
+                                        success_msg = json.dumps({
+                                            'status': 'success',
+                                            'mode': current_model_mode
+                                        })
+                                        print(f"WS: Sending response: {success_msg}")
+                                        await websocket.send(success_msg)
+                            else:
+                                error_msg = json.dumps({'error': 'Invalid mode', 'status': 'error'})
+                                print(f"WS: {error_msg}")
+                                await websocket.send(error_msg)
+                        else:
+                            print(f"WS: Unknown command, sending OK")
+                            await websocket.send('OK')
+                    except json.JSONDecodeError as e:
+                        text_preview = str(message)[:200]
+                        print(f"WS: JSON decode error: {e}, message: {text_preview}")
+                        await websocket.send('OK')
             except websockets.exceptions.ConnectionClosed:
                 print(f"WS loop connection closed while handling message from {websocket.remote_address}")
                 break
@@ -798,20 +1372,22 @@ def process_frame_bytes_sync(frame_bytes):
 
     This version treats incoming frames from the web client as the primary
     input and returns a JSON-serializable dict containing prediction metadata.
+    Supports both motion mode (CNN-LSTM with buffering) and alphabet mode (single-frame).
 
     Returns:
-    - dict with keys: 'prediction' (str or None), 'confidence' (float)
+    - dict with keys: 'prediction' (str or None), 'confidence' (float), 'mode' (str)
     """
     # Ensure globals are declared before any reference within this function
     global current_prediction, current_confidence
     global last_display_word, last_display_start, last_committed_word
-    global recognized_words
+    global recognized_words, current_model_mode
   # The json object that will be sent back to the client
     result = {
         'prediction': None,
         'confidence': 0.0,
         'committed_words': [],
         'sentence': "",
+        'mode': current_model_mode,
     }
 
     try:
@@ -822,6 +1398,9 @@ def process_frame_bytes_sync(frame_bytes):
             print("process_frame_bytes_sync: cv2.imdecode failed for incoming frame")
             return result
 
+        # Mirror the frame horizontally to match user perspective
+        img = cv2.flip(img, 1)
+
         # optional debug metric
         try:
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -829,70 +1408,120 @@ def process_frame_bytes_sync(frame_bytes):
         except Exception:
             mean_brightness = -1.0
 
-        # Interact with the detector under a lock to ensure thread-safety
-        if detector is None:
-            return result
+        # Process frame based on current mode
+        with model_mode_lock:
+            mode = current_model_mode
+        
+        # Debug: log mode every 16 frames
+        global frame_count
+        if frame_count % 16 == 0:
+            print(f"[FRAME] Processing in {mode.upper()} mode (frame {frame_count})")
+        
+        if mode == 'alphabet':
+            # ALPHABET MODE: Single-frame prediction with hand landmark model
+            if alphabet_detector is None:
+                result['prediction'] = "Alphabet model not loaded"
+                return result
+            
+            try:
+                pred, conf = alphabet_detector.predict_from_frame(img)
+                if pred:
+                    print(f"[ALPHABET] Detected: {pred} (confidence: {conf:.3f})")
+                    # update shared state
+                    current_prediction = pred
+                    current_confidence = conf
+                    result['prediction'] = pred
+                    result['confidence'] = float(conf)
+                    # Hold-to-commit logic (time based)
+                    now = time.monotonic()
+                    if pred != last_display_word:
+                        last_display_word = pred
+                        last_display_start = now
+                    shown_for = 0.0 if last_display_start is None else (now - last_display_start)
+                    if shown_for >= COMMIT_SECONDS and pred != last_committed_word:
+                        recognized_words.append({
+                            'text': pred,
+                            'confidence': float(conf),
+                            't_utc': datetime.utcnow().isoformat() + 'Z'
+                        })
+                        last_committed_word = pred
+                    # Compute sentence
+                    committed = [w['text'] for w in recognized_words]
+                    sentence = grammar_fix(committed)
+                    result['committed_words'] = committed
+                    result['sentence'] = sentence
+                else:
+                    # No hands detected
+                    committed = [w['text'] for w in recognized_words]
+                    result['committed_words'] = committed
+                    result['sentence'] = grammar_fix(committed)
+            except Exception as e:
+                print(f"Alphabet mode prediction error: {e}")
+                committed = [w['text'] for w in recognized_words]
+                result['committed_words'] = committed
+                result['sentence'] = grammar_fix(committed)
+        
+        else:
+            # MOTION MODE: Multi-frame buffering with CNN-LSTM model
+            if detector is None:
+                result['prediction'] = "Motion model not loaded"
+                return result
 
-        try:
-            with detector_lock:
-                # Server-side hand gate: skip buffering/prediction if no hands are present
-                try:
-                    hands_present = False
-                    try:
-                        hands_info = detector.get_hand_overlay_info(img)
-                        hands_present = bool(hands_info)
-                    except Exception:
-                        hands_present = False
-                    if not hands_present:
-                        # No hands detected; do not add frame to buffer or attempt prediction
-                        # Still return current committed sentence if any.
+            try:
+                with detector_lock:
+                    # Add frame to detector (hand landmark extraction happens inside add_frame)
+                    detector.add_frame(img)
+                    
+                    # Debug: Log buffer status periodically
+                    if frame_count % 16 == 0:
+                        buffer_size = len(detector.frame_buffer)
+                        hand_buffer_size = len(detector.hand_landmarks_buffer) if detector.hand_landmarks_buffer else 0
+                        print(f"[MOTION] Buffer: {buffer_size}/{detector.buffer_size}, Hands: {hand_buffer_size}/{detector.buffer_size}")
+                    
+                    # Check if buffer is ready and make prediction
+                    if detector.is_buffer_ready():
+                        if frame_count % 5 == 0:  # Log more frequently when predicting
+                            print(f"[MOTION] Buffer ready, making prediction...")
+                        pred, conf = detector.predict_gesture()
+                        if pred:
+                            print(f"[MOTION] Detected: {pred} (confidence: {conf:.3f})")
+                            # update shared state
+                            current_prediction = pred
+                            current_confidence = conf
+                            result['prediction'] = pred
+                            result['confidence'] = float(conf)
+                            
+                            # Hold-to-commit logic (time based)
+                            now = time.monotonic()
+                            if pred != last_display_word:
+                                last_display_word = pred
+                                last_display_start = now
+                            shown_for = 0.0 if last_display_start is None else (now - last_display_start)
+                            if shown_for >= COMMIT_SECONDS and pred != last_committed_word:
+                                recognized_words.append({
+                                    'text': pred,
+                                    'confidence': float(conf),
+                                    't_utc': datetime.utcnow().isoformat() + 'Z'
+                                })
+                                last_committed_word = pred
+                            
+                            # Compute sentence
+                            committed = [w['text'] for w in recognized_words]
+                            sentence = grammar_fix(committed)
+                            result['committed_words'] = committed
+                            result['sentence'] = sentence
+                        else:
+                            # Log when prediction is None
+                            if frame_count % 10 == 0:
+                                print(f"[MOTION] Prediction returned None (confidence: {conf:.3f})")
+                    
+                    # Even if no commit, still compute up-to-date sentence for UI
+                    if not result['sentence']:
                         committed = [w['text'] for w in recognized_words]
                         result['committed_words'] = committed
                         result['sentence'] = grammar_fix(committed)
-                        return result
-                except Exception:
-                    # If hand detection fails for any reason, fall back to processing
-                    pass
-
-                detector.add_frame(img)
-                if detector.is_buffer_ready():
-                    pred, conf = detector.predict_gesture()
-                    if pred:
-                        # update shared state
-                        current_prediction = pred
-                        current_confidence = conf
-                        result['prediction'] = pred
-                        result['confidence'] = float(conf)
-                        # Hold-to-commit logic (time based)
-                        now = time.monotonic()
-                        if pred != last_display_word:
-                            last_display_word = pred
-                            last_display_start = now
-                        shown_for = 0.0 if last_display_start is None else (now - last_display_start)
-                        if shown_for >= COMMIT_SECONDS and pred != last_committed_word:
-                            recognized_words.append({
-                                'text': pred,
-                                'confidence': float(conf),
-                                't_utc': datetime.utcnow().isoformat() + 'Z'
-                            })
-                            last_committed_word = pred
-                            # Persist session JSON snapshot on each new committed word
-                        committed = [w['text'] for w in recognized_words]
-                        sentence = grammar_fix(committed)
-                        result['committed_words'] = committed
-                        result['sentence'] = sentence
-                # Even if no commit, still compute up-to-date sentence for UI (non-invasive)
-                if not result['sentence']:
-                    try:
-                        committed = [w['text'] for w in recognized_words]
-                        result['committed_words'] = committed
-                        result['sentence'] = grammar_fix(committed)
-                    except Exception:
-                        pass
-        except Exception as det_e:
-            print(f"Detector processing error: {det_e}")
-            import traceback as _tb
-            _tb.print_exc()
+            except Exception as e:
+                print(f"Motion mode prediction error: {e}")
 
         # Draw overlays (kept for internal use / logs) but not returned
         try:
@@ -908,6 +1537,10 @@ def process_frame_bytes_sync(frame_bytes):
                 result['sentence'] = grammar_fix(committed)
             except Exception:
                 pass
+        
+        # Increment frame counter
+        frame_count += 1
+        
         return result
 
     except Exception as e:
