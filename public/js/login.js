@@ -220,24 +220,33 @@
     forgotPassword.addEventListener('click', function(e) {
         e.preventDefault();
 
-        const email = prompt('Enter your email address for password reset:');
-        if (email) {
-            fetch('/auth/forgot-password', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ email })
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred');
-            });
+        const email = document.getElementById('sign-in-email').value.trim();
+        if (!email) {
+            alert('Please enter your email address in the sign-in form first.');
+            return;
         }
+
+        fetch('/auth/forgot-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message === 'User not found') {
+                document.getElementById('sign-in-email-error').textContent = 'User does not exist. Please check if you have typed in the right email.';
+                document.getElementById('sign-in-email-error').style.display = 'block';
+            } else {
+                alert(data.message);
+                document.getElementById('sign-in-email-error').style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred');
+        });
     });
 
     // Tool tips functionality
