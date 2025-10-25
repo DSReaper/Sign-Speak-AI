@@ -676,7 +676,8 @@
 /* AI Status Display */
 .ai-status {
   position: absolute;
-  top: 12px;
+  bottom: 12px; /* moved from top to bottom to pin status at the bottom of the camera */
+  top: auto;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
