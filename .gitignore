@@ -211,4 +211,4 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-*.log
+*.log.venv/
