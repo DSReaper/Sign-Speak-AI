@@ -447,21 +447,6 @@ class AISignLanguageDetection {
                 try {
                     const obj = JSON.parse(data);
                     
-                    // Log model output to console
-                    if (obj.prediction) {
-                        console.log('=== AI PREDICTION ===');
-                        console.log('Prediction:', obj.prediction);
-                        console.log('Confidence:', obj.confidence ? (obj.confidence * 100).toFixed(2) + '%' : 'N/A');
-                        console.log('Mode:', obj.mode || 'unknown');
-                        if (obj.sentence) {
-                            console.log('Sentence:', obj.sentence);
-                        }
-                        if (obj.committed_words && obj.committed_words.length > 0) {
-                            console.log('Committed:', obj.committed_words);
-                        }
-                        console.log('=====================');
-                    }
-                    
                     // Example server response: { prediction, confidence, committed_words, sentence, mode }
                     if (obj.sentence && obj.sentence.trim().length > 0) {
                         // Show the sentence (committed words with grammar)
@@ -492,21 +477,6 @@ class AISignLanguageDetection {
             // We expect a JSON string response from the server describing the detected phrase. Parse it and update UI.
             try {
                 const obj = JSON.parse(data);
-                
-                // Log model output to console
-                if (obj.prediction) {
-                    console.log('=== AI PREDICTION ===');
-                    console.log('Prediction:', obj.prediction);
-                    console.log('Confidence:', obj.confidence ? (obj.confidence * 100).toFixed(2) + '%' : 'N/A');
-                    console.log('Mode:', obj.mode || 'unknown');
-                    if (obj.sentence) {
-                        console.log('Sentence:', obj.sentence);
-                    }
-                    if (obj.committed_words && obj.committed_words.length > 0) {
-                        console.log('Committed:', obj.committed_words);
-                    }
-                    console.log('=====================');
-                }
                 
                 if (obj.sentence && obj.sentence.trim().length > 0) {
                     // Show the sentence (committed words with grammar)
