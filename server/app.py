@@ -782,7 +782,6 @@ def load_model_and_classes():
         
         if is_combined_model and CombinedCNNHandModel is not None:
             print("Detected Combined CNN+Hand model in checkpoint")
-            print("Detected Combined CNN+Hand model in checkpoint")
             model = CombinedCNNHandModel(
                 num_classes=len(class_names),
                 sequence_length=16,
