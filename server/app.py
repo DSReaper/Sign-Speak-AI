@@ -1067,9 +1067,6 @@ def draw_overlays(frame):
 @app.route('/switch_mode', methods=['POST'])
 def switch_mode():
     """Switch between motion and alphabet detection modes"""
-    global current_model_mode, detector, alphabet_detector
-    global recognized_words, last_display_word, last_display_start, last_committed_word
-    
     print("\n" + "="*60)
     print("SWITCH MODE REQUEST RECEIVED")
     print("="*60)
