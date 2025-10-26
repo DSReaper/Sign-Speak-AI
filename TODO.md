@@ -1,20 +1,8 @@
-# Multi-User Personalization Implementation
-
-## Current Status
-- Authentication system uses JWT tokens stored in cookies and localStorage
-- Flask AI service is proxied through Express server
-- Need to personalize Flask service and WebSocket connections per user
-
-## Tasks to Complete
-- [ ] Analyze current authentication and proxy setup
-- [ ] Modify Flask proxy to include user-specific headers/tokens
-- [ ] Update WebSocket connections to be user-specific
-- [ ] Ensure camera page handles user-specific data
-- [ ] Test concurrent user access and isolation
-- [ ] Verify user A cannot access user B's data/UI
-
-## Files to Modify
-- server/app.js (Flask proxy configuration)
-- client/views/camera.ejs (UI personalization)
-- public/js/camera-acess.js (WebSocket handling)
-- Backend_stuff/controllers/authController.js (if needed for token handling)
+- [x] Add /welcome endpoint to server/app.py with request logging and JSON response
+- [ ] Modify server/app.py for per-user AI functionality
+  - [x] Add JWT import and verification (already exists)
+  - [x] Create user_states dict for per-user storage (already exists)
+  - [ ] Update ws_handler for authentication and user association
+  - [ ] Modify process_frame_bytes_sync for per-user state
+  - [ ] Ensure mode switching is per-user
+- [ ] Test per-user isolation after changes
