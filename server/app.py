@@ -81,19 +81,9 @@ except Exception:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Try to import models from training module for compatibility
-try:
-    models_dir = os.path.join(current_dir, "models")
-    sys.path.insert(0, models_dir)
-    from video_cnn_only_training import CNNLSTMModel as TrainedCNNLSTMModel, CombinedCNNHandModel
-    print("Successfully imported model architectures from training module")
-    USE_TRAINED_MODELS = True
-except ImportError as e:
-    print(f"Could not import models from training module: {e}")
-    print("Using local model definitions (may cause compatibility issues)")
-    TrainedCNNLSTMModel = None
-    CombinedCNNHandModel = None
-    USE_TRAINED_MODELS = False
+TrainedCNNLSTMModel = None
+CombinedCNNHandModel = None
+USE_TRAINED_MODELS = False
 
 # ============================================================================
 # MODEL ARCHITECTURES 
@@ -736,7 +726,6 @@ def load_model_and_classes():
     training_folder = find_latest_training_folder()
     if not training_folder:
         print("ERROR: No training folder found!")
-        print("Please run video_cnn_only_training.py first to train the model.")
         print(f"Searched in: {current_dir}/outputs and {current_dir}/models")
         return None, None
     
