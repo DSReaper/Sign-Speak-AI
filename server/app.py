@@ -51,11 +51,18 @@ current_model_mode = 'motion'  # 'motion' or 'alphabet'
 model_mode_lock = threading.Lock()
 current_prediction = "Loading the AI detection model..."
 current_confidence = 0.0
-# Grammar / sentence construction session state
-recognized_words = []  # list of dicts: {text, confidence, t_utc}
-last_display_word = None
-last_display_start = None
-last_committed_word = None
+
+# PER-USER SESSION MANAGEMENT
+# Dictionary mapping websocket connection ID to user session data
+user_sessions = {}  # {session_id: {recognized_words, last_display_word, last_display_start, last_committed_word, mode}}
+session_lock = threading.Lock()
+
+# Legacy global variables (kept for backwards compatibility but should not be used)
+recognized_words = []  # DEPRECATED - use user_sessions instead
+last_display_word = None  # DEPRECATED
+last_display_start = None  # DEPRECATED
+last_committed_word = None  # DEPRECATED
+
 COMMIT_SECONDS = 0.5  # hold duration before committing a stable prediction
 show_hands = True
 # When False, the server will not draw status/model/prediction text overlays
@@ -769,21 +776,14 @@ def load_model_and_classes():
         # Try to detect if it's a combined model by checking for hand branch keys
         is_combined_model = any('hand_branch' in key for key in checkpoint.keys())
         
-        if is_combined_model and CombinedCNNHandModel is not None:
-            print("Detected Combined CNN+Hand model in checkpoint")
-            print("Detected Combined CNN+Hand model in checkpoint")
-            model = CombinedCNNHandModel(
-                num_classes=len(class_names),
-                sequence_length=16,
-                input_size=(224, 224)
-            ).to(device)
-        else:
-            print("Loading as CNN-LSTM model")
-            model = ModelClass(
-                num_classes=len(class_names),
-                sequence_length=16,
-                input_size=(224, 224)
-            ).to(device)
+        # FORCE CNN-LSTM only model (without hand landmarks)
+        # The web app doesn't extract hand landmarks for motion mode, only video frames
+        print("Loading as CNN-LSTM model (hand landmarks not used in web mode)")
+        model = ModelClass(
+            num_classes=len(class_names),
+            sequence_length=16,
+            input_size=(224, 224)
+        ).to(device)
         
         print(f"Model architecture created")
         
@@ -1133,41 +1133,35 @@ def toggle_hands():
 
 @app.route('/reset_detector', methods=['POST'])
 def reset_detector():
-    """Reset the gesture detector"""
+    """Reset the gesture detector - clears ALL user sessions"""
     global current_prediction, current_confidence, frame_count
-    global recognized_words, last_display_word, last_display_start, last_committed_word
+    global user_sessions
     
-    if detector:
-        detector.frame_buffer.clear()
-        detector.prediction_history.clear()
+    # Clear all user sessions
+    with session_lock:
+        user_sessions.clear()
     
     current_prediction = "Buffer reset - collecting frames..."
     current_confidence = 0.0
     frame_count = 0
-    recognized_words.clear()
-    last_display_word = None
-    last_display_start = None
-    last_committed_word = None
-    return jsonify({'status': 'success'})
+    
+    return jsonify({'status': 'success', 'message': 'All sessions cleared'})
 
 @app.route('/status')
 def status():
-    """Get current status"""
-    committed = [w['text'] for w in recognized_words]
-    sentence = grammar_fix(committed)
+    """Get current system status (not user-specific)"""
+    with session_lock:
+        active_sessions = len(user_sessions)
+    
     return jsonify({
-        'prediction': current_prediction,
-        'confidence': current_confidence,
-        'mode': current_model_mode,
+        'active_sessions': active_sessions,
+        'model_mode': current_model_mode,
         'motion_available': detector is not None,
         'alphabet_available': alphabet_detector is not None,
         'show_hands': show_hands,
         'show_server_overlays': show_server_overlays,
-        'buffer_ready': detector.is_buffer_ready() if detector else False,
-        'buffer_size': len(detector.frame_buffer) if detector else 0,
         'model_loaded': detector is not None,
-        'committed_words': committed,
-        'sentence': sentence,
+        'message': 'System status - use WebSocket for user-specific data'
     })
 
 
@@ -1196,10 +1190,17 @@ def health():
 # ============================================================================
 
 async def ws_handler(websocket):
+    # Generate unique session ID for this connection
+    session_id = id(websocket)  # Use Python object ID as unique identifier
+    
+    # Declare global variables
+    global user_sessions, current_model_mode
+    
     class FrameProcessorWorker:
-        def __init__(self, ws, loop, queue_maxsize=1):
+        def __init__(self, ws, loop, session_id, queue_maxsize=1):
             self.ws = ws
             self.loop = loop
+            self.session_id = session_id  # Store session ID
             self.queue = Queue(maxsize=queue_maxsize)
             self._stop_event = threading.Event()
             self.thread = threading.Thread(target=self._run, daemon=True)
@@ -1237,7 +1238,8 @@ async def ws_handler(websocket):
                     break
                 try:
                     # Run CPU-bound processing synchronously in this thread
-                    result = process_frame_bytes_sync(item)
+                    # Pass session_id to processing function
+                    result = process_frame_bytes_sync(item, self.session_id)
                     if result:
                         # result is a dict containing prediction metadata
                         try:
@@ -1254,11 +1256,26 @@ async def ws_handler(websocket):
     try:
         # websockets library newer versions provide the path on the websocket object
         ws_path = getattr(websocket, 'path', None)
-        print(f"WS client connected: {websocket.remote_address} path={ws_path}")
+        print(f"WS client connected: {websocket.remote_address} path={ws_path} session_id={session_id}")
+        
+        # IMPORTANT: Create new session for this user
+        with session_lock:
+            user_sessions[session_id] = {
+                'recognized_words': [],
+                'last_display_word': None,
+                'last_display_start': None,
+                'last_committed_word': None,
+                'mode': current_model_mode,
+                # Per-user frame buffers for motion mode
+                'frame_buffer': deque(maxlen=16),  # 16-frame buffer for motion detection
+                'prediction_history': deque(maxlen=10),  # Prediction smoothing history
+                # Per-user alphabet mode history
+                'alphabet_prediction_history': deque(maxlen=5)  # For alphabet mode smoothing
+            }
 
         # Create a per-connection worker and tie it to this websocket's loop
         loop = asyncio.get_event_loop()
-        worker = FrameProcessorWorker(websocket, loop, queue_maxsize=1)
+        worker = FrameProcessorWorker(websocket, loop, session_id, queue_maxsize=1)
 
         async for message in websocket:
             try:
@@ -1277,9 +1294,6 @@ async def ws_handler(websocket):
                             
                             if new_mode in ['motion', 'alphabet']:
                                 with model_mode_lock:
-                                    global current_model_mode, recognized_words
-                                    global last_display_word, last_display_start, last_committed_word
-                                    
                                     # Check availability
                                     if new_mode == 'motion' and detector is None:
                                         error_msg = json.dumps({'error': 'Motion model not available', 'status': 'error'})
@@ -1290,26 +1304,25 @@ async def ws_handler(websocket):
                                         print(f"WS: {error_msg}")
                                         await websocket.send(error_msg)
                                     else:
-                                        # Clear state
-                                        if new_mode == 'motion' and detector:
-                                            with detector_lock:
-                                                detector.frame_buffer.clear()
-                                                detector.prediction_history.clear()
-                                        elif new_mode == 'alphabet' and alphabet_detector:
-                                            alphabet_detector.prediction_history.clear()
+                                        # Clear THIS session's data (not global)
+                                        with session_lock:
+                                            if session_id in user_sessions:
+                                                user_sessions[session_id]['recognized_words'] = []
+                                                user_sessions[session_id]['last_display_word'] = None
+                                                user_sessions[session_id]['last_display_start'] = None
+                                                user_sessions[session_id]['last_committed_word'] = None
+                                                user_sessions[session_id]['mode'] = new_mode
+                                                # Clear THIS user's frame buffers
+                                                user_sessions[session_id]['frame_buffer'].clear()
+                                                user_sessions[session_id]['prediction_history'].clear()
+                                                user_sessions[session_id]['alphabet_prediction_history'].clear()
                                         
-                                        recognized_words = []
-                                        last_display_word = None
-                                        last_display_start = None
-                                        last_committed_word = None
-                                        
-                                        old_mode = current_model_mode
-                                        current_model_mode = new_mode
-                                        print(f"WS: Successfully switched from {old_mode} to {new_mode} mode")
+                                        old_mode = user_sessions.get(session_id, {}).get('mode', 'motion')
+                                        print(f"WS: Session {session_id} switched from {old_mode} to {new_mode} mode")
                                         
                                         success_msg = json.dumps({
                                             'status': 'success',
-                                            'mode': current_model_mode
+                                            'mode': new_mode
                                         })
                                         print(f"WS: Sending response: {success_msg}")
                                         await websocket.send(success_msg)
@@ -1317,6 +1330,26 @@ async def ws_handler(websocket):
                                 error_msg = json.dumps({'error': 'Invalid mode', 'status': 'error'})
                                 print(f"WS: {error_msg}")
                                 await websocket.send(error_msg)
+                        
+                        elif cmd.get('action') == 'clear_output':
+                            # Clear THIS user's recognized words and sentence
+                            print(f"WS: Clear output request for session {session_id}")
+                            with session_lock:
+                                if session_id in user_sessions:
+                                    user_sessions[session_id]['recognized_words'] = []
+                                    user_sessions[session_id]['last_display_word'] = None
+                                    user_sessions[session_id]['last_display_start'] = None
+                                    user_sessions[session_id]['last_committed_word'] = None
+                                    # Keep buffers and mode intact
+                                    print(f"WS: Session {session_id} output cleared")
+                            
+                            success_msg = json.dumps({
+                                'status': 'success',
+                                'action': 'cleared',
+                                'message': 'Output cleared'
+                            })
+                            await websocket.send(success_msg)
+                        
                         else:
                             print(f"WS: Unknown command, sending OK")
                             await websocket.send('OK')
@@ -1349,34 +1382,51 @@ async def ws_handler(websocket):
                 worker.stop()
             except Exception:
                 pass
+            
+            # Remove THIS user's session from the sessions dictionary
+            with session_lock:
+                if session_id in user_sessions:
+                    del user_sessions[session_id]
+                    print(f"WS: Session {session_id} removed on disconnect")
+            
             ws_path = getattr(websocket, 'path', None)
-            print(f"WS client disconnected: {websocket.remote_address} path={ws_path}")
+            print(f"WS client disconnected: {websocket.remote_address} path={ws_path} session_id={session_id}")
         except Exception:
-            print("WS client disconnected (remote address unavailable)")
+            print(f"WS client disconnected (session_id={session_id})")
 
 
 # Helper sync wrapper because cv2 and torch code is blocking and easier to run in threadpool
-def process_frame_bytes_sync(frame_bytes):
+def process_frame_bytes_sync(frame_bytes, session_id):
     """Synchronous wrapper for processing incoming JPEG bytes.
 
     This version treats incoming frames from the web client as the primary
     input and returns a JSON-serializable dict containing prediction metadata.
     Supports both motion mode (CNN-LSTM with buffering) and alphabet mode (single-frame).
+    
+    Args:
+        frame_bytes: JPEG encoded image bytes
+        session_id: Unique session identifier for this user
 
     Returns:
     - dict with keys: 'prediction' (str or None), 'confidence' (float), 'mode' (str)
     """
-    # Ensure globals are declared before any reference within this function
-    global current_prediction, current_confidence
-    global last_display_word, last_display_start, last_committed_word
-    global recognized_words, current_model_mode
-  # The json object that will be sent back to the client
+    # Access per-user session data
+    global user_sessions
+    
+    # Get THIS user's session data (thread-safe)
+    with session_lock:
+        if session_id not in user_sessions:
+            # Session was removed (user disconnected)
+            return None
+        session = user_sessions[session_id]
+    
+    # The json object that will be sent back to the client
     result = {
         'prediction': None,
         'confidence': 0.0,
         'committed_words': [],
         'sentence': "",
-        'mode': current_model_mode,
+        'mode': session.get('mode', 'motion'),
     }
 
     try:
@@ -1397,14 +1447,8 @@ def process_frame_bytes_sync(frame_bytes):
         except Exception:
             mean_brightness = -1.0
 
-        # Process frame based on current mode
-        with model_mode_lock:
-            mode = current_model_mode
-        
-        # Debug: log mode every 16 frames
-        global frame_count
-        if frame_count % 16 == 0:
-            print(f"[FRAME] Processing in {mode.upper()} mode (frame {frame_count})")
+        # Get THIS user's mode from their session
+        mode = session.get('mode', 'motion')
         
         if mode == 'alphabet':
             # ALPHABET MODE: Single-frame prediction with hand landmark model
@@ -1413,27 +1457,89 @@ def process_frame_bytes_sync(frame_bytes):
                 return result
             
             try:
-                pred, conf = alphabet_detector.predict_from_frame(img)
+                # Get raw prediction from detector (without using its internal history)
+                # Convert to RGB for MediaPipe
+                rgb_frame = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                results = alphabet_detector.hands.process(rgb_frame)
+                
+                pred = None
+                conf = 0.0
+                
+                if results.multi_hand_landmarks:
+                    # Collect hand data
+                    hands_data = {}
+                    for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
+                        hand_label = handedness.classification[0].label.lower()
+                        hands_data[hand_label] = alphabet_detector.extract_landmarks(hand_landmarks)
+                    
+                    # Prepare feature vector
+                    if alphabet_detector.two_hand_mode:
+                        left_landmarks = hands_data.get('left', np.zeros(63))
+                        right_landmarks = hands_data.get('right', np.zeros(63))
+                        features = np.concatenate([left_landmarks, right_landmarks]).reshape(1, -1)
+                    else:
+                        if 'left' in hands_data:
+                            features = hands_data['left'].reshape(1, -1)
+                        elif 'right' in hands_data:
+                            features = hands_data['right'].reshape(1, -1)
+                        else:
+                            features = None
+                    
+                    if features is not None:
+                        # Scale and predict
+                        features_scaled = alphabet_detector.scaler.transform(features)
+                        prediction = alphabet_detector.model.predict(features_scaled)
+                        probabilities = alphabet_detector.model.predict_proba(features_scaled)[0]
+                        
+                        predicted_class = alphabet_detector.label_encoder.inverse_transform(prediction)[0]
+                        confidence = np.max(probabilities)
+                        
+                        # Use THIS session's prediction history for smoothing
+                        alphabet_history = session.get('alphabet_prediction_history', deque(maxlen=5))
+                        alphabet_history.append(predicted_class)
+                        
+                        # Update session history
+                        with session_lock:
+                            session['alphabet_prediction_history'] = alphabet_history
+                        
+                        # Use most common prediction in recent history
+                        if len(alphabet_history) >= 3:
+                            from collections import Counter
+                            most_common = Counter(alphabet_history).most_common(1)
+                            if most_common:
+                                pred = most_common[0][0]
+                                conf = confidence
+                        else:
+                            pred = predicted_class
+                            conf = confidence
+                
                 if pred:
-                    print(f"[ALPHABET] Detected: {pred} (confidence: {conf:.3f})")
-                    # update shared state
-                    current_prediction = pred
-                    current_confidence = conf
                     result['prediction'] = pred
                     result['confidence'] = float(conf)
-                    # Hold-to-commit logic (time based)
+                    
+                    # Hold-to-commit logic (time based) - use THIS session's data
                     now = time.monotonic()
+                    last_display_word = session.get('last_display_word')
+                    last_display_start = session.get('last_display_start')
+                    last_committed_word = session.get('last_committed_word')
+                    recognized_words = session.get('recognized_words', [])
+                    
                     if pred != last_display_word:
-                        last_display_word = pred
-                        last_display_start = now
+                        with session_lock:
+                            session['last_display_word'] = pred
+                            session['last_display_start'] = now
+                    
                     shown_for = 0.0 if last_display_start is None else (now - last_display_start)
                     if shown_for >= COMMIT_SECONDS and pred != last_committed_word:
-                        recognized_words.append({
-                            'text': pred,
-                            'confidence': float(conf),
-                            't_utc': datetime.utcnow().isoformat() + 'Z'
-                        })
-                        last_committed_word = pred
+                        with session_lock:
+                            session['recognized_words'].append({
+                                'text': pred,
+                                'confidence': float(conf),
+                                't_utc': datetime.utcnow().isoformat() + 'Z'
+                            })
+                            session['last_committed_word'] = pred
+                            recognized_words = session['recognized_words']
+                    
                     # Compute sentence
                     committed = [w['text'] for w in recognized_words]
                     sentence = grammar_fix(committed)
@@ -1441,11 +1547,13 @@ def process_frame_bytes_sync(frame_bytes):
                     result['sentence'] = sentence
                 else:
                     # No hands detected
+                    recognized_words = session.get('recognized_words', [])
                     committed = [w['text'] for w in recognized_words]
                     result['committed_words'] = committed
                     result['sentence'] = grammar_fix(committed)
             except Exception as e:
                 print(f"Alphabet mode prediction error: {e}")
+                recognized_words = session.get('recognized_words', [])
                 committed = [w['text'] for w in recognized_words]
                 result['committed_words'] = committed
                 result['sentence'] = grammar_fix(committed)
@@ -1457,42 +1565,87 @@ def process_frame_bytes_sync(frame_bytes):
                 return result
 
             try:
-                with detector_lock:
-                    # Add frame to detector (hand landmark extraction happens inside add_frame)
-                    detector.add_frame(img)
+                # Use THIS session's frame buffer (not the global one)
+                frame_buffer = session.get('frame_buffer', deque(maxlen=16))
+                prediction_history = session.get('prediction_history', deque(maxlen=10))
+                
+                # Add frame to THIS user's buffer
+                frame_buffer.append(img.copy())
+                
+                # Update session
+                with session_lock:
+                    session['frame_buffer'] = frame_buffer
+                
+                # Check if THIS user's buffer is ready (16 frames) and make prediction
+                if len(frame_buffer) >= 16:
                     
-                    # Debug: Log buffer status periodically
-                    if frame_count % 16 == 0:
-                        buffer_size = len(detector.frame_buffer)
-                        hand_buffer_size = len(detector.hand_landmarks_buffer) if detector.hand_landmarks_buffer else 0
-                        print(f"[MOTION] Buffer: {buffer_size}/{detector.buffer_size}, Hands: {hand_buffer_size}/{detector.buffer_size}")
+                    # Preprocess frames for model input
+                    processed_frames = []
+                    for frame in list(frame_buffer):
+                        # Convert BGR to RGB (keep as numpy array for transform)
+                        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        # Apply model's transform (expects numpy array, will convert to PIL internally)
+                        tensor = detector.transform(frame_rgb)
+                        processed_frames.append(tensor)
                     
-                    # Check if buffer is ready and make prediction
-                    if detector.is_buffer_ready():
-                        if frame_count % 5 == 0:  # Log more frequently when predicting
-                            print(f"[MOTION] Buffer ready, making prediction...")
-                        pred, conf = detector.predict_gesture()
-                        if pred:
-                            print(f"[MOTION] Detected: {pred} (confidence: {conf:.3f})")
-                            # update shared state
-                            current_prediction = pred
-                            current_confidence = conf
+                    # Stack and prepare for model
+                    if len(processed_frames) == 16:
+                        frames_tensor = torch.stack(processed_frames).unsqueeze(0).to(detector.device)
+                        
+                        # Run model inference
+                        with torch.no_grad():
+                            detector.model.eval()
+                            outputs = detector.model(frames_tensor)
+                            probs = torch.nn.functional.softmax(outputs, dim=1)
+                            conf, predicted_idx = torch.max(probs, 1)
+                            
+                            pred = detector.class_names[predicted_idx.item()]
+                            conf = conf.item()
+                        
+                        # Add to THIS session's prediction history
+                        prediction_history.append((pred, conf))
+                        with session_lock:
+                            session['prediction_history'] = prediction_history
+                        
+                        # Get stable prediction from THIS user's history
+                        stable_pred = pred  # Default to current prediction
+                        if len(prediction_history) >= 3:
+                            recent_predictions = [p[0] for p in list(prediction_history)[-3:]]
+                            from collections import Counter
+                            prediction_counts = Counter(recent_predictions)
+                            most_common = prediction_counts.most_common(1)
+                            if most_common:
+                                stable_pred = most_common[0][0]
+                        
+                        # Use the stable prediction
+                        pred = stable_pred
+                    
+                        if pred is not None and pred != "":
                             result['prediction'] = pred
                             result['confidence'] = float(conf)
                             
-                            # Hold-to-commit logic (time based)
+                            # Hold-to-commit logic (time based) - use THIS session's data
                             now = time.monotonic()
+                            last_display_word = session.get('last_display_word')
+                            last_display_start = session.get('last_display_start')
+                            last_committed_word = session.get('last_committed_word')
+                            recognized_words = session.get('recognized_words', [])
+                            
                             if pred != last_display_word:
-                                last_display_word = pred
-                                last_display_start = now
+                                with session_lock:
+                                    session['last_display_word'] = pred
+                                    session['last_display_start'] = now
+                            
                             shown_for = 0.0 if last_display_start is None else (now - last_display_start)
                             if shown_for >= COMMIT_SECONDS and pred != last_committed_word:
-                                recognized_words.append({
-                                    'text': pred,
-                                    'confidence': float(conf),
-                                    't_utc': datetime.utcnow().isoformat() + 'Z'
-                                })
-                                last_committed_word = pred
+                                with session_lock:
+                                    session['recognized_words'].append({
+                                        'text': pred,
+                                        'confidence': float(conf),
+                                        't_utc': datetime.utcnow().isoformat() + 'Z'
+                                    })
+                                    session['last_committed_word'] = pred
+                                    recognized_words = session['recognized_words']
                             
                             # Compute sentence
                             committed = [w['text'] for w in recognized_words]
@@ -1500,17 +1653,27 @@ def process_frame_bytes_sync(frame_bytes):
                             result['committed_words'] = committed
                             result['sentence'] = sentence
                         else:
-                            # Log when prediction is None
-                            if frame_count % 10 == 0:
-                                print(f"[MOTION] Prediction returned None (confidence: {conf:.3f})")
-                    
-                    # Even if no commit, still compute up-to-date sentence for UI
-                    if not result['sentence']:
+                            # Prediction is None - still return existing sentence
+                            recognized_words = session.get('recognized_words', [])
+                            committed = [w['text'] for w in recognized_words]
+                            result['committed_words'] = committed
+                            result['sentence'] = grammar_fix(committed)
+                    else:
+                        # Buffer not ready yet (less than 16 frames)
+                        # Return existing sentence
+                        recognized_words = session.get('recognized_words', [])
                         committed = [w['text'] for w in recognized_words]
                         result['committed_words'] = committed
                         result['sentence'] = grammar_fix(committed)
             except Exception as e:
-                print(f"Motion mode prediction error: {e}")
+                print(f"Motion mode prediction error for session {session_id}: {e}")
+                import traceback
+                traceback.print_exc()
+                # Return existing sentence on error
+                recognized_words = session.get('recognized_words', [])
+                committed = [w['text'] for w in recognized_words]
+                result['committed_words'] = committed
+                result['sentence'] = grammar_fix(committed)
 
         # Draw overlays (kept for internal use / logs) but not returned
         try:
@@ -1518,9 +1681,11 @@ def process_frame_bytes_sync(frame_bytes):
         except Exception:
             pass
 
-        # Provide sentence even if no new prediction (reuse existing committed list)
+        # Ensure we always return the current sentence from THIS session
         if not result['sentence']:
             try:
+                # Get THIS session's recognized words
+                recognized_words = session.get('recognized_words', [])
                 committed = [w['text'] for w in recognized_words]
                 result['committed_words'] = committed
                 result['sentence'] = grammar_fix(committed)
@@ -1533,7 +1698,7 @@ def process_frame_bytes_sync(frame_bytes):
         return result
 
     except Exception as e:
-        print(f"process_frame_bytes_sync error: {e}")
+        print(f"process_frame_bytes_sync error for session {session_id}: {e}")
         import traceback as _tb
         _tb.print_exc()
         return result

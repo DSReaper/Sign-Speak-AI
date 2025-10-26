@@ -943,14 +943,21 @@ class AISignLanguageDetection {
 
     async resetBuffer() {
         try {
-            const response = await fetch(`${this.flaskUrl}/reset_detector`, { method: 'POST' });
-            
-            if (response.ok) {
+            // Send clear output command via WebSocket
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                const command = JSON.stringify({
+                    action: 'clear_output'
+                });
+                this.ws.send(command);
+                console.log('Clear output command sent via WebSocket');
+                
+                // Clear UI immediately
                 this.detectedPhrase.textContent = '';
-                console.log('Buffer reset successfully');
+            } else {
+                console.warn('WebSocket not connected, cannot clear output');
             }
         } catch (error) {
-            console.error('Error resetting buffer:', error);
+            console.error('Error clearing output:', error);
         }
     }
 
