@@ -27,6 +27,7 @@ from datetime import datetime
 import timm
 import glob
 import joblib
+import jwt
 
 # Suppress MediaPipe verbose logging
 os.environ['GLOG_minloglevel'] = '2'
@@ -40,9 +41,30 @@ except ImportError:
     print("MediaPipe not available. Hand detection disabled.")
     HAND_DETECTION_AVAILABLE = False
 
+# Set up logger
+try:  # packaged execution
+    from .logger import setup_logger  # type: ignore
+except Exception:
+    try:  # script-style execution
+        from logger import setup_logger  # type: ignore
+    except Exception:
+        def setup_logger():  # type: ignore
+            import logging
+            logger = logging.getLogger('flask-api-service')
+            logger.setLevel(logging.INFO)
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+            return logger
+        print("WARNING: logger.py was not found, using fallback.")
+
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Node.js integration
+
+# Set up logger
+logger = setup_logger()
 
 # Global variables
 detector = None
@@ -1406,7 +1428,7 @@ def process_frame_bytes_sync(frame_bytes, session_id):
     This version treats incoming frames from the web client as the primary
     input and returns a JSON-serializable dict containing prediction metadata.
     Supports both motion mode (CNN-LSTM with buffering) and alphabet mode (single-frame).
-    
+
     Args:
         frame_bytes: JPEG encoded image bytes
         session_id: Unique session identifier for this user
@@ -1414,6 +1436,7 @@ def process_frame_bytes_sync(frame_bytes, session_id):
     Returns:
     - dict with keys: 'prediction' (str or None), 'confidence' (float), 'mode' (str)
     """
+    global frame_count
     # Access per-user session data
     global user_sessions
     
