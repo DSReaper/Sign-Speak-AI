@@ -86,6 +86,8 @@ last_display_start = None  # DEPRECATED
 last_committed_word = None  # DEPRECATED
 
 COMMIT_SECONDS = 0.5  # hold duration before committing a stable prediction
+CONFIDENCE_DROP_THRESHOLD = 0.15  # Minimum confidence drop to reset same-letter commit
+CONFIDENCE_RECOVERY_THRESHOLD = 0.20  # Minimum confidence to consider "recovered"
 show_hands = True
 # When False, the server will not draw status/model/prediction text overlays
 # on the returned image frames. Hand landmark/box overlays remain controlled
@@ -1287,6 +1289,8 @@ async def ws_handler(websocket):
                 'last_display_word': None,
                 'last_display_start': None,
                 'last_committed_word': None,
+                'last_committed_confidence': 0.0,  # Track confidence of last commit
+                'confidence_dropped': False,  # Track if confidence dropped significantly
                 'mode': current_model_mode,
                 # Per-user frame buffers for motion mode
                 'frame_buffer': deque(maxlen=16),  # 16-frame buffer for motion detection
@@ -1545,7 +1549,31 @@ def process_frame_bytes_sync(frame_bytes, session_id):
                     last_display_word = session.get('last_display_word')
                     last_display_start = session.get('last_display_start')
                     last_committed_word = session.get('last_committed_word')
+                    last_committed_confidence = session.get('last_committed_confidence', 0.0)
+                    confidence_dropped = session.get('confidence_dropped', False)
                     recognized_words = session.get('recognized_words', [])
+                    
+                    # CONFIDENCE DROP DETECTION: Allow same letter if confidence dropped and recovered
+                    if pred == last_committed_word:
+                        # Same prediction as last committed word
+                        # Check if confidence dropped significantly (user stopped signing)
+                        if not confidence_dropped and conf < (last_committed_confidence - CONFIDENCE_DROP_THRESHOLD):
+                            # Confidence dropped significantly - mark it
+                            with session_lock:
+                                session['confidence_dropped'] = True
+                            confidence_dropped = True
+                        
+                        # Check if confidence recovered (user signed again)
+                        if confidence_dropped and conf > CONFIDENCE_RECOVERY_THRESHOLD:
+                            # Confidence recovered! Reset the commit flag to allow re-commit
+                            with session_lock:
+                                session['last_committed_word'] = None  # Clear so same letter can commit again
+                                session['confidence_dropped'] = False
+                            last_committed_word = None  # Update local variable
+                    else:
+                        # Different prediction - reset confidence drop tracking
+                        with session_lock:
+                            session['confidence_dropped'] = False
                     
                     if pred != last_display_word:
                         with session_lock:
@@ -1561,6 +1589,8 @@ def process_frame_bytes_sync(frame_bytes, session_id):
                                 't_utc': datetime.utcnow().isoformat() + 'Z'
                             })
                             session['last_committed_word'] = pred
+                            session['last_committed_confidence'] = conf  # Store confidence of this commit
+                            session['confidence_dropped'] = False  # Reset drop flag
                             recognized_words = session['recognized_words']
                     
                     # Compute sentence
