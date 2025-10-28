@@ -61,13 +61,19 @@ const flaskProxyOptions = {
     changeOrigin: true,
     onError: (err, req, res) => {
         console.error('Flask proxy error:', err.message);
-        res.status(503).json({ 
-            status: 'error', 
-            message: 'AI service unavailable. Please ensure Flask server is running on port 5000.' 
+        res.status(503).json({
+            status: 'error',
+            message: 'AI service unavailable. Please ensure Flask server is running on port 5000.'
         });
     },
     onProxyReq: (proxyReq, req, res) => {
         console.log(`Proxying ${req.method} ${req.url} to Flask`);
+
+        // Add user-specific headers for personalization
+        if (req.user && req.user.userId) {
+            proxyReq.setHeader('X-User-ID', req.user.userId);
+            proxyReq.setHeader('X-User-Token', req.cookies.token || req.headers.authorization?.split(' ')[1]);
+        }
     }
 };
 
@@ -112,21 +118,25 @@ app.get('/camera', authenticateToken, async (req, res) => {
     try {
         const healthCheck = await fetch('http://localhost:5000/status');
         if (healthCheck.ok) {
-            res.render('camera', { 
+            res.render('camera', {
                 aiServiceStatus: 'available',
                 flaskUrl: 'http://localhost:5000',
-                currentPath: '/camera'
+                currentPath: '/camera',
+                userId: req.user.userId, // Pass user ID for personalization
+                userToken: req.cookies.token // Pass token for WebSocket auth
             });
         } else {
             throw new Error('Flask service not responding');
         }
     } catch (error) {
         console.warn('Flask AI service not available:', error.message);
-        res.render('camera', { 
+        res.render('camera', {
             aiServiceStatus: 'unavailable',
             flaskUrl: 'http://localhost:5000',
             errorMessage: 'AI service is not available. Please start the Flask server on port 5000.',
-            currentPath: '/camera'
+            currentPath: '/camera',
+            userId: req.user.userId,
+            userToken: req.cookies.token
         });
     }
 });
@@ -306,7 +316,7 @@ const PORT = 8001; // The Express server port
 app.listen(PORT, () => {
     console.log(`Express server running on http://localhost:${PORT}`);
     console.log('Flask AI service proxied to http://localhost:5000');
-    console.log('Database: MongoDB connected');
+    console.log('Database: MongoDB connected on port 8000');
 });
 
 // Handle unhandled promise rejections
